@@ -8,4 +8,4 @@ It either builds and installs or it builds and then executes the tests.
 [B]build.sh[/B]:
 This expects to run on a jenkins instance with opm-common as the 'origin' remote.
 
-It will build and test opm-common.
+It will build and test opm-common. meh
