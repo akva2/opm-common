@@ -329,7 +329,13 @@ macro(opm_add_test TestName)
     # CDash dashboard. it this is removed, the test is just silently
     # ignored.
     if (NOT CURTEST_ONLY_COMPILE)
-      add_test(${TestName} skip_test_dummy)
+      if(NOT EXISTS ${CMAKE_BINARY_DIR}/bin/skip_test_dummy)
+          file(WRITE ${CMAKE_BINARY_DIR}/bin/skip_test_dummy "!/bin/sh
+                                                              exit 77"
+               FILE_PERMISSION 755)
+      endif()
+      add_test(${TestName} ${CMAKE_BINARY_DIR}/bin/skip_test_dummy)
+      set_tests_properties(${TestName} PROPERTIES SKIP_RETURN_CODE 77)
     endif()
   endif()
 endmacro()
