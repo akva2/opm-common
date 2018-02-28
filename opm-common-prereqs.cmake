@@ -13,5 +13,11 @@ set (opm-common_DEPS
 	"CXX11Features REQUIRED"
 	# various runtime library enhancements
 	"Boost 1.44.0
-		COMPONENTS system unit_test_framework REQUIRED"
+		COMPONENTS system unit_test_framework filesystem regex REQUIRED"
 	)
+
+if(ENABLE_ECL_INPUT)
+  list(APPEND opm-common_DEPS  "ecl REQUIRED" "cjson")
+endif()
+
+find_package_deps(opm-common)
