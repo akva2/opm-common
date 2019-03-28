@@ -319,6 +319,7 @@ if(ENABLE_ECL_INPUT)
   list (APPEND TEST_DATA_FILES
     tests/ECLFILE.INIT
     tests/ECLFILE.FINIT
+    tests/SPE1CASE1.EGRID
   )
   list (APPEND EXAMPLE_SOURCE_FILES
     examples/opmi.cpp
