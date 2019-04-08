@@ -249,8 +249,7 @@ std::string EclOutput::make_real_string(float value) const
     sprintf (buffer, "%10.7E", value);
 
     if (value == 0.0) {
-        std::string tmpstr("0.00000000E+00");
-        return std::move(tmpstr);
+        return "0.00000000E+00";
     } else {
         std::string tmpstr(buffer);
 
@@ -265,7 +264,7 @@ std::string EclOutput::make_real_string(float value) const
         sprintf (buffer, "%+03i", exp+1);
         tmpstr = tmpstr+buffer;
 
-        return std::move(tmpstr);
+        return tmpstr;
     }
 }
 
@@ -276,9 +275,7 @@ std::string EclOutput::make_doub_string(double value) const
     sprintf (buffer, "%19.13E", value);
 
     if (value == 0.0) {
-        std::string tmpstr("0.00000000000000D+00");
-
-        return std::move(tmpstr);
+        return "0.00000000000000D+00";
     } else {
         std::string tmpstr(buffer);
 
@@ -301,7 +298,7 @@ std::string EclOutput::make_doub_string(double value) const
         sprintf (buffer, "%+03i", exp+1);
         tmpstr = tmpstr + buffer;
 
-        return std::move(tmpstr);
+        return tmpstr;
     }
 }
 

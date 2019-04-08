@@ -707,7 +707,7 @@ std::vector<EclFile::EclEntry> EclFile::getList() const
         list.emplace_back(array_name[i], array_type[i], array_size[i]);
     }
 
-    return std::move(list);
+    return list;
 }
 
 

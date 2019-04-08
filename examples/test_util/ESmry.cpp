@@ -410,7 +410,7 @@ std::string ESmry::makeKeyString(const std::string &keyword, const std::string &
         keyStr = keyword;
     }
 
-    return std::move(keyStr);
+    return keyStr;
 }
 
 
