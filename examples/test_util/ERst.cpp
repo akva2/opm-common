@@ -99,7 +99,7 @@ std::vector<EclFile::EclEntry> ERst::listOfRstArrays(int reportStepNumber)
     }
 
     for (int i = arrIndexRange[reportStepNumber].first;  i < arrIndexRange[reportStepNumber].second; i++) {
-        list.push_back({array_name[i], array_type[i], array_size[i]});
+        list.emplace_back(array_name[i], array_type[i], array_size[i]);
     }
 
     return std::move(list);

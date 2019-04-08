@@ -704,7 +704,7 @@ std::vector<EclFile::EclEntry> EclFile::getList() const
     std::vector<EclEntry> list;
 
     for (size_t i = 0; i < array_name.size(); i++) {
-        list.push_back({array_name[i], array_type[i], array_size[i]});
+        list.emplace_back(array_name[i], array_type[i], array_size[i]);
     }
 
     return std::move(list);

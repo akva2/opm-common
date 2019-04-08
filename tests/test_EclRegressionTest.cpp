@@ -577,9 +577,15 @@ BOOST_AUTO_TEST_CASE(results_init_2) {
 }
 
 BOOST_AUTO_TEST_CASE(results_unrst_1) {
+    using Date = std::tuple<int, int, int>;
 
     std::vector<int> seqnum1 = {0,1,4,7};
-    std::vector<std::tuple<int,int,int>> dates1 = {{2000,1,1},{2000,1,10},{2000,2,1},{2000,3,1}};
+    std::vector<Date> dates1 = {
+        Date{2000,1, 1},
+        Date{2000,1,10},
+        Date{2000,2, 1},
+        Date{2000,3, 1}
+    };
     std::vector<bool> logihead1 = {false, false,false,true,false,false,false,false,true,false,false,false,false,false,false};
     std::vector<double> doubhead1 = {0.0,1,0, 365, 0.10000000149012E+00,0.15000000596046E+00,0.30000000000000E+01};
     std::vector<double> time1 = {0, 9, 31,60};
@@ -603,7 +609,13 @@ BOOST_AUTO_TEST_CASE(results_unrst_1) {
 // -------------------------
 
     std::vector<int> seqnum2 = {0,1,4,7};
-    std::vector<std::tuple<int,int,int>> dates2 = {{2000,1,1},{2000,1,10},{2000,2,1},{2000,3,1}};
+    std::vector<Date> dates2 = {
+        Date{2000,1, 1},
+        Date{2000,1,10},
+        Date{2000,2, 1},
+        Date{2000,3, 1}
+    };
+
     std::vector<bool> logihead2 = {false, false,false,true,false,false,false,false,true,false,false,false,false,false,false};
     std::vector<double> doubhead2 = {0.0,1,0, 365, 0.10000000149012E+00,0.15000000596046E+00,0.30000000000000E+01};
     std::vector<double> time2 = {0, 9, 31,60};
@@ -696,9 +708,16 @@ BOOST_AUTO_TEST_CASE(results_unrst_1) {
 }
 
 BOOST_AUTO_TEST_CASE(results_unrst_2) {
+    using Date = std::tuple<int, int, int>;
 
     std::vector<int> seqnum1 = {0,1,4,7};
-    std::vector<std::tuple<int,int,int>> dates1 = {{2000,1,1},{2000,1,10},{2000,2,1},{2000,3,1}};
+    std::vector<Date> dates1 = {
+        Date{2000,1, 1},
+        Date{2000,1,10},
+        Date{2000,2, 1},
+        Date{2000,3, 1}
+    };
+
     std::vector<bool> logihead1 = {false, false,false,true,false,false,false,false,true,false,false,false,false,false,false};
     std::vector<double> doubhead1 = {0.0,1,0, 365, 0.10000000149012E+00,0.15000000596046E+00,0.30000000000000E+01};
     std::vector<double> time1 = {0, 9, 31,60};
@@ -724,7 +743,12 @@ BOOST_AUTO_TEST_CASE(results_unrst_2) {
 // reportStepNumber #4 missing in second case
 
     std::vector<int> seqnum2 = {0,1,7};
-    std::vector<std::tuple<int,int,int>> dates2 = {{2000,1,1},{2000,1,10},{2000,3,1}};
+    std::vector<Date> dates2 = {
+        Date{2000,1, 1},
+        Date{2000,1,10},
+        Date{2000,3, 1}
+    };
+
     std::vector<bool> logihead2 = {false, false,false,true,false,false,false,false,true,false,false,false,false,false,false};
     std::vector<double> doubhead2 = {0.0,1,0, 365, 0.10000000149012E+00,0.15000000596046E+00,0.30000000000000E+01};
     std::vector<double> time2 = {0, 9, 60};
@@ -777,9 +801,15 @@ BOOST_AUTO_TEST_CASE(results_unrst_2) {
 
 
 BOOST_AUTO_TEST_CASE(results_unrst_3) {
+    using Date = std::tuple<int, int, int>;
 
     std::vector<int> seqnum1 = {0,1,4,7};
-    std::vector<std::tuple<int,int,int>> dates1 = {{2000,1,1},{2000,1,10},{2000,2,1},{2000,3,1}};
+    std::vector<Date> dates1 = {
+        Date{2000,1, 1},
+        Date{2000,1,10},
+        Date{2000,2, 1},
+        Date{2000,3, 1},
+    };
     std::vector<bool> logihead1 = {false, false,false,true,false,false,false,false,true,false,false,false,false,false,false};
     std::vector<double> doubhead1 = {0.0,1,0, 365, 0.10000000149012E+00,0.15000000596046E+00,0.30000000000000E+01};
     std::vector<double> time1 = {0, 9, 31,60};
@@ -803,7 +833,12 @@ BOOST_AUTO_TEST_CASE(results_unrst_3) {
 // -------------------------
 
     std::vector<int> seqnum2 = {0,1,4,7};
-    std::vector<std::tuple<int,int,int>> dates2 = {{2000,1,1},{2000,1,10},{2000,2,1},{2000,3,1}};
+    std::vector<Date> dates2 = {
+        Date{2000,1, 1},
+        Date{2000,1,10},
+        Date{2000,2, 1},
+        Date{2000,3, 1},
+    };
     std::vector<bool> logihead2 = {false, false,false,true,false,false,false,false,true,false,false,false,false,false,false};
     std::vector<double> doubhead2 = {0.0,1,0, 365, 0.10000000149012E+00,0.15000000596046E+00,0.30000000000000E+01};
     std::vector<double> time2 = {0, 9, 31,60};
@@ -1067,9 +1102,14 @@ BOOST_AUTO_TEST_CASE(results_unsmry_2) {
 }
 
 BOOST_AUTO_TEST_CASE(results_rft_1) {
+    using Date = std::tuple<int, int, int>;
 
     std::vector<float> time1 = {0.0, 40.0, 50.0};
-    std::vector<std::tuple<int, int, int>> date1 = {{2000,1,1},{2000,2,10},{2000,2,20}};
+    std::vector<Date> date1 = {
+        Date{2000,1, 1},
+        Date{2000,2,10},
+        Date{2000,2,20},
+    };
     std::vector<std::string> wellN1 = {"A-1H", "A-1H", "A-2H"};
 
     std::vector<std::vector<int>> conipos1 = {{1,1},{1,1},{2,2}};
@@ -1092,7 +1132,11 @@ BOOST_AUTO_TEST_CASE(results_rft_1) {
     // ------ second case dentical with first case ---------------
 
     std::vector<float> time2 = {0.0, 40.0, 50.0};
-    std::vector<std::tuple<int, int, int>> date2 = {{2000,1,1},{2000,2,10},{2000,2,20}};
+    std::vector<Date> date2 = {
+        Date{2000,1 ,1},
+        Date{2000,2,10},
+        Date{2000,2,20},
+    };
     std::vector<std::string> wellN2 = {"A-1H", "A-1H", "A-2H"};
 
     std::vector<std::vector<int>> conipos2 = {{1,1},{1,1},{2,2}};
@@ -1115,7 +1159,9 @@ BOOST_AUTO_TEST_CASE(results_rft_1) {
     // -----------------third case, only two rfts, second rft in A-1H removed
 
     std::vector<float> time3 = {0.0, 50.0};
-    std::vector<std::tuple<int, int, int>> date3 = {{2000,1,1},{2000,2,20}};
+    std::vector<Date> date3 = {
+        Date{2000,1,1}, Date{2000,2,20},
+    };
     std::vector<std::string> wellN3 = {"A-1H", "A-2H"};
 
     std::vector<std::vector<int>> conipos3 = {{1,1},{2,2}};
@@ -1204,9 +1250,12 @@ BOOST_AUTO_TEST_CASE(results_rft_1) {
 }
 
 BOOST_AUTO_TEST_CASE(results_rft_2) {
+    using Date = std::tuple<int, int, int>;
 
     std::vector<float> time1 = {0.0, 40.0, 50.0};
-    std::vector<std::tuple<int, int, int>> date1 = {{2000,1,1},{2000,2,10},{2000,2,20}};
+    std::vector<Date> date1 = {
+        Date{2000,1,1}, Date{2000,2,10}, Date{2000,2,20},
+    };
     std::vector<std::string> wellN1 = {"A-1H", "A-1H", "A-2H"};
 
     std::vector<std::vector<int>> conipos1 = {{1,1},{1,1},{2,2}};
@@ -1229,7 +1278,9 @@ BOOST_AUTO_TEST_CASE(results_rft_2) {
     // ------ second case dentical with first case ---------------
 
     std::vector<float> time2 = {0.0, 40.0, 50.0};
-    std::vector<std::tuple<int, int, int>> date2 = {{2000,1,1},{2000,2,10},{2000,2,20}};
+    std::vector<Date> date2 = {
+        Date{2000,1,1}, Date{2000,2,10}, Date{2000,2,20},
+    };
     std::vector<std::string> wellN2 = {"A-1H", "A-1H", "A-2H"};
 
     std::vector<std::vector<int>> conipos2 = {{1,1},{1,1},{2,2}};

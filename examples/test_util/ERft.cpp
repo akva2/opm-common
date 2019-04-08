@@ -240,7 +240,7 @@ template<> const std::vector<int>&
 ERft::getRft<int>(const std::string& name, const std::string& wellName,
                   int year, int month, int day) const
 {
-    return getRft<int>(name, wellName, {year, month, day});
+    return getRft<int>(name, wellName, RftDate{year, month, day});
 }
 
 
@@ -248,7 +248,7 @@ template<> const std::vector<float>&
 ERft::getRft<float>(const std::string& name, const std::string& wellName,
                     int year, int month, int day) const
 {
-    return getRft<float>(name, wellName, {year, month, day});
+    return getRft<float>(name, wellName, RftDate{year, month, day});
 }
 
 
@@ -256,7 +256,7 @@ template<> const std::vector<double>&
 ERft::getRft<double>(const std::string& name, const std::string& wellName,
                      int year, int month, int day) const
 {
-    return getRft<double>(name, wellName, {year, month, day});
+    return getRft<double>(name, wellName, RftDate{year, month, day});
 }
 
 
@@ -264,7 +264,7 @@ template<> const std::vector<std::string>&
 ERft::getRft<std::string>(const std::string& name, const std::string& wellName,
                           int year, int month, int day) const
 {
-    return getRft<std::string>(name, wellName, {year, month, day});
+    return getRft<std::string>(name, wellName, RftDate{year, month, day});
 }
 
 
@@ -272,7 +272,7 @@ template<> const std::vector<bool>&
 ERft::getRft<bool>(const std::string& name, const std::string& wellName,
                    int year, int month, int day) const
 {
-    return getRft<bool>(name, wellName, {year, month, day});
+    return getRft<bool>(name, wellName, RftDate{year, month, day});
 }
 
 
@@ -284,7 +284,7 @@ std::vector<EclFile::EclEntry> ERft::listOfRftArrays(const std::string& wellName
 
     auto searchInd = arrIndexRange.find(rInd);
     for (int i = searchInd->second.first; i < searchInd->second.second; i++) {
-        list.push_back({array_name[i], array_type[i], array_size[i]});
+        list.emplace_back(array_name[i], array_type[i], array_size[i]);
     }
 
     return std::move(list);
@@ -294,7 +294,7 @@ std::vector<EclFile::EclEntry> ERft::listOfRftArrays(const std::string& wellName
 std::vector<EclFile::EclEntry> ERft::listOfRftArrays(const std::string& wellName,
                                                      int year, int month, int day) const
 {
-    return listOfRftArrays(wellName, {year, month, day});
+    return listOfRftArrays(wellName, RftDate{year, month, day});
 }
 
 

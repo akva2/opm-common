@@ -74,62 +74,74 @@ bool operator==(const std::vector<T> & t1, const std::vector<T> & t2)
 
     
 BOOST_AUTO_TEST_CASE(TestERft_1) {
+    using Date = std::tuple<int, int, int>;
 
     std::vector<std::string> ref_wellList= {"A-1H", "B-2H", "INJ", "PROD"};
-    std::vector<std::tuple<int, int, int>> ref_dates= {{2015,1,1},{2015,9,1},{2016,5,31},{2017,7,31}};
+    std::vector<Date> ref_dates= {
+        Date{2015,1, 1},
+        Date{2015,9, 1},
+        Date{2016,5,31},
+        Date{2017,7,31},
+    };
 
-    const std::vector<std::pair<std::string,std::tuple<int, int, int>>> ref_rftList = {{"PROD",{2015,1,1}},{"INJ",{2015,1,1}},{"A-1H",{2015,9,1}}, {"B-2H",{2016,5,31}}, {"PROD",{2017,7,31}}};
+    const std::vector<std::pair<std::string,Date>> ref_rftList = {
+        {"PROD", Date{2015,1, 1}},
+        {"INJ" , Date{2015,1, 1}},
+        {"A-1H", Date{2015,9, 1}},
+        {"B-2H", Date{2016,5,31}},
+        {"PROD", Date{2017,7,31}}
+    };
 
     std::string testFile="SPE1CASE1.RFT";
 
     ERft rft1(testFile);
 
     std::vector<std::string> wellList = rft1.listOfWells();
-    std::vector<std::tuple<int, int, int>> rftDates = rft1.listOfdates();
-    std::vector<std::pair<std::string,std::tuple<int, int, int>>> rftList = rft1.listOfRftReports();
+    std::vector<Date> rftDates = rft1.listOfdates();
+    std::vector<std::pair<std::string,Date>> rftList = rft1.listOfRftReports();
 
     BOOST_CHECK_EQUAL(wellList==ref_wellList, true);
     BOOST_CHECK_EQUAL(rftDates==ref_dates, true);
 
     BOOST_CHECK_EQUAL(rftList==ref_rftList, true);
 
-    BOOST_CHECK_EQUAL(rft1.hasRft("PROD", {2015,1,1}), true);
+    BOOST_CHECK_EQUAL(rft1.hasRft("PROD", Date{2015,1,1}), true);
     BOOST_CHECK_EQUAL(rft1.hasRft("PROD",2015,1,1), true);
 
-    BOOST_CHECK_EQUAL(rft1.hasRft("PROD", {2015,10,1}), false);
-    BOOST_CHECK_EQUAL(rft1.hasRft("XXXX", {2015,1,1}), false);
+    BOOST_CHECK_EQUAL(rft1.hasRft("PROD", Date{2015,10,1}), false);
+    BOOST_CHECK_EQUAL(rft1.hasRft("XXXX", Date{2015,1,1}), false);
     BOOST_CHECK_EQUAL(rft1.hasRft("PROD",2015,10,1), false);
     BOOST_CHECK_EQUAL(rft1.hasRft("XXXX",2015,1,1), false);
-    
-   // test member function hasArray
-    
-    BOOST_CHECK_EQUAL(rft1.hasArray("SGAS","B-2H",{2016,5,31}), true);
-    BOOST_CHECK_EQUAL(rft1.hasArray("XXXX","B-2H",{2016,5,31}), false);
 
-    BOOST_CHECK_THROW(rft1.hasArray("SGAS","C-2H",{2016,5,31}),std::invalid_argument);
-    BOOST_CHECK_THROW(rft1.hasArray("SGAS","B-2H",{2016,5,30}),std::invalid_argument);  
-    BOOST_CHECK_THROW(rft1.hasArray("SGAS","C-2H",{2016,5,30}),std::invalid_argument);  
-    BOOST_CHECK_THROW(rft1.hasArray("XXXX","C-2H",{2016,5,30}),std::invalid_argument);  
+   // test member function hasArray
+
+    BOOST_CHECK_EQUAL(rft1.hasArray("SGAS","B-2H", Date{2016,5,31}), true);
+    BOOST_CHECK_EQUAL(rft1.hasArray("XXXX","B-2H", Date{2016,5,31}), false);
+
+    BOOST_CHECK_THROW(rft1.hasArray("SGAS","C-2H", Date{2016,5,31}),std::invalid_argument);
+    BOOST_CHECK_THROW(rft1.hasArray("SGAS","B-2H", Date{2016,5,30}),std::invalid_argument);
+    BOOST_CHECK_THROW(rft1.hasArray("SGAS","C-2H", Date{2016,5,30}),std::invalid_argument);
+    BOOST_CHECK_THROW(rft1.hasArray("XXXX","C-2H", Date{2016,5,30}),std::invalid_argument);
 
    // test member function getRft
 
-    std::vector<int> vect1=rft1.getRft<int>("CONIPOS","B-2H",{2016,5,31});
-    std::vector<float> vect2=rft1.getRft<float>("PRESSURE","B-2H",{2016,5,31});
-    std::vector<std::string> vect3=rft1.getRft<std::string>("WELLETC","B-2H",{2016,5,31});
+    std::vector<int> vect1=rft1.getRft<int>("CONIPOS","B-2H", Date{2016,5,31});
+    std::vector<float> vect2=rft1.getRft<float>("PRESSURE","B-2H", Date{2016,5,31});
+    std::vector<std::string> vect3=rft1.getRft<std::string>("WELLETC","B-2H", Date{2016,5,31});
 
     BOOST_CHECK_EQUAL(vect1.size(), 3);
     BOOST_CHECK_EQUAL(vect2.size(), 3);
     BOOST_CHECK_EQUAL(vect3.size(), 16);
-   
+
     // called with invalid argument, array not existing, wrong well name or wrong date
-    BOOST_CHECK_THROW(std::vector<int> vect1=rft1.getRft<int>("CONIPOS","C-2H",{2016,5,31}),std::invalid_argument);  
-    BOOST_CHECK_THROW(std::vector<int> vect1=rft1.getRft<int>("CONIPOS","B-2H",{2016,5,30}),std::invalid_argument);  
-    BOOST_CHECK_THROW(std::vector<int> vect1=rft1.getRft<int>("XXXXXXX","B-2H",{2016,5,31}),std::invalid_argument);  
-    
+    BOOST_CHECK_THROW(std::vector<int> vect1=rft1.getRft<int>("CONIPOS","C-2H", Date{2016,5,31}),std::invalid_argument);
+    BOOST_CHECK_THROW(std::vector<int> vect1=rft1.getRft<int>("CONIPOS","B-2H", Date{2016,5,30}),std::invalid_argument);
+    BOOST_CHECK_THROW(std::vector<int> vect1=rft1.getRft<int>("XXXXXXX","B-2H", Date{2016,5,31}),std::invalid_argument);
+
     // called with wrong type
-    BOOST_CHECK_THROW(std::vector<int> vect1=rft1.getRft<int>("SGAS","B-2H",{2016,5,31}),std::runtime_error);
-    BOOST_CHECK_THROW(std::vector<float> vect1=rft1.getRft<float>("CONIPOS","B-2H",{2016,5,31}),std::runtime_error);
-    BOOST_CHECK_THROW(std::vector<std::string> vect1=rft1.getRft<std::string>("CONIPOS","B-2H",{2016,5,31}), std::runtime_error);
+    BOOST_CHECK_THROW(std::vector<int> vect1=rft1.getRft<int>("SGAS","B-2H", Date{2016,5,31}),std::runtime_error);
+    BOOST_CHECK_THROW(std::vector<float> vect1=rft1.getRft<float>("CONIPOS","B-2H", Date{2016,5,31}),std::runtime_error);
+    BOOST_CHECK_THROW(std::vector<std::string> vect1=rft1.getRft<std::string>("CONIPOS","B-2H", Date{2016,5,31}), std::runtime_error);
 }
 
 

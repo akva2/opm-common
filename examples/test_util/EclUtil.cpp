@@ -56,21 +56,23 @@ double Opm::ecl::flipEndianDouble(double num)
 
 std::tuple<int, int> Opm::ecl::block_size_data_binary(eclArrType arrType)
 {
+    using BlockSizeTuple = std::tuple<int, int>;
+
     switch (arrType) {
     case EIOD::INTE:
-        return {EIOD::sizeOfInte, EIOD::MaxBlockSizeInte};
+        return BlockSizeTuple{EIOD::sizeOfInte, EIOD::MaxBlockSizeInte};
         break;
     case EIOD::REAL:
-        return {EIOD::sizeOfReal, EIOD::MaxBlockSizeReal};
+        return BlockSizeTuple{EIOD::sizeOfReal, EIOD::MaxBlockSizeReal};
         break;
     case EIOD::DOUB:
-        return {EIOD::sizeOfDoub, EIOD::MaxBlockSizeDoub};
+        return BlockSizeTuple{EIOD::sizeOfDoub, EIOD::MaxBlockSizeDoub};
         break;
     case EIOD::LOGI:
-        return {EIOD::sizeOfLogi, EIOD::MaxBlockSizeLogi};
+        return BlockSizeTuple{EIOD::sizeOfLogi, EIOD::MaxBlockSizeLogi};
         break;
     case EIOD::CHAR:
-        return {EIOD::sizeOfChar, EIOD::MaxBlockSizeChar};
+        return BlockSizeTuple{EIOD::sizeOfChar, EIOD::MaxBlockSizeChar};
         break;
     case EIOD::MESS:
         OPM_THROW(std::invalid_argument, "Type 'MESS' have no associated data");
@@ -84,21 +86,23 @@ std::tuple<int, int> Opm::ecl::block_size_data_binary(eclArrType arrType)
 
 std::tuple<int, int, int> Opm::ecl::block_size_data_formatted(EIOD::eclArrType arrType)
 {
+    using BlockSizeTuple = std::tuple<int, int, int>;
+
     switch (arrType) {
     case EIOD::INTE:
-        return {EIOD::MaxNumBlockInte, EIOD::numColumnsInte, EIOD::columnWidthInte};
+        return BlockSizeTuple{EIOD::MaxNumBlockInte, EIOD::numColumnsInte, EIOD::columnWidthInte};
         break;
     case EIOD::REAL:
-        return {EIOD::MaxNumBlockReal,EIOD::numColumnsReal, EIOD::columnWidthReal};
+        return BlockSizeTuple{EIOD::MaxNumBlockReal,EIOD::numColumnsReal, EIOD::columnWidthReal};
         break;
     case EIOD::DOUB:
-        return {EIOD::MaxNumBlockDoub,EIOD::numColumnsDoub, EIOD::columnWidthDoub};
+        return BlockSizeTuple{EIOD::MaxNumBlockDoub,EIOD::numColumnsDoub, EIOD::columnWidthDoub};
         break;
     case EIOD::LOGI:
-        return {EIOD::MaxNumBlockLogi,EIOD::numColumnsLogi, EIOD::columnWidthLogi};
+        return BlockSizeTuple{EIOD::MaxNumBlockLogi,EIOD::numColumnsLogi, EIOD::columnWidthLogi};
         break;
     case EIOD::CHAR:
-        return {EIOD::MaxNumBlockChar,EIOD::numColumnsChar, EIOD::columnWidthChar};
+        return BlockSizeTuple{EIOD::MaxNumBlockChar,EIOD::numColumnsChar, EIOD::columnWidthChar};
         break;
     case EIOD::MESS:
         OPM_THROW(std::invalid_argument, "Type 'MESS' have no associated data") ;
