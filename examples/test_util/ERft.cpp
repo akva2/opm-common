@@ -300,19 +300,11 @@ std::vector<EclFile::EclEntry> ERft::listOfRftArrays(const std::string& wellName
 
 std::vector<std::string> ERft::listOfWells() const
 {
-    std::vector<std::string> resVect;
-    resVect.resize(wellList.size());
-    std::copy(wellList.begin(), wellList.end(), resVect.begin());
-
-    return std::move(resVect);
+    return { this->wellList.begin(), this->wellList.end() };
 }
 
 
 std::vector<ERft::RftDate> ERft::listOfdates() const
 {
-    std::vector<RftDate> resVect;
-    resVect.resize(dateList.size());
-    std::copy(dateList.begin(), dateList.end(), resVect.begin());
-
-    return std::move(resVect);
+    return { this->dateList.begin(), this->dateList.end() };
 }
