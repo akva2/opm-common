@@ -20,6 +20,7 @@
 #include <opm/common/ErrorMacros.hpp>
 
 #include <algorithm>
+#include <stdexcept>
 
 
 namespace EIOD = Opm::ecl;

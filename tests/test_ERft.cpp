@@ -23,6 +23,7 @@
 #include <iomanip>
 #include <math.h>
 #include <algorithm>
+#include <stdexcept>
 #include <tuple>
 
 #include <examples/test_util/ERft.hpp>
