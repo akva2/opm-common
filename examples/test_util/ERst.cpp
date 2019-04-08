@@ -98,7 +98,10 @@ std::vector<EclFile::EclEntry> ERst::listOfRstArrays(int reportStepNumber)
         OPM_THROW(std::invalid_argument, message);
     }
 
-    for (int i = arrIndexRange[reportStepNumber].first;  i < arrIndexRange[reportStepNumber].second; i++) {
+    const auto& rng = this->arrIndexRange[reportStepNumber];
+    list.reserve(rng.second - rng.first);
+
+    for (int i = rng.first;  i < rng.second; i++) {
         list.emplace_back(array_name[i], array_type[i], array_size[i]);
     }
 
