@@ -278,6 +278,11 @@ bool operator==( const Connection& lhs, const Connection& rhs ) {
     BOOST_CHECK_EQUAL( lhs.rates, rhs.rates );
     BOOST_CHECK_EQUAL( lhs.pressure, rhs.pressure );
     BOOST_CHECK_EQUAL( lhs.reservoir_rate, rhs.reservoir_rate );
+    BOOST_CHECK_EQUAL( lhs.cell_pressure, rhs.cell_pressure );
+    BOOST_CHECK_EQUAL( lhs.cell_saturation_water, rhs.cell_saturation_water);
+    BOOST_CHECK_EQUAL( lhs.cell_saturation_gas, rhs.cell_saturation_gas);
+    BOOST_CHECK_EQUAL( lhs.cell_saturation_gas, rhs.cell_saturation_gas);
+    BOOST_CHECK_EQUAL( lhs.effective_Kh, rhs.effective_Kh);
 
     return true;
 }
