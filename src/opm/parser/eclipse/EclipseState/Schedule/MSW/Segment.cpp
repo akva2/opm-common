@@ -52,6 +52,29 @@ namespace Opm {
     {
     }
 
+    Segment::Segment(int segmentNum, int branchNum, int outletSeg,
+                     const std::vector<int>& inletSegs,
+                     double totalLen, double dept, double internalDiam,
+                     double rough, double crossA, double vol,
+                     bool dr, SegmentType segment,
+                     std::shared_ptr<SpiralICD> spiralIcd)
+    : m_segment_number(segmentNum),
+      m_branch(branchNum),
+      m_outlet_segment(outletSeg),
+      m_inlet_segments(inletSegs),
+      m_total_length(totalLen),
+      m_depth(dept),
+      m_internal_diameter(internalDiam),
+      m_roughness(rough),
+      m_cross_area(crossA),
+      m_volume(vol),
+      m_data_ready(dr),
+      m_segment_type(segment),
+      m_spiral_icd(spiralIcd)
+  {
+  }
+
+
     int Segment::segmentNumber() const {
         return m_segment_number;
     }
