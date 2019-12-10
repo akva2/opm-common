@@ -309,7 +309,25 @@ public:
 
         bool operator==(const WellProductionProperties& other) const;
         bool operator!=(const WellProductionProperties& other) const;
+
+        WellProductionProperties();
         WellProductionProperties(const std::string& name_arg);
+        WellProductionProperties(const std::string& wname,
+                                 const UDAValue& oilRate,
+                                 const UDAValue& waterRate,
+                                 const UDAValue& gasRate,
+                                 const UDAValue& liquidRate,
+                                 const UDAValue& resvRate,
+                                 const UDAValue& BHP,
+                                 const UDAValue& THP,
+                                 double bhph,
+                                 double thph,
+                                 int vfpTableNum,
+                                 double alqValue,
+                                 bool predMode,
+                                 ProducerCMode ctrlMode,
+                                 ProducerCMode whistctlMode,
+                                 int prodCtrls);
 
         bool hasProductionControl(ProducerCMode controlModeArg) const {
             return (m_productionControls & static_cast<int>(controlModeArg)) != 0;
@@ -334,8 +352,9 @@ public:
         void clearControls();
         ProductionControls controls(const SummaryState& st, double udq_default) const;
         bool updateUDQActive(const UDQConfig& udq_config, UDQActive& active) const;
-    private:
+
         int m_productionControls = 0;
+    private:
         void init_rates( const DeckRecord& record );
 
         void init_history(const DeckRecord& record);
