@@ -366,7 +366,7 @@ public:
         double getBHPLimit() const;
     };
 
-
+    Well();
     Well(const std::string& wname,
           const std::string& gname,
           std::size_t init_step,
@@ -400,20 +400,21 @@ public:
          double efficiencyFactor,
          double solventFraction,
          bool prediction_mode,
-         std::shared_ptr<const WellEconProductionLimits> econLimits,
-         std::shared_ptr<const WellFoamProperties> foamProperties,
-         std::shared_ptr<const WellPolymerProperties> polymerProperties,
-         std::shared_ptr<const WellTracerProperties> tracerProperties,
+         std::shared_ptr<WellEconProductionLimits> econLimits,
+         std::shared_ptr<WellFoamProperties> foamProperties,
+         std::shared_ptr<WellPolymerProperties> polymerProperties,
+         std::shared_ptr<WellTracerProperties> tracerProperties,
          std::shared_ptr<WellConnections> connections,
-         std::shared_ptr<const WellProductionProperties> production,
-         std::shared_ptr<const WellInjectionProperties> injection,
-         std::shared_ptr<const WellSegments> segments);
+         std::shared_ptr<WellProductionProperties> production,
+         std::shared_ptr<WellInjectionProperties> injection,
+         std::shared_ptr<WellSegments> segments);
 
     bool isMultiSegment() const;
     bool isAvailableForGroupControl() const;
     double getGuideRate() const;
     GuideRateTarget getGuideRatePhase() const;
     double getGuideRateScalingFactor() const;
+    const WellGuideRate& wellGuideRate() const;
 
     bool hasBeenDefined(size_t timeStep) const;
     std::size_t firstTimeStep() const;
@@ -510,6 +511,8 @@ public:
     const UnitSystem& units() const;
     double udqUndefined() const;
     bool hasSegments() const;
+
+    bool operator==(const Well& data) const;
 private:
     std::string wname;
     std::string group_name;
@@ -533,14 +536,14 @@ private:
     double solvent_fraction;
     bool prediction_mode = true;
 
-    std::shared_ptr<const WellEconProductionLimits> econ_limits;
-    std::shared_ptr<const WellFoamProperties> foam_properties;
-    std::shared_ptr<const WellPolymerProperties> polymer_properties;
-    std::shared_ptr<const WellTracerProperties> tracer_properties;
+    std::shared_ptr<WellEconProductionLimits> econ_limits;
+    std::shared_ptr<WellFoamProperties> foam_properties;
+    std::shared_ptr<WellPolymerProperties> polymer_properties;
+    std::shared_ptr<WellTracerProperties> tracer_properties;
     std::shared_ptr<WellConnections> connections; // The WellConnections object can not be const because of the filterConnections method - would be beneficial to rewrite to enable const
-    std::shared_ptr<const WellProductionProperties> production;
-    std::shared_ptr<const WellInjectionProperties> injection;
-    std::shared_ptr<const WellSegments> segments;
+    std::shared_ptr<WellProductionProperties> production;
+    std::shared_ptr<WellInjectionProperties> injection;
+    std::shared_ptr<WellSegments> segments;
 };
 
 std::ostream& operator<<( std::ostream&, const Well::WellInjectionProperties& );

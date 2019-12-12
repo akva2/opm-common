@@ -73,6 +73,10 @@ namespace {
 
 }
 
+Well::Well()
+{
+}
+
 
 Well::Well(const std::string& wname_arg,
              const std::string& gname,
@@ -138,14 +142,14 @@ Well::Well(const std::string& wname_arg,
           double efficiencyFactor,
           double solventFraction,
           bool predictionMode,
-          std::shared_ptr<const WellEconProductionLimits> econLimits,
-          std::shared_ptr<const WellFoamProperties> foamProperties,
-          std::shared_ptr<const WellPolymerProperties> polymerProperties,
-          std::shared_ptr<const WellTracerProperties> tracerProperties,
+          std::shared_ptr<WellEconProductionLimits> econLimits,
+          std::shared_ptr<WellFoamProperties> foamProperties,
+          std::shared_ptr<WellPolymerProperties> polymerProperties,
+          std::shared_ptr<WellTracerProperties> tracerProperties,
           std::shared_ptr<WellConnections> connections_arg,
-          std::shared_ptr<const WellProductionProperties> production_arg,
-          std::shared_ptr<const WellInjectionProperties> injection_arg,
-          std::shared_ptr<const WellSegments> segments_arg) :
+          std::shared_ptr<WellProductionProperties> production_arg,
+          std::shared_ptr<WellInjectionProperties> injection_arg,
+          std::shared_ptr<WellSegments> segments_arg) :
     wname(wname_arg),
     group_name(gname),
     init_step(init_step_arg),
@@ -1106,4 +1110,53 @@ Well::GuideRateTarget Well::GuideRateTargetFromString( const std::string& string
     else
         throw std::invalid_argument("Unknown enum state string: " + stringValue );
 }
+
+const UnitSystem& Well::units() const {
+    return unit_system;
+}
+
+double Well::udqUndefined() const {
+    return udq_undefined;
+}
+
+const Well::WellGuideRate& Well::wellGuideRate() const {
+    return guide_rate;
+}
+
+bool Well::hasSegments() const {
+    return segments != nullptr;
+}
+
+bool Well::operator==(const Well& data) const {
+    return this->name() == data.name() &&
+           this->groupName() == data.groupName() &&
+           this->firstTimeStep() == data.firstTimeStep() &&
+           this->seqIndex() == data.seqIndex() &&
+           this->getHeadI() == data.getHeadI() &&
+           this->getHeadJ() == data.getHeadJ() &&
+           this->getRefDepth() == data.getRefDepth() &&
+           this->getPreferredPhase() == data.getPreferredPhase() &&
+           this->getWellConnectionOrdering() == data.getWellConnectionOrdering() &&
+           this->units() == data.units() &&
+           this->udqUndefined() == data.udqUndefined() &&
+           this->getStatus() == data.getStatus() &&
+           this->getDrainageRadius() == data.getDrainageRadius() &&
+           this->getAllowCrossFlow() == data.getAllowCrossFlow() &&
+           this->getAutomaticShutIn() == data.getAutomaticShutIn() &&
+           this->isProducer() == data.isProducer() &&
+           this->wellGuideRate() == data.wellGuideRate() &&
+           this->getEfficiencyFactor() == data.getEfficiencyFactor() &&
+           this->predictionMode() == data.predictionMode() &&
+           this->getEconLimits() == data.getEconLimits() &&
+           this->getFoamProperties() == data.getFoamProperties() &&
+           this->getPolymerProperties() == data.getPolymerProperties() &&
+           this->getTracerProperties() == data.getTracerProperties() &&
+           this->getProductionProperties() == data.getProductionProperties() &&
+           this->getInjectionProperties() == data.getInjectionProperties() &&
+           this->hasSegments() == data.hasSegments() &&
+           (!this->hasSegments() || (this->getSegments() == data.getSegments()));
+}
+
+
+
 }
