@@ -25,6 +25,9 @@
 
 namespace Opm {
 
+UDQASTNode::UDQASTNode() :
+    UDQASTNode(UDQTokenType::error)
+{}
 
 
 UDQASTNode::UDQASTNode(UDQTokenType type_arg) :
@@ -75,6 +78,20 @@ UDQASTNode::UDQASTNode(UDQTokenType type_arg,
     this->arglist.push_back(left);
     this->arglist.push_back(right);
 }
+
+
+UDQASTNode::UDQASTNode(UDQTokenType typ, UDQVarType varType,
+                       const std::string& stringVal,
+                       double scalarVal,
+                       const std::vector<std::string>& selectors,
+                       const std::vector<UDQASTNode>& argList) :
+    type(typ),
+    var_type(varType),
+    string_value(stringVal),
+    scalar_value(scalarVal),
+    selector(selectors),
+    arglist(argList)
+{}
 
 
 
@@ -210,6 +227,32 @@ std::set<UDQTokenType> UDQASTNode::func_tokens() const {
     std::set<UDQTokenType> tokens;
     this->func_tokens(tokens);
     return tokens;
+}
+
+
+bool UDQASTNode::operator==(const UDQASTNode& data) const {
+    return type == data.type &&
+           var_type == data.var_type &&
+           string_value == data.string_value &&
+           scalar_value == data.scalar_value &&
+           selector == data.selector &&
+           arglist == data.arglist;
+}
+
+const std::string& UDQASTNode::stringValue() const {
+    return string_value;
+}
+
+double UDQASTNode::scalarValue() const {
+    return scalar_value;
+}
+
+const std::vector<std::string>& UDQASTNode::getSelectors() const {
+    return selector;
+}
+
+const std::vector<UDQASTNode>& UDQASTNode::getArgList() const {
+    return arglist;
 }
 
 

@@ -34,17 +34,31 @@ namespace Opm {
 
 class UDQASTNode {
 public:
+    UDQASTNode();
     UDQASTNode(UDQTokenType type_arg);
     UDQASTNode(double scalar_value);
     UDQASTNode(UDQTokenType type_arg, const std::string& string_value, const std::vector<std::string>& selector);
     UDQASTNode(UDQTokenType type_arg, const std::string& func_name, const UDQASTNode& arg);
     UDQASTNode(UDQTokenType type_arg, const std::string& func_name, const UDQASTNode& left, const UDQASTNode& right);
+    UDQASTNode(UDQTokenType typ, UDQVarType varType,
+               const std::string& stringVal,
+               double scalarVal,
+               const std::vector<std::string>& selectors,
+               const std::vector<UDQASTNode>& argList);
 
     UDQSet eval(UDQVarType eval_target, const UDQContext& context) const;
 
     UDQTokenType type;
     UDQVarType var_type = UDQVarType::NONE;
     std::set<UDQTokenType> func_tokens() const;
+
+    bool operator==(const UDQASTNode& data) const;
+
+    const std::string& stringValue() const;
+    double scalarValue() const;
+    const std::vector<std::string>& getSelectors() const;
+    const std::vector<UDQASTNode>& getArgList() const;
+
 private:
     void func_tokens(std::set<UDQTokenType>& tokens) const;
 
