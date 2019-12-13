@@ -59,6 +59,7 @@ namespace Opm {
         const DeckRecord& getDataRecord() const;
         void setDataKeyword(bool isDataKeyword = true);
         bool isDataKeyword() const;
+        bool isSlashTerminated() const;
 
         const std::vector<int>& getIntData() const;
         const std::vector<double>& getRawDoubleData() const;
