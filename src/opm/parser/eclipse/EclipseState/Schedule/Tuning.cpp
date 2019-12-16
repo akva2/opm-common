@@ -27,158 +27,92 @@ namespace Opm {
 
     Tuning::Tuning( const TimeMap& timemap ) :
         /* Hardcoding default values to support getting defaults before any TUNING keyword has occured */
-        m_TSINIT( timemap, 1.0   * Metric::Time ),
-        m_TSMAXZ( timemap, 365.0 * Metric::Time ),
-        m_TSMINZ( timemap, 0.1   * Metric::Time ),
-        m_TSMCHP( timemap, 0.15  * Metric::Time ),
-        m_TSFMAX( timemap, 3.0 ),
-        m_TSFMIN( timemap, 0.3 ),
-        m_TSFCNV( timemap, 0.1 ),
-        m_TFDIFF( timemap, 1.25 ),
-        m_THRUPT( timemap, 1.0E20 ),
-        m_TMAXWC( timemap, 0.0   * Metric::Time ),
         m_TMAXWC_has_value( timemap, false ),
-        m_TRGTTE( timemap, 0.1 ),
-        m_TRGCNV( timemap, 0.001 ),
-        m_TRGMBE( timemap, 1.0E-7 ),
-        m_TRGLCV( timemap, 0.0001 ),
-        m_XXXTTE( timemap, 10.0 ),
-        m_XXXCNV( timemap, 0.01 ),
-        m_XXXMBE( timemap, 1.0E-6 ),
-        m_XXXLCV( timemap, 0.001 ),
-        m_XXXWFL( timemap, 0.001 ),
-        m_TRGFIP( timemap, 0.025 ),
-        m_TRGSFT( timemap, 0.0 ),
         m_TRGSFT_has_value( timemap, false ),
-        m_THIONX( timemap, 0.01 ),
-        m_TRWGHT( timemap, 1 ),
-        m_NEWTMX( timemap, 12 ),
-        m_NEWTMN( timemap, 1 ),
-        m_LITMAX( timemap, 25 ),
-        m_LITMIN( timemap, 1 ),
-        m_MXWSIT( timemap, 8 ),
-        m_MXWPIT( timemap, 8 ),
-        m_DDPLIM( timemap, 1.0E6 * Metric::Pressure ),
-        m_DDSLIM( timemap, 1.0E6 ),
-        m_TRGDPR( timemap, 1.0E6 * Metric::Pressure ),
-        m_XXXDPR( timemap, 0.0   * Metric::Pressure ),
         m_XXXDPR_has_value( timemap, false )
     {
+        m_fields.insert({"TSINIT", {timemap,   1.0 * Metric::Time}});
+        m_fields.insert({"TSMAXZ", {timemap, 365.0 * Metric::Time}}); 
+        m_fields.insert({"TSMINZ", {timemap,   0.1 * Metric::Time}}); 
+        m_fields.insert({"TSMCHP", {timemap,  0.15 * Metric::Time}});
+        m_fields.insert({"TSFMAX", {timemap,   3.0}});
+        m_fields.insert({"TSFMIN", {timemap,   0.3}});
+        m_fields.insert({"TSFCNV", {timemap,   0.1}});
+        m_fields.insert({"TFDIFF", {timemap,  1.25}});
+        m_fields.insert({"THRUPT", {timemap,  1.0E20}});
+        m_fields.insert({"TMAWXC", {timemap,   0.0 * Metric::Time}});
+        m_fields.insert({"TRGTTE", {timemap,   0.1}});
+        m_fields.insert({"TRGCNV", {timemap,   0.001}});
+        m_fields.insert({"TRGMBE", {timemap,   1.0E-7}});
+        m_fields.insert({"TRGLCV", {timemap,   0.0001}});
+        m_fields.insert({"XXXTTE", {timemap,   10.0}});
+        m_fields.insert({"XXXCNV", {timemap,   0.01}});
+        m_fields.insert({"XXXMBE", {timemap,   1.0E-6}});
+        m_fields.insert({"XXXLCV", {timemap,   0.001}});
+        m_fields.insert({"XXXWFL", {timemap,   0.001}});
+        m_fields.insert({"TRGFIP", {timemap,   0.025}});
+        m_fields.insert({"TRGSFT", {timemap,   0.0}});
+        m_fields.insert({"THIONX", {timemap,   0.01}});
+        m_fields.insert({"DDPLIM", {timemap,   1.0E6 * Metric::Pressure}});
+        m_fields.insert({"DDSLIM", {timemap,   1.0E6}});
+        m_fields.insert({"TRGDPR", {timemap,   1.0E6 * Metric::Pressure}});
+        m_fields.insert({"XXXDPR", {timemap,     0.0 * Metric::Pressure}});
+        
+        m_int_fields.insert({"TRWGHT", {timemap, 1}});
+        m_int_fields.insert({"NEWTMX", {timemap, 12}});
+        m_int_fields.insert({"NEWTMN", {timemap, 1}});
+        m_int_fields.insert({"LITMAX", {timemap, 25}});
+        m_int_fields.insert({"LITMIN", {timemap, 1}});
+        m_int_fields.insert({"MXWSIT", {timemap, 8}});
+        m_int_fields.insert({"MXWPIT", {timemap, 8}});
     }
 
 
     void Tuning::getTuningItemValue(const std::string& tuningItem, size_t timestep, double& value) {
-        if(m_ResetValue.find(tuningItem)!= m_ResetValue.end()){
+        if (m_ResetValue.find(tuningItem) != m_ResetValue.end()) {
             timestep = 0;
         }
 
-        /*The following code diverges from coding standard to improve readabillity*/
-        if        ("TSINIT" == tuningItem)  {  value = m_TSINIT.get(timestep); }  //RECORD 1
-        else if   ("TSMAXZ" == tuningItem)  {  value = m_TSMAXZ.get(timestep); }
-        else if   ("TSMINZ" == tuningItem)  {  value = m_TSMINZ.get(timestep); }
-        else if   ("TSMCHP" == tuningItem)  {  value = m_TSMCHP.get(timestep); }
-        else if   ("TSFMAX" == tuningItem)  {  value = m_TSFMAX.get(timestep); }
-        else if   ("TSFMIN" == tuningItem)  {  value = m_TSFMIN.get(timestep); }
-        else if   ("TSFCNV" == tuningItem)  {  value = m_TSFCNV.get(timestep); }
-        else if   ("TFDIFF" == tuningItem)  {  value = m_TFDIFF.get(timestep); }
-        else if   ("THRUPT" == tuningItem)  {  value = m_THRUPT.get(timestep); }
-        else if   ("TMAXWC" == tuningItem)  {  value = m_TMAXWC.get(timestep); }
-
-        else if   ("TRGTTE" == tuningItem)  {  value = m_TRGTTE.get(timestep); }  //RECORD 2
-        else if   ("TRGCNV" == tuningItem)  {  value = m_TRGCNV.get(timestep); }
-        else if   ("TRGMBE" == tuningItem)  {  value = m_TRGMBE.get(timestep); }
-        else if   ("TRGLCV" == tuningItem)  {  value = m_TRGLCV.get(timestep); }
-        else if   ("XXXTTE" == tuningItem)  {  value = m_XXXTTE.get(timestep); }
-        else if   ("XXXCNV" == tuningItem)  {  value = m_XXXCNV.get(timestep); }
-        else if   ("XXXMBE" == tuningItem)  {  value = m_XXXMBE.get(timestep); }
-        else if   ("XXXLCV" == tuningItem)  {  value = m_XXXLCV.get(timestep); }
-        else if   ("XXXWFL" == tuningItem)  {  value = m_XXXWFL.get(timestep); }
-        else if   ("TRGFIP" == tuningItem)  {  value = m_TRGFIP.get(timestep); }
-        else if   ("TRGSFT" == tuningItem)  {  value = m_TRGSFT.get(timestep); }
-        else if   ("THIONX" == tuningItem)  {  value = m_THIONX.get(timestep); }
-
-        else if   ("DDPLIM" == tuningItem)  {  value = m_DDPLIM.get(timestep); }  //RECORD 3
-        else if   ("DDSLIM" == tuningItem)  {  value = m_DDSLIM.get(timestep); }
-        else if   ("TRGDPR" == tuningItem)  {  value = m_TRGDPR.get(timestep); }
-        else if   ("XXXDPR" == tuningItem)  {  value = m_XXXDPR.get(timestep); }
-
-        else {
+        const auto doubleIt = m_fields.find(tuningItem);
+        if (doubleIt == m_fields.end()) {
             throw std::invalid_argument("Method getTuningItemValue(): The TUNING keyword item: " + tuningItem + " was not recognized or has wrong type");
         }
+
+        value = doubleIt->second.get(timestep);
     }
 
     void Tuning::getTuningItemValue(const std::string& tuningItem, size_t timestep, int& value) {
-
-        /*The following code diverges from coding standard to improve readabillity*/
-        if        ("TRWGHT" == tuningItem)  {  value = m_TRWGHT.get(timestep); }  //RECORD 2
-
-        else if   ("NEWTMX" == tuningItem)  {  value = m_NEWTMX.get(timestep); }  //RECORD 3
-        else if   ("NEWTMN" == tuningItem)  {  value = m_NEWTMN.get(timestep); }
-        else if   ("LITMAX" == tuningItem)  {  value = m_LITMAX.get(timestep); }
-        else if   ("LITMIN" == tuningItem)  {  value = m_LITMIN.get(timestep); }
-        else if   ("MXWSIT" == tuningItem)  {  value = m_MXWSIT.get(timestep); }
-        else if   ("MXWPIT" == tuningItem)  {  value = m_MXWPIT.get(timestep); }
-
-        else {
+        const auto intIt = m_int_fields.find(tuningItem);
+        if (intIt == m_int_fields.end()) {
             throw std::invalid_argument("Method getTuningItemValue(): The TUNING keyword item: " + tuningItem + " was not recognized or has wrong type");
         }
+
+        value = intIt->second.get(timestep);
     }
 
     void Tuning::setTuningInitialValue(const std::string& tuningItem, double value, bool resetVector) {
-        /*The following code diverges from coding standard to improve readabillity*/
-        if        ("TSINIT" == tuningItem)  {  m_TSINIT.updateInitial(value); }  //RECORD 1
-        else if   ("TSMAXZ" == tuningItem)  {  m_TSMAXZ.updateInitial(value); }
-        else if   ("TSMINZ" == tuningItem)  {  m_TSMINZ.updateInitial(value); }
-        else if   ("TSMCHP" == tuningItem)  {  m_TSMCHP.updateInitial(value); }
-        else if   ("TSFMAX" == tuningItem)  {  m_TSFMAX.updateInitial(value); }
-        else if   ("TSFMIN" == tuningItem)  {  m_TSFMIN.updateInitial(value); }
-        else if   ("TSFCNV" == tuningItem)  {  m_TSFCNV.updateInitial(value); }
-        else if   ("TFDIFF" == tuningItem)  {  m_TFDIFF.updateInitial(value); }
-        else if   ("THRUPT" == tuningItem)  {  m_THRUPT.updateInitial(value); }
-        else if   ("TMAXWC" == tuningItem)  {  m_TMAXWC.updateInitial(value); }
 
-        else if   ("TRGTTE" == tuningItem)  {  m_TRGTTE.updateInitial(value); }  //RECORD 2
-        else if   ("TRGCNV" == tuningItem)  {  m_TRGCNV.updateInitial(value); }
-        else if   ("TRGMBE" == tuningItem)  {  m_TRGMBE.updateInitial(value); }
-        else if   ("TRGLCV" == tuningItem)  {  m_TRGLCV.updateInitial(value); }
-        else if   ("XXXTTE" == tuningItem)  {  m_XXXTTE.updateInitial(value); }
-        else if   ("XXXCNV" == tuningItem)  {  m_XXXCNV.updateInitial(value); }
-        else if   ("XXXMBE" == tuningItem)  {  m_XXXMBE.updateInitial(value); }
-        else if   ("XXXLCV" == tuningItem)  {  m_XXXLCV.updateInitial(value); }
-        else if   ("XXXWFL" == tuningItem)  {  m_XXXWFL.updateInitial(value); }
-        else if   ("TRGFIP" == tuningItem)  {  m_TRGFIP.updateInitial(value); }
-        else if   ("TRGSFT" == tuningItem)  {  m_TRGSFT.updateInitial(value); }
-        else if   ("THIONX" == tuningItem)  {  m_THIONX.updateInitial(value); }
-
-        else if   ("DDPLIM" == tuningItem)  {  m_DDPLIM.updateInitial(value); }  //RECORD 3
-        else if   ("DDSLIM" == tuningItem)  {  m_DDSLIM.updateInitial(value); }
-        else if   ("TRGDPR" == tuningItem)  {  m_TRGDPR.updateInitial(value); }
-        else if   ("XXXDPR" == tuningItem)  {  m_XXXDPR.updateInitial(value); }
-
-        else {
-            throw std::invalid_argument("Method getTuningItemValue(): The TUNING keyword item: " + tuningItem + " was not recognized or has wrong type");
+        const auto doubleIt = m_fields.find(tuningItem);
+        if (doubleIt == m_fields.end()) {
+            throw std::invalid_argument("Method setTuningInitialValue(): The TUNING keyword item: " + tuningItem + " was not recognized or has wrong type");
         }
-        if(resetVector){
-            m_ResetValue[tuningItem]=true;
+
+        doubleIt->second.updateInitial(value);
+
+        if (resetVector) {
+            m_ResetValue[tuningItem] = true;
         }
     }
 
     void Tuning::setTuningInitialValue(const std::string& tuningItem, int value, bool resetVector) {
-        /*The following code diverges from coding standard to improve readabillity*/
-        if        ("TRWGHT" == tuningItem)  { m_TRWGHT.updateInitial(value); }  //RECORD 2
-
-        else if   ("NEWTMX" == tuningItem)  { m_NEWTMX.updateInitial(value); }  //RECORD 3
-        else if   ("NEWTMN" == tuningItem)  { m_NEWTMN.updateInitial(value); }
-        else if   ("LITMAX" == tuningItem)  { m_LITMAX.updateInitial(value); }
-        else if   ("LITMIN" == tuningItem)  { m_LITMIN.updateInitial(value); }
-        else if   ("MXWSIT" == tuningItem)  { m_MXWSIT.updateInitial(value); }
-        else if   ("MXWPIT" == tuningItem)  { m_MXWPIT.updateInitial(value); }
-
-        else {
-            throw std::invalid_argument("Method getTuningItemValue(): The TUNING keyword item: " + tuningItem + " was not recognized or has wrong type");
+        const auto intIt = m_int_fields.find(tuningItem);
+        if (intIt == m_int_fields.end()) {
+            throw std::invalid_argument("Method setTuningInitialValue(): The TUNING keyword item: " + tuningItem + " was not recognized or has wrong type");
         }
-        if(resetVector){
-            m_ResetValue[tuningItem]=true;
+
+        intIt->second.updateInitial(value);
+        if (resetVector) {
+            m_ResetValue[tuningItem] = true;
         }
     }
 

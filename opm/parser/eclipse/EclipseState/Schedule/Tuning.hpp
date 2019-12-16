@@ -128,6 +128,9 @@ namespace Opm {
 
 
     private:
+        std::map<std::string, DynamicState<double>> m_fields;
+        std::map<std::string, DynamicState<int>> m_int_fields;
+
         /* Record1 */
         DynamicState<double> m_TSINIT;
         DynamicState<double> m_TSMAXZ;

@@ -30,11 +30,17 @@
 
 
 namespace Opm {
-
+ 
     DeckKeyword::DeckKeyword(const ParserKeyword& parserKeyword) :
         m_keywordName(parserKeyword.getName()),
         m_isDataKeyword(false),
         m_slashTerminated(true)
+    {
+    }
+
+    DeckKeyword::DeckKeyword() :
+        m_isDataKeyword(false),
+        m_slashTerminated(false)
     {
     }
 
@@ -172,6 +178,19 @@ namespace Opm {
         DeckRecord deck_record;
         deck_record.addItem( std::move(item) );
         addRecord( std::move(deck_record) );
+    }
+
+    DeckKeyword::DeckKeyword(const std::string& kwName,
+                             const Location& loc,
+                             const std::vector<DeckRecord>& record,
+                             bool dataKw,
+                             bool slashTerminated) :
+       m_keywordName(kwName),
+       m_location(loc),
+       m_recordList(record),
+       m_isDataKeyword(dataKw),
+       m_slashTerminated(slashTerminated)
+    {
     }
 
 
@@ -315,6 +334,14 @@ namespace Opm {
 
     bool DeckKeyword::operator!=(const DeckKeyword& other) const {
         return !(*this == other);
+    }
+
+    const std::vector<DeckRecord>& DeckKeyword::records() const {
+        return m_recordList;
+    }
+
+    bool DeckKeyword::isSlashTerminated() const {
+        return m_slashTerminated;
     }
 
 }
