@@ -276,6 +276,10 @@ namespace Opm
         const DynamicState<int>& getNupCol() const;
         const std::map<std::string,Events>& getWellGroupEvents() const;
 
+        // Mutable accessors
+        GroupMap& getGroupMap() { return groups; }
+        WellMap& getWellMap() { return wells_static; }
+
         bool operator==(const Schedule& data) const;
 
     private:
