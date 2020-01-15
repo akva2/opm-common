@@ -69,6 +69,8 @@ namespace Opm {
             AllProperties = IntProperties | DoubleProperties
         };
 
+        EclipseState() = default;
+
         template<typename T>
         EclipseState(const Deck& deck , const ParseContext& parseContext, T&& errors);
         EclipseState(const Deck& deck , const ParseContext& parseContext, ErrorGuard& errors);
