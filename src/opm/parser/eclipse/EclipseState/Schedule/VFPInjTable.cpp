@@ -17,6 +17,8 @@
   along with OPM.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <cassert>
+#include <cmath>
 #include <iostream>
 
 #include <opm/parser/eclipse/Deck/DeckItem.hpp>
@@ -69,10 +71,6 @@ VFPInjTable::VFPInjTable(int table_num,
     m_flo_data = flo_data;
     m_thp_data = thp_data;
 
-    extents shape;
-    shape[0] = data.shape()[0];
-    shape[1] = data.shape()[1];
-    m_data.resize(shape);
     m_data = data;
 
     check();
@@ -159,11 +157,11 @@ VFPInjTable::VFPInjTable( const DeckKeyword& table, const UnitSystem& deck_unit_
     //Finally, read the actual table itself.
     size_t nt = m_thp_data.size();
     size_t nf = m_flo_data.size();
-    extents shape;
-    shape[0] = nt;
-    shape[1] = nf;
-    m_data.resize(shape);
-    std::fill_n(m_data.data(), m_data.num_elements(), std::nan("0"));
+    m_data.resize(nt);
+    for (auto& vec : m_data) {
+        vec.resize(nf);
+        std::fill_n(vec.data(), vec.size(), std::nan("0"));
+    }
 
     //Check that size of table matches size of axis:
     if (table.size() != nt + 3) {
@@ -221,14 +219,13 @@ void VFPInjTable::check() {
     assert(is_sorted(m_thp_data.begin(), m_thp_data.end()));
 
     //Check data size matches axes
-    assert(m_data.num_dimensions() == 2);
-    assert(m_data.shape()[0] == m_thp_data.size());
-    assert(m_data.shape()[1] == m_flo_data.size());
+    assert(m_data.size() == m_thp_data.size());
+    assert(m_data[0].size() == m_flo_data.size());
 
     //Finally, check that all data is within reasonable ranges, defined to be up-to 1.0e10...
     typedef array_type::size_type size_type;
-    for (size_type t=0; t<m_data.shape()[0]; ++t) {
-        for (size_type f=0; f<m_data.shape()[1]; ++f) {
+    for (size_type t = 0; t < m_data.size(); ++t) {
+        for (size_type f = 0; f < m_data[t].size(); ++f) {
             if (std::isnan(m_data[t][f])) {
                 //TODO: Replace with proper log message
                 std::cerr << "VFPINJ element [" << t << "," << f << "] not set!" << std::endl;
@@ -326,26 +323,5 @@ bool VFPInjTable::operator==(const VFPInjTable& data) const {
            this->getTHPAxis() == data.getTHPAxis() &&
            this->getTable() == data.getTable();
 }
-
-
-VFPInjTable& VFPInjTable::operator=(const VFPInjTable& data) {
-    m_table_num = data.m_table_num;
-    m_datum_depth = data.m_datum_depth;
-    m_flo_type = data.m_flo_type;
-    m_flo_data = data.m_flo_data;
-    m_thp_data = data.m_thp_data;
-    extents shape;
-    shape[0] = data.m_data.shape()[0];
-    shape[1] = data.m_data.shape()[1];
-    m_data.resize(shape);
-    for (size_t i = 0; i < data.m_data.num_elements(); ++i)
-        *(m_data.data() + i) = *(data.m_data.data() + i);
-    return *this;
-}
-
-
-
-
-
 
 } //Namespace

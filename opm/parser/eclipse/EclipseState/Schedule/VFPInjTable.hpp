@@ -23,9 +23,7 @@
 
 #include <opm/parser/eclipse/Deck/Deck.hpp>
 
-
-#include <boost/multi_array.hpp>
-
+#include <vector>
 
 namespace Opm {
 
@@ -33,8 +31,7 @@ namespace Opm {
 
 class VFPInjTable {
 public:
-    typedef boost::multi_array<double, 2> array_type;
-    typedef boost::array<array_type::index, 2> extents;
+    typedef std::vector<std::vector<double>> array_type;
 
     enum FLO_TYPE {
         FLO_OIL=1,
@@ -93,7 +90,6 @@ public:
     }
 
     bool operator==(const VFPInjTable& data) const;
-    VFPInjTable& operator=(const VFPInjTable& data);
 
 private:
 
