@@ -18,6 +18,8 @@
 */
 
 #include <algorithm>
+#include <cassert>
+#include <cmath>
 #include <iostream>
 
 #include <opm/common/OpmLog/OpmLog.hpp>
@@ -159,14 +161,6 @@ VFPProdTable::VFPProdTable(int table_num,
     m_wfr_data = wfr_data;
     m_gfr_data = gfr_data;
     m_alq_data = alq_data;
-
-    extents shape;
-    shape[0] = data.shape()[0];
-    shape[1] = data.shape()[1];
-    shape[2] = data.shape()[2];
-    shape[3] = data.shape()[3];
-    shape[4] = data.shape()[4];
-    m_data.resize(shape);
     m_data = data;
 
     //check();
@@ -276,15 +270,21 @@ VFPProdTable::VFPProdTable( const DeckKeyword& table, const UnitSystem& deck_uni
     size_t ng = m_gfr_data.size();
     size_t na = m_alq_data.size();
     size_t nf = m_flo_data.size();
-    extents shape;
-    shape[0] = nt;
-    shape[1] = nw;
-    shape[2] = ng;
-    shape[3] = na;
-    shape[4] = nf;
-    m_data.resize(shape);
-    std::fill_n(m_data.data(), m_data.num_elements(), std::nan("0"));
-
+    m_data.resize(nt);
+    for (auto& vec : m_data) {
+        vec.resize(nw);
+        for (auto& vec2 : vec) {
+            vec2.resize(ng);
+            for (auto& vec3 : vec2) {
+                vec3.resize(na);
+                for (auto& vec4 : vec3) {
+                    vec4.resize(nf);
+                    for (auto& entry : vec4)
+                        entry = std::nan("0");
+                }
+            }
+        }
+    }
     //Check that size of table matches size of axis:
     if (table.size() != nt*nw*ng*na + 6) {
         throw std::invalid_argument("VFPPROD table does not contain enough records.");
@@ -356,21 +356,19 @@ void VFPProdTable::check(const DeckKeyword& keyword, const double table_scaling_
     assert(std::is_sorted(m_alq_data.begin(), m_alq_data.end()));
 
     //Check data size matches axes
-    assert(m_data.num_dimensions() == 5);
-    assert(m_data.shape()[0] == m_thp_data.size());
-    assert(m_data.shape()[1] == m_wfr_data.size());
-    assert(m_data.shape()[2] == m_gfr_data.size());
-    assert(m_data.shape()[3] == m_alq_data.size());
-    assert(m_data.shape()[4] == m_flo_data.size());
-
+    assert(m_data.size() == m_thp_data.size());
+    assert(m_data[0].size() == m_wfr_data.size());
+    assert(m_data[0][0].size() == m_gfr_data.size());
+    assert(m_data[0][0][0].size() == m_alq_data.size());
+    assert(m_data[0][0][0][0].size() == m_flo_data.size());
 
     //Check that all elements have been set
     typedef array_type::size_type size_type;
-    for (size_type t=0; t<m_data.shape()[0]; ++t) {
-        for (size_type w=0; w<m_data.shape()[1]; ++w) {
-            for (size_type g=0; g<m_data.shape()[2]; ++g) {
-                for (size_type a=0; a<m_data.shape()[3]; ++a) {
-                    for (size_type f=0; f<m_data.shape()[4]; ++f) {
+    for (size_type t = 0; t < m_data.size(); ++t) {
+        for (size_type w = 0; w < m_data[t].size(); ++w) {
+            for (size_type g = 0; g < m_data[t][w].size(); ++g) {
+                for (size_type a = 0; a < m_data[t][w][g].size(); ++a) {
+                    for (size_type f = 0; f < m_data[t][w][g][a].size(); ++f) {
                         if (std::isnan(m_data[t][w][g][a][f])) {
                             //TODO: Replace with proper log message
                             std::cerr << "VFPPROD element ["
@@ -389,12 +387,12 @@ void VFPProdTable::check(const DeckKeyword& keyword, const double table_scaling_
     //If this is not the case, we might not be able to determine
     //the thp from the bhp easily
     std::string points = "";
-    for (size_type w=0; w<m_data.shape()[1]; ++w) {
-        for (size_type g=0; g<m_data.shape()[2]; ++g) {
-            for (size_type a=0; a<m_data.shape()[3]; ++a) {
-                for (size_type f=0; f<m_data.shape()[4]; ++f) {
+    for (size_type w = 0; w < m_data[0].size(); ++w) {
+        for (size_type g = 0; g < m_data[0][w].size(); ++g) {
+            for (size_type a = 0; a < m_data[0][w][g].size(); ++a) {
+                for (size_type f = 0; f < m_data[0][w][g][a].size(); ++f) {
                     double bhp_last = m_data[0][w][g][a][f];
-                    for (size_type t=0; t<m_data.shape()[0]; ++t) {
+                    for (size_type t = 0; t < m_data.size(); ++t) {
                         if (m_data[t][w][g][a][f] < bhp_last) {
                             points += "At point (FLOW, THP, WFR, GFR, ALQ) = "
                                     + std::to_string(f) + " " + std::to_string(t) + " "
@@ -540,28 +538,6 @@ bool VFPProdTable::operator==(const VFPProdTable& data) const {
            this->getGFRAxis() == data.getGFRAxis() &&
            this->getALQAxis() == data.getALQAxis() &&
            this->getTable() == data.getTable();
-}
-
-
-VFPProdTable& VFPProdTable::operator=(const VFPProdTable& data) {
-    m_table_num = data.m_table_num;
-    m_datum_depth = data.m_datum_depth;
-    m_flo_type = data.m_flo_type;
-    m_wfr_type = data.m_wfr_type;
-    m_gfr_type = data.m_gfr_type;
-    m_alq_type = data.m_alq_type;
-    m_flo_data = data.m_flo_data;
-    m_thp_data = data.m_thp_data;
-    m_wfr_data = data.m_wfr_data;
-    m_gfr_data = data.m_gfr_data;
-    m_alq_data = data.m_alq_data;
-    extents shape;
-    for (size_t i = 0; i < 5; ++i)
-        shape[i] = data.m_data.shape()[i];
-    m_data.resize(shape);
-    for (size_t i = 0; i < data.m_data.num_elements(); ++i)
-        *(m_data.data() + i) = *(data.m_data.data() + i);
-    return *this;
 }
 
 } //Namespace opm

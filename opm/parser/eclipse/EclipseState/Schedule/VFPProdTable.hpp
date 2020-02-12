@@ -21,7 +21,7 @@
 #define OPM_PARSER_ECLIPSE_ECLIPSESTATE_TABLES_VFPPRODTABLE_HPP_
 
 
-#include <boost/multi_array.hpp>
+#include <vector>
 
 namespace Opm {
 
@@ -34,8 +34,7 @@ namespace Opm {
  */
 class VFPProdTable {
 public:
-    typedef boost::multi_array<double, 5> array_type;
-    typedef boost::array<array_type::index, 5> extents;
+    typedef std::vector<std::vector<std::vector<std::vector<std::vector<double>>>>> array_type;
 
     enum FLO_TYPE {
         FLO_OIL=1,
@@ -150,7 +149,6 @@ public:
     }
 
     bool operator==(const VFPProdTable& data) const;
-    VFPProdTable& operator=(const VFPProdTable& data);
 
 private:
 
