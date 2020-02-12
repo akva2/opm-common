@@ -17,7 +17,6 @@
   along with OPM.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include <stdexcept>
-#include <boost/algorithm/string.hpp>
 
 #include <opm/parser/eclipse/Parser/ParserKeyword.hpp>
 #include <opm/parser/eclipse/RawDeck/RawConsts.hpp>
@@ -153,12 +152,18 @@ namespace Opm {
     }
 
     void RawKeyword::setKeywordName(const std::string& name) {
-        m_name = boost::algorithm::trim_right_copy(name);
+        m_name = name;
+        m_name.erase(std::find_if(m_name.rbegin(), m_name.rend(),
+                      [](int ch) { return !std::isspace(ch); }).base(), m_name.end());
         if (!isValidKeyword(m_name)) {
             throw std::invalid_argument("Not a valid keyword:" + name);
         } else if (m_name.size() > Opm::RawConsts::maxKeywordLength) {
-            throw std::invalid_argument("Too long keyword:" + name);
-        } else if (boost::algorithm::trim_left_copy(m_name) != m_name) {
+            throw std::invalid_argument("Too long keyword:" + m_name);
+        } else {
+          m_name = name;
+          m_name.erase(m_name.begin(), std::find_if(m_name.begin(), m_name.end(),
+                        [](int ch) { return !std::isspace(ch); }));
+          if (m_name != name)
             throw std::invalid_argument("Illegal whitespace start of keyword:" + name);
         }
     }
