@@ -279,6 +279,20 @@ public:
 
     bool operator==(const Runspec& data) const;
 
+    template<class Serializer>
+    void serializeOp(Serializer& serializer)
+    {
+        active_phases.serializeOp(serializer);
+        m_tabdims.serializeOp(serializer);
+        endscale.serializeOp(serializer);
+        welldims.serializeOp(serializer);
+        wsegdims.serializeOp(serializer);
+        udq_params.serializeOp(serializer);
+        hystpar.serializeOp(serializer);
+        m_actdims.serializeOp(serializer);
+        m_sfuncctrl.serializeOp(serializer);
+    }
+
 private:
     Phases active_phases;
     Tabdims m_tabdims;
