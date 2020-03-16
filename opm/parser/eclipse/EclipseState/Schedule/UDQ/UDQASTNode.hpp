@@ -69,6 +69,16 @@ public:
     const std::shared_ptr<UDQASTNode>& getLeft() const;
     const std::shared_ptr<UDQASTNode>& getRight() const;
 
+    template<class Serializer>
+    void serializeOp(Serializer& serializer)
+    {
+        serializer(type);
+        serializer(selector);
+        serializer(scalar_value);
+        serializer(left);
+        serializer(right);
+    }
+
 private:
     UDQTokenType type;
     void func_tokens(std::set<UDQTokenType>& tokens) const;
