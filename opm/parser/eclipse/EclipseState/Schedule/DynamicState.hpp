@@ -227,6 +227,13 @@ class DynamicState {
                initial_range == data.initial_range;
     }
 
+    template<class Serializer>
+    void serializeOp(Serializer& serializer)
+    {
+        serializer.vector(m_data);
+        serializer(initial_range);
+    }
+
     private:
         std::vector< T > m_data;
         size_t initial_range;
