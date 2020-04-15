@@ -93,6 +93,8 @@
 
 #include <opm/parser/eclipse/Units/Units.hpp>
 
+#include <opm/common/utility/Profiler.h>
+
 namespace Opm {
 
     TableManager::TableManager( const Deck& deck )
@@ -103,6 +105,7 @@ namespace Opm {
         hasEnptvd (deck.hasKeyword("ENPTVD")),
         hasEqlnum (deck.hasKeyword("EQLNUM"))
     {
+        PROFILE("TableManager");
         if (deck.hasKeyword("JFUNC"))
             jfunc.reset( new JFunc(deck) );
 

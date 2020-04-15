@@ -549,6 +549,7 @@ void set_dimensions( ParserItem& item,
                Each block of records is separated by an empty DeckRecord.
             */
             size_t record_nr = 0;
+            keyword.reserve(rawKeyword.size());
             for (auto& rawRecord : rawKeyword) {
                 if (rawRecord.size() == 0) {
                      keyword.addRecord( DeckRecord() );
@@ -562,6 +563,7 @@ void set_dimensions( ParserItem& item,
         }
         else {
             size_t record_nr = 0;
+            keyword.reserve(rawKeyword.size());
             for( auto& rawRecord : rawKeyword ) {
                 if( m_records.size() == 0 && rawRecord.size() > 0 )
                     throw std::invalid_argument("Missing item information " + rawKeyword.getKeywordName());

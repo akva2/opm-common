@@ -41,6 +41,8 @@
 #include <opm/parser/eclipse/Units/Dimension.hpp>
 #include <opm/parser/eclipse/Units/UnitSystem.hpp>
 
+#include <opm/common/utility/Profiler.h>
+
 
 namespace Opm {
 
@@ -60,11 +62,11 @@ namespace Opm {
         m_simulationConfig(  m_eclipseConfig.getInitConfig().restartRequested(), deck, field_props),
         m_transMult(         GridDims(deck), deck, field_props)
     {
-        m_inputGrid.resetACTNUM(this->field_props.actnum());
+        {PROFILE("Reset ACTNUM"); m_inputGrid.resetACTNUM(this->field_props.actnum()); }
         if( this->runspec().phases().size() < 3 )
             OpmLog::info("Only " + std::to_string( this->runspec().phases().size() )
                                                                 + " fluid phases are enabled" );
-        this->aquifer_config = AquiferConfig(this->m_tables, this->m_inputGrid, deck);
+        {PROFILE("Aquifer cfg"); this->aquifer_config = AquiferConfig(this->m_tables, this->m_inputGrid, deck); }
         this->tracer_config = TracerConfig(this->m_deckUnitSystem, deck);
 
         if (deck.hasKeyword( "TITLE" )) {

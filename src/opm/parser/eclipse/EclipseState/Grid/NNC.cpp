@@ -33,6 +33,11 @@ namespace Opm
     NNC::NNC(const Deck& deck) {
         GridDims gridDims(deck);
         const auto& nncs = deck.getKeywordList<ParserKeywords::NNC>();
+        size_t size = 0;
+        for (const auto& nnc : nncs)
+          size += nnc->size();
+        m_nnc.reserve(size);
+
         for (size_t idx_nnc = 0; idx_nnc<nncs.size(); ++idx_nnc) {
             const auto& nnc = *nncs[idx_nnc];
             for (size_t i = 0; i < nnc.size(); ++i) {

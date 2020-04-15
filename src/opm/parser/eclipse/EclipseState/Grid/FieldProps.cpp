@@ -34,6 +34,8 @@
 #include <opm/parser/eclipse/EclipseState/Grid/SatfuncPropertyInitializers.hpp>
 #include <opm/parser/eclipse/EclipseState/Runspec.hpp>
 
+#include <opm/common/utility/Profiler.h>
+
 #include "FieldProps.hpp"
 #include "Operate.hpp"
 
@@ -420,6 +422,7 @@ FieldProps::FieldProps(const Deck& deck, const Phases& phases, const EclipseGrid
     grid_ptr(&grid),
     tables(tables_arg)
 {
+    PROFILE("FieldProps");
     if (deck.hasKeyword<ParserKeywords::MULTREGP>()) {
         const DeckKeyword& multregpKeyword = deck.getKeyword("MULTREGP");
         for (const auto& record : multregpKeyword) {

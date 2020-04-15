@@ -54,6 +54,8 @@
 
 #include <opm/parser/eclipse/EclipseState/Grid/EclipseGrid.hpp>
 
+#include <opm/common/utility/Profiler.h>
+
 
 namespace Opm {
 
@@ -214,7 +216,7 @@ EclipseGrid::EclipseGrid(const Deck& deck, const int * actnum)
       m_pinchoutMode(PinchMode::ModeEnum::TOPBOT),
       m_multzMode(PinchMode::ModeEnum::TOP)
 {
-
+    PROFILE("EclipseGrid");
     if (deck.hasKeyword("GDFILE")){
 
         if (deck.hasKeyword("COORD")){

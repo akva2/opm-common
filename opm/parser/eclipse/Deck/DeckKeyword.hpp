@@ -55,6 +55,7 @@ namespace Opm {
         const Location& location() const;
 
 
+        void reserve(size_t size) { m_recordList.reserve(size); }
         size_t size() const;
         void addRecord(DeckRecord&& record);
         const DeckRecord& getRecord(size_t index) const;
