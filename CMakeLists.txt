@@ -73,8 +73,15 @@ macro (config_hook)
     if(NOT cjson_FOUND)
       list(APPEND EXTRA_INCLUDES ${PROJECT_SOURCE_DIR}/external/cjson)
     endif()
+    if(TARGET fmt::fmt)
+      get_target_property(fmt_INCLUDES fmt::fmt INTERFACE_INCLUDE_DIRECTORIES)
+    elseif(TARGET fmt)
+      get_target_property(fmt_INCLUDES fmt INTERFACE_INCLUDE_DIRECTORIES)
+    else()
+      message(FATAL_ERROR "Cannot identify fmt target to use")
+    endif()
     # For this project
-    include_directories(${EXTRA_INCLUDES} ${PROJECT_BINARY_DIR}/include)
+    include_directories(${EXTRA_INCLUDES} ${PROJECT_BINARY_DIR}/include ${fmt_INCLUDES})
 
     # For downstreams
     list(APPEND EXTRA_INCLUDES ${PROJECT_BINARY_DIR}/include)
@@ -373,5 +380,3 @@ if (OPM_ENABLE_PYTHON)
     add_definitions(-DEMBEDDED_PYTHON)
   endif()
 endif()
-
-target_link_libraries(opmcommon PUBLIC fmt::fmt)

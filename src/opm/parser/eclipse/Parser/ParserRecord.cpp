@@ -18,7 +18,8 @@
  */
 
 
-#include <fmt/core.h>
+#define FMT_HEADER_ONLY
+#include <fmt/format.h>
 
 #include <opm/parser/eclipse/Deck/Deck.hpp>
 #include <opm/parser/eclipse/Deck/DeckRecord.hpp>
