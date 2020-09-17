@@ -373,3 +373,5 @@ if (OPM_ENABLE_PYTHON)
     add_definitions(-DEMBEDDED_PYTHON)
   endif()
 endif()
+
+target_link_libraries(opmcommon PUBLIC fmt::fmt)
