@@ -32,7 +32,7 @@
 
 #include <opm/parser/eclipse/EclipseState/Schedule/Group/Group.hpp>
 #include <opm/parser/eclipse/EclipseState/Schedule/Group/GuideRateModel.hpp>
-#include <opm/parser/eclipse/EclipseState/Schedule/Well/Well.hpp>
+#include <opm/parser/eclipse/EclipseState/Schedule/Well/WellEnums.hpp>
 
 namespace Opm {
 
@@ -50,7 +50,7 @@ struct RateVector {
     {}
 
 
-    double eval(Well::GuideRateTarget target) const;
+    double eval(WellEnums::GuideRateTarget target) const;
     double eval(Group::GuideRateProdTarget target) const;
     double eval(GuideRateModel::Target target) const;
 
@@ -94,7 +94,7 @@ public:
     GuideRate(const Schedule& schedule);
     void   compute(const std::string& wgname, size_t report_step, double sim_time, double oil_pot, double gas_pot, double wat_pot);
     void compute(const std::string& wgname, const Phase& phase, size_t report_step, double guide_rate);
-    double get(const std::string& well, Well::GuideRateTarget target, const RateVector& rates) const;
+    double get(const std::string& well, WellEnums::GuideRateTarget target, const RateVector& rates) const;
     double get(const std::string& group, Group::GuideRateProdTarget target, const RateVector& rates) const;
     double get(const std::string& name, GuideRateModel::Target model_target, const RateVector& rates) const;
     double get(const std::string& group, const Phase& phase) const;

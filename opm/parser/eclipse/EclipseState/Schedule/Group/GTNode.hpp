@@ -21,12 +21,14 @@
 #define GROUPTREE2
 
 #include <optional>
+#include <string>
 #include <vector>
 
 #include <opm/parser/eclipse/EclipseState/Schedule/Group/Group.hpp>
-#include <opm/parser/eclipse/EclipseState/Schedule/Well/Well.hpp>
 
 namespace Opm {
+
+class Well;
 
 class GTNode {
 public:

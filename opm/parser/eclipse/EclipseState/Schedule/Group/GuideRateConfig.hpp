@@ -27,9 +27,11 @@
 
 #include <opm/parser/eclipse/EclipseState/Schedule/Group/GuideRateModel.hpp>
 #include <opm/parser/eclipse/EclipseState/Schedule/Group/Group.hpp>
-#include <opm/parser/eclipse/EclipseState/Schedule/Well/Well.hpp>
+#include <opm/parser/eclipse/EclipseState/Schedule/Well/WellEnums.hpp>
 
 namespace Opm {
+
+class Well;
 
 
 class GuideRateConfig {
@@ -37,7 +39,7 @@ public:
 
  struct WellTarget {
     double guide_rate;
-    Well::GuideRateTarget target;
+    WellEnums::GuideRateTarget target;
     double scaling_factor;
 
     bool operator==(const WellTarget& data) const {

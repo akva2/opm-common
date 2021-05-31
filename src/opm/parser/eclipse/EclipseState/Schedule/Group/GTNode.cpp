@@ -18,6 +18,7 @@
  */
 
 #include <opm/parser/eclipse/EclipseState/Schedule/Group/GTNode.hpp>
+#include <opm/parser/eclipse/EclipseState/Schedule/Well/Well.hpp>
 
 namespace Opm {
 

@@ -298,20 +298,20 @@ bool GuideRateModel::updateLINCOM(const UDAValue& , const UDAValue& , const UDAV
 }
 
 
-GuideRateModel::Target GuideRateModel::convert_target(Well::GuideRateTarget well_target) {
-    if (well_target == Well::GuideRateTarget::OIL)
+GuideRateModel::Target GuideRateModel::convert_target(WellEnums::GuideRateTarget well_target) {
+    if (well_target == WellEnums::GuideRateTarget::OIL)
         return Target::OIL;
 
-    if (well_target == Well::GuideRateTarget::GAS)
+    if (well_target == WellEnums::GuideRateTarget::GAS)
         return Target::GAS;
 
-    if (well_target == Well::GuideRateTarget::LIQ)
+    if (well_target == WellEnums::GuideRateTarget::LIQ)
         return Target::LIQ;
 
-    if (well_target == Well::GuideRateTarget::WAT)
+    if (well_target == WellEnums::GuideRateTarget::WAT)
         return Target::WAT;
 
-    if (well_target == Well::GuideRateTarget::RES)
+    if (well_target == WellEnums::GuideRateTarget::RES)
         return Target::RES;
 
     throw std::logic_error("Can not convert this .... ");

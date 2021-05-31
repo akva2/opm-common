@@ -22,7 +22,7 @@
 
 #include <opm/parser/eclipse/Deck/UDAValue.hpp>
 #include <opm/parser/eclipse/EclipseState/Schedule/Group/Group.hpp>
-#include <opm/parser/eclipse/EclipseState/Schedule/Well/Well.hpp>
+#include <opm/parser/eclipse/EclipseState/Schedule/Well/WellEnums.hpp>
 
 namespace Opm {
 
@@ -81,7 +81,7 @@ public:
     double getE() const;
     double getF() const;
 
-    static Target convert_target(Well::GuideRateTarget well_target);
+    static Target convert_target(WellEnums::GuideRateTarget well_target);
     static Target convert_target(Group::GuideRateProdTarget group_target);
     static Target convert_target(Phase injection_phase);
     static double pot(Target target, double oil_pot, double gas_pot, double wat_pot);

@@ -19,6 +19,7 @@
 
 
 #include <opm/parser/eclipse/EclipseState/Schedule/Group/GuideRateConfig.hpp>
+#include <opm/parser/eclipse/EclipseState/Schedule/Well/Well.hpp>
 
 
 namespace Opm {
