@@ -4,6 +4,7 @@
 # defines that must be present in config.h for our headers
 set (opm-common_CONFIG_VAR
 	HAVE_OPENMP
+	HAVE_ECL_INPUT
 	)
 
 # dependencies
@@ -21,5 +22,6 @@ list(APPEND opm-common_DEPS
       # cannot format UDQVarType. Hence we use the same version
       # as the embedded one.
       "fmt 7.0.3"
+      "dune-common REQUIRED"
 )
 find_package_deps(opm-common)
