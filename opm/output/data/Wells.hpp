@@ -107,6 +107,33 @@ namespace Opm {
 
             bool operator==(const Rates& rat2) const;
 
+            template<class Serializer>
+            void serializeOp(Serializer& serializer)
+            {
+              serializer(wat);
+              serializer(oil);
+              serializer(gas);
+              serializer(polymer);
+              serializer(solvent);
+              serializer(energy);
+              serializer(dissolved_gas);
+              serializer(vaporized_oil);
+              serializer(reservoir_water);
+              serializer(reservoir_oil);
+              serializer(reservoir_gas);
+              serializer(productivity_index_water);
+              serializer(productivity_index_oil);
+              serializer(productivity_index_gas);
+              serializer(well_potential_water);
+              serializer(well_potential_oil);
+              serializer(well_potential_gas);
+              serializer(brine);
+              serializer(alq);
+              serializer(tracer);
+              serializer(micp);
+              serializer(vaporized_water);
+            }
+
         inline void init_json(Json::JsonObject& json_data) const;
         private:
             double& get_ref( opt );
@@ -343,6 +370,12 @@ namespace Opm {
                  segments == well2.segments &&
                  current_control == well2.current_control &&
                  guide_rates == well2.guide_rates;
+        }
+
+        template<class Serializer>
+        void serializeOp(Serializer& serializer)
+        {
+          serializer()
         }
     };
 

@@ -38,6 +38,14 @@ namespace Opm { namespace data {
         Opm::Group::InjectionCMode  currentGasInjectionConstraint;
         Opm::Group::InjectionCMode  currentWaterInjectionConstraint;
 
+        template<class Serializer>
+        void serializeOp(Serializer& serializer)
+        {
+          serializer(currentProdConstraint);
+          serializer(currentGasInjectionConstraint);
+          serializer(currentWaterInjectionConstraint);
+        }
+
         template <class MessageBufferType>
         void write(MessageBufferType& buffer) const;
 
@@ -99,6 +107,13 @@ namespace Opm { namespace data {
         GroupConstraints currentControl;
         GroupGuideRates  guideRates{};
 
+        template<class Serializer>
+        void serializeOp(Serializer& serializer)
+        {
+          serializer(currentControl);
+          serializer(guideRates);
+        }
+
         template <class MessageBufferType>
         void write(MessageBufferType& buffer) const
         {
@@ -131,6 +146,12 @@ namespace Opm { namespace data {
 
     struct NodeData {
         double pressure { 0.0 };
+
+        template<class Serializer>
+        void serializeOp(Serializer& serializer)
+        {
+          serializer(pressure);
+        }
 
         template <class MessageBufferType>
         void write(MessageBufferType& buffer) const
@@ -203,6 +224,13 @@ namespace Opm { namespace data {
             Json::JsonObject json_data;
             this->init_json(json_data);
             return json_data;
+        }
+
+        template<class Serializer>
+        void serializeOp(Serializer& serializer)
+        {
+          serializer.map(groupData);
+          serializer.map(nodeData);
         }
 
     private:

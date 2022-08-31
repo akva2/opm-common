@@ -83,6 +83,16 @@ namespace Opm {
 
         RestartValue() = default;
 
+        template<class Serializer>
+        void serializeOp(Serializer& serializer)
+        {
+          serializer(solution);
+          serializer(wells);
+          serializer(grp_nwrk);
+          serializer(aquifer);
+          serializer(extra);
+        }
+
         bool hasExtra(const std::string& key) const;
         void addExtra(const std::string& key, UnitSystem::measure dimension, std::vector<double> data);
         void addExtra(const std::string& key, std::vector<double> data);

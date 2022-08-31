@@ -82,6 +82,14 @@ namespace data {
                    data == cell2.data &&
                    target == cell2.target;
         }
+
+        template<class Serializer>
+        void serializeOp(Serializer& serializer)
+        {
+          serializer(dim);
+          serializer(data);
+          serializer(target);
+        }
     };
 
 }

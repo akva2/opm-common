@@ -195,6 +195,12 @@ namespace Opm { namespace data {
             }
         }
 
+        template<class Serializer>
+        void serializeOp(Serializer& serializer)
+        {
+          serializer.variant(options);
+        }
+
     private:
         using Types = std::variant<std::monostate,
                                    CarterTracyData,
@@ -291,6 +297,17 @@ namespace Opm { namespace data {
         // MessageBufferType API should be similar to Dune::MessageBufferIF
         template <class MessageBufferType>
         void read(MessageBufferType& buffer);
+
+        template<class Serializer>
+        void serializeOp(Serializer& serializer)
+        {
+          serializer(aquiferID);
+          serializer(pressure);
+          serializer(fluxRate);
+          serializer(volume);
+          serializer(initPressure);
+          serializer(datumDepth);
+        }
 
     private:
         using GetSummaryValue = double (AquiferData::*)() const;
