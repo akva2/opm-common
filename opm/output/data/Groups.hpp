@@ -60,6 +60,24 @@ namespace Opm { namespace data {
             json_data.add_item("water_inj", Opm::Group::InjectionCMode2String(this->currentGasInjectionConstraint));
             json_data.add_item("gas_inj", Opm::Group::InjectionCMode2String(this->currentWaterInjectionConstraint));
         }
+
+        template<class Serializer>
+        void serializeOp(Serializer& serializer)
+        {
+            serializer(currentProdConstraint);
+            serializer(currentGasInjectionConstraint);
+            serializer(currentWaterInjectionConstraint);
+        }
+
+        static GroupConstraints serializeObject()
+        {
+            GroupConstraints gc;
+            gc.currentProdConstraint = Group::ProductionCMode::GRAT;
+            gc.currentGasInjectionConstraint = Group::InjectionCMode::RATE;
+            gc.currentWaterInjectionConstraint = Group::InjectionCMode::RESV;
+
+            return gc;
+        }
     };
 
     struct GroupGuideRates {
@@ -92,6 +110,22 @@ namespace Opm { namespace data {
 
             auto json_inj = json_data.add_object("injection");
             this->injection.init_json(json_inj);
+        }
+
+        template<class Serializer>
+        void serializeOp(Serializer& serializer)
+        {
+            production.serializeOp(serializer);
+            injection.serializeOp(serializer);
+        }
+
+        static GroupGuideRates serializeObject()
+        {
+            GroupGuideRates gr;
+            gr.production = GuideRateValue::serializeObject();
+            gr.injection = GuideRateValue::serializeObject();
+
+            return gr;
         }
     };
 
@@ -127,6 +161,19 @@ namespace Opm { namespace data {
             auto json_gr = json_data.add_object("guide_rate");
             this->guideRates.init_json(json_gr);
         }
+
+        template<class Serializer>
+        void serializeOp(Serializer& serializer)
+        {
+            currentControl.serializeOp(serializer);
+            guideRates.serializeOp(serializer);
+        }
+
+        static GroupData serializeObject()
+        {
+          return GroupData{GroupConstraints::serializeObject(),
+                           GroupGuideRates::serializeObject()};
+        }
     };
 
     struct NodeData {
@@ -151,6 +198,17 @@ namespace Opm { namespace data {
 
         void init_json(Json::JsonObject& json_data) const {
             json_data.add_item("pressure", this->pressure);
+        }
+
+        template<class Serializer>
+        void serializeOp(Serializer& serializer)
+        {
+            serializer(pressure);
+        }
+
+        static NodeData serializeObject()
+        {
+            return NodeData{10.0};
         }
     };
 
@@ -203,6 +261,22 @@ namespace Opm { namespace data {
             Json::JsonObject json_data;
             this->init_json(json_data);
             return json_data;
+        }
+
+        template<class Serializer>
+        void serializeOp(Serializer& serializer)
+        {
+            serializer.map(groupData);
+            serializer.map(nodeData);
+        }
+
+        static GroupAndNetworkValues serializeObject()
+        {
+            GroupAndNetworkValues gnv;
+            gnv.groupData.insert({"test_data", GroupData::serializeObject()});
+            gnv.nodeData.insert({"test_node", NodeData::serializeObject()});
+
+            return gnv;
         }
 
     private:

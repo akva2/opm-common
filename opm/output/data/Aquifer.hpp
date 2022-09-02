@@ -51,6 +51,19 @@ namespace Opm { namespace data {
         // MessageBufferType API should be similar to Dune::MessageBufferIF
         template <class MessageBufferType>
         void read(MessageBufferType& buffer);
+
+        template<class Serializer>
+        void serializeOp(Serializer& serializer)
+        {
+            serializer(initVolume);
+            serializer(prodIndex);
+            serializer(timeConstant);
+        }
+
+        static FetkovichData serializeObject()
+        {
+          return FetkovichData{1.0, 2.0, 3.0};
+        }
     };
 
     struct CarterTracyData
@@ -72,6 +85,22 @@ namespace Opm { namespace data {
         // MessageBufferType API should be similar to Dune::MessageBufferIF
         template <class MessageBufferType>
         void read(MessageBufferType& buffer);
+
+        template<class Serializer>
+        void serializeOp(Serializer& serializer)
+        {
+            serializer(timeConstant);
+            serializer(influxConstant);
+            serializer(waterDensity);
+            serializer(waterViscosity);
+            serializer(dimensionless_time);
+            serializer(dimensionless_pressure);
+        }
+
+        static CarterTracyData serializeObject()
+        {
+            return CarterTracyData{1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
+        }
     };
 
     struct NumericAquiferData
@@ -87,6 +116,17 @@ namespace Opm { namespace data {
         // MessageBufferType API should be similar to Dune::MessageBufferIF
         template <class MessageBufferType>
         void read(MessageBufferType& buffer);
+
+        template<class Serializer>
+        void serializeOp(Serializer& serializer)
+        {
+            serializer(initPressure);
+        }
+
+        static NumericAquiferData serializeObject()
+        {
+            return NumericAquiferData{{1.0, 2.0, 3.0}};
+        }
     };
 
     namespace detail {
@@ -195,6 +235,12 @@ namespace Opm { namespace data {
             }
         }
 
+        template<class Serializer>
+        void serializeOp(Serializer& serializer)
+        {
+            serializer.variant(options_);
+        }
+
     private:
         using Types = std::variant<std::monostate,
                                    CarterTracyData,
@@ -291,6 +337,54 @@ namespace Opm { namespace data {
         // MessageBufferType API should be similar to Dune::MessageBufferIF
         template <class MessageBufferType>
         void read(MessageBufferType& buffer);
+
+        template<class Serializer>
+        void serializeOp(Serializer& serializer)
+        {
+            serializer(aquiferID);
+            serializer(pressure);
+            serializer(fluxRate);
+            serializer(volume);
+            serializer(initPressure);
+            serializer(datumDepth);
+            typeData.serializeOp(serializer);
+        }
+
+        static AquiferData serializeObjectF()
+        {
+            auto aquifer = AquiferData {1, 123.456, 56.78, 9.0e10, 290.0, 2515.5};
+            auto* aquFet = aquifer.typeData.create<AquiferType::Fetkovich>();
+            aquFet->initVolume = 1.23;
+            aquFet->prodIndex = 45.67;
+            aquFet->timeConstant = 890.123;
+
+            return aquifer;
+        }
+
+        static AquiferData serializeObjectC()
+        {
+            auto aquifer = AquiferData {2, 123.456, 56.78, 9.0e10, 290.0, 2515.5};
+            auto* aquCT = aquifer.typeData.create<AquiferType::CarterTracy>();
+
+            aquCT->timeConstant = 987.65;
+            aquCT->influxConstant = 43.21;
+            aquCT->waterDensity = 1014.5;
+            aquCT->waterViscosity = 0.00318;
+            aquCT->dimensionless_time = 42.0;
+            aquCT->dimensionless_pressure = 2.34;
+
+            return aquifer;
+        }
+
+        static AquiferData serializeObjectN()
+        {
+          auto aquifer = AquiferData {3, 123.456, 56.78, 9.0e10, 290.0, 2515.5};
+          auto* aquNum = aquifer.typeData.create<AquiferType::Numerical>();
+
+          aquNum->initPressure = {1.234, 2.345, 3.4, 9.876};
+
+          return aquifer;
+        }
 
     private:
         using GetSummaryValue = double (AquiferData::*)() const;

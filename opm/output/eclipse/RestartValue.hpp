@@ -60,6 +60,19 @@ namespace Opm {
                    dim == key2.dim &&
                    required == key2.required;
         }
+
+        template<class Serializer>
+        void serializeOp(Serializer& serializer)
+        {
+          serializer(key);
+          serializer(dim);
+          serializer(required);
+        }
+
+        static RestartKey serializeObject()
+        {
+          return RestartKey{"test_key", UnitSystem::measure::effective_Kh, true};
+        }
     };
 
     /*
@@ -98,6 +111,31 @@ namespace Opm {
                 && (this->grp_nwrk == val2.grp_nwrk)
                 && (this->aquifer == val2.aquifer)
                 && (this->extra == val2.extra);
+        }
+
+        static RestartValue serializeObject()
+        {
+            auto res = RestartValue {
+                           data::Solution::serializeObject(),
+                           data::Wells::serializeObject(),
+                           data::GroupAndNetworkValues::serializeObject(),
+                           {{1, data::AquiferData::serializeObjectF()},
+                            {2, data::AquiferData::serializeObjectC()},
+                            {3, data::AquiferData::serializeObjectN()}}
+                       };
+            res.extra = {{RestartKey::serializeObject(), {1.0, 2.0}}};
+
+            return res;
+        }
+
+        template<class Serializer>
+        void serializeOp(Serializer& serializer)
+        {
+          solution.serializeOp(serializer);
+          wells.serializeOp(serializer);
+          grp_nwrk.serializeOp(serializer);
+          serializer.map(aquifer);
+          serializer.vector(extra);
         }
     };
 
