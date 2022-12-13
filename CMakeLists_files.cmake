@@ -379,6 +379,7 @@ list (APPEND TEST_SOURCE_FILES
       tests/test_tabulation.cpp
       tests/test_threecomponents_ptflash.cpp
       tests/test_uniformtablelinear.cpp
+      tests/test_Visitor.cpp
 )
 if(ENABLE_ECL_INPUT)
   list(APPEND TEST_SOURCE_FILES
