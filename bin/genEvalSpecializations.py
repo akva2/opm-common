@@ -73,10 +73,14 @@ specializationTemplate = \
 #define OPM_DENSEAD_EVALUATION{{numDerivs}}_HPP
 {% endif %}\
 
+{%if numDerivs != 0 %}\
 #include "Evaluation.hpp"
+{% endif %}\
 #include "Math.hpp"
 
+#ifndef NDEBUG
 #include <opm/material/common/Valgrind.hpp>
+#endif
 
 {% if numDerivs < 0 %}\
 #include <opm/material/common/FastSmallVector.hpp>
@@ -86,7 +90,6 @@ specializationTemplate = \
 #include <cmath>
 #include <cassert>
 #include <cstring>
-#include <iostream>
 #include <algorithm>
 
 namespace Opm {
@@ -435,18 +438,6 @@ public:
         return Evaluation(value);
     }
 {% endif %}\
-
-    // print the value and the derivatives of the function evaluation
-    void print(std::ostream& os = std::cout) const
-    {
-        // print value
-        os << "v: " << value() << " / d:";
-
-        // print derivatives
-        for (int varIdx = 0; varIdx < size(); ++varIdx) {
-            os << " " << derivative(varIdx);
-        }
-    }
 
     // copy all derivatives from other
     void copyDerivatives(const Evaluation& other)
@@ -879,13 +870,6 @@ Evaluation<ValueType, numVars, staticSize> operator*(const RhsValueType& a, cons
     Evaluation<ValueType, numVars, staticSize> result(b);
     result *= a;
     return result;
-}
-
-template <class ValueType, int numVars, unsigned staticSize>
-std::ostream& operator<<(std::ostream& os, const Evaluation<ValueType, numVars, staticSize>& eval)
-{
-    os << eval.value();
-    return os;
 }
 
 {% endif %}\
