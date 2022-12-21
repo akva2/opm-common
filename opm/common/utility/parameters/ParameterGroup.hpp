@@ -37,6 +37,7 @@
 #define OPM_PARAMETERGROUP_HEADER
 
 #include <exception>
+#include <iosfwd>
 #include <map>
 #include <string>
 #include <vector>
@@ -46,9 +47,9 @@
 
 namespace Opm {
 	/// ParameterGroup is a class that is used to provide run-time parameters.
-	/// The standard use of the class is to call create it with the
+    /// The standard use of the class is to create it with the
 	/// (int argc, char** argv) constructor (where the arguments are those
-	/// given by main). This parses the command line, where each token
+    /// given to main). This parses the command line, where each token
 	/// either
 	/// A) specifies a parameter (by a "param=value" token).
 	/// B) specifies a param file to be read (by a "filename.param" token).
@@ -58,7 +59,7 @@ namespace Opm {
 	/// given a value in the root node, this value will be visible in all
 	/// parts of the tree (unless the parameter is overwritten in a subtree).
 	/// Applications using this ParameterGroup objects will usually write out
-	/// a message for each node in the three that is used by the application;
+    /// a message for each node in the tree that is used by the application;
 	/// this is one way to determine valid parameters.
 	///
 	/// Parameters specified as "param=value" on the command line
@@ -67,7 +68,7 @@ namespace Opm {
 	/// parameter resides. The syntax for specifying parameters on the command line given
 	/// an application called ``simulator'' is
 	///         simulator param1=value grp/param2=value
-	//  for parameter ``param1'' lying at the root and ``param2'' in the group
+    /// for parameter ``param1'' lying at the root and ``param2'' in the group
 	/// ``grp''. If the same parameters are specified multiple times on the command
 	/// line, only the last will be used. Thus an application named ``simulator'' run with
 	/// the following command
@@ -76,7 +77,7 @@ namespace Opm {
 	///
 	/// param files
 	///
-	/// A param file consists of multiple lienes, where each line consists of "param=value".
+    /// A param file consists of multiple lines, where each line consists of "param=value".
 	/// This syntax is identical to the one for parameters specified on the command line.
 	class ParameterGroup : public ParameterMapItem {
 	public:
@@ -130,7 +131,7 @@ namespace Opm {
 	    ///        throws an appropriate exception.
 	    ///
 	    /// \param name is the name of the parameter in question.
-	    /// \return The value associated with then name in this parameter
+        /// \return The value associated with then name in this parameter
 	    ///         group.
 	    template<typename T>
 	    T get(const std::string& name) const;
@@ -188,7 +189,7 @@ namespace Opm {
 	    ///        param_filename into this ParameterGroup.
 	    ///
 	    /// NOTE: A param file contains lines on the form 'a/b/c=d'.
-	    //        The '/' separates ParameterGroups and Parameters
+        //        The '/' separates ParameterGroups and Parameters
 	    ///       (e.g. c is a Parameter in the ParameterGroup b,
 	    ///       and b is a ParameterGroup in the ParameterGroup a)
 	    ///       while '=' separates the name from the value (e.g. the

@@ -42,6 +42,10 @@
 #include <algorithm>
 #include <opm/common/ErrorMacros.hpp>
 
+#ifndef NDEBUG
+#include <fmt/format.h>
+#endif
+
 namespace Opm
 {
 
@@ -146,8 +150,10 @@ namespace Opm
 	const T& element(int index) const
 	{
 #ifndef NDEBUG
-	    OPM_ERROR_IF(index < 0, "The index of a SparseVector must be non-negative (is " << index << ")");
-	    OPM_ERROR_IF(index >= size_, "The index of a SparseVector must be smaller than the maximum value (is " << index << ", max value: " << size_ <<")");
+        OPM_ERROR_IF(index < 0,
+                     fmt::format("The index of a SparseVector must be non-negative (is {})", index));
+        OPM_ERROR_IF(index >= size_,
+                     fmt::format("The index of a SparseVector must be smaller than the maximum value (is {}, max value: {})", index, size_));
 #endif
 	    std::vector<int>::const_iterator lb = std::lower_bound(indices_.begin(), indices_.end(), index);
 	    if (lb != indices_.end() && *lb == index) {
@@ -163,8 +169,10 @@ namespace Opm
 	const T& nonzeroElement(int nzindex) const
 	{
 #ifndef NDEBUG
-	    OPM_ERROR_IF(nzindex < 0, "The index of a SparseVector must be non-negative (is " << nzindex << ")");
-	    OPM_ERROR_IF(nzindex >= nonzeroSize(), "The index of a SparseVector must be smaller than the maximum value (is " << nzindex << ", max value: " << nonzeroSize() <<")");
+        OPM_ERROR_IF(nzindex < 0,
+                     fmt::format("The index of a SparseVector must be non-negative (is {})", nzindex));
+        OPM_ERROR_IF(nzindex >= nonzeroSize(),
+                     fmt::format("The index of a SparseVector must be smaller than the maximum value (is {}, max value: {})", nzindex, nonzeroSize()));
 #endif
 	    return data_[nzindex];
 	}

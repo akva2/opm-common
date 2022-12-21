@@ -22,7 +22,7 @@
 #include <time.h>
 
 #include <memory>
-#include <sstream>
+#include <iosfwd>
 #include <string>
 
 #include <opm/common/OpmLog/StreamLog.hpp>

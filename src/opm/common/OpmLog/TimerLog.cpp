@@ -19,6 +19,7 @@
 #include <stdexcept>
 #include <cassert>
 #include <iomanip>
+#include <sstream>
 
 #include <opm/common/OpmLog/OpmLog.hpp>
 #include <opm/common/OpmLog/LogUtil.hpp>

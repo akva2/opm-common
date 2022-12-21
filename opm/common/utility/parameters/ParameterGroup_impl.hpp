@@ -14,10 +14,10 @@
 //===========================================================================
 
 /*
-  Copyright 2009, 2010 SINTEF ICT, Applied Mathematics.
-  Copyright 2009, 2010 Statoil ASA.
+Copyright 2009, 2010 SINTEF ICT, Applied Mathematics.
+Copyright 2009, 2010 Statoil ASA.
 
-  This file is part of the Open Porous Media project (OPM).
+This file is part of the Open Porous Media project (OPM).
 
   OPM is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -72,11 +72,16 @@ namespace Opm {
 	    template <typename T>
 	    inline std::string
 	    ParameterGroup::to_string(const T& val)
-	    {
-		std::ostringstream os;
-		os << val;
-		return os.str();
-	    }
+        {
+            return std::to_string(val);
+        }
+
+        template <>
+        inline std::string
+        ParameterGroup::to_string(const std::string& val)
+        {
+            return val;
+        }
 
 	    template <>
 	    inline std::string
@@ -154,7 +159,7 @@ namespace Opm {
                     if (verify_syntax) {
                         std::cerr << "ERROR: Input '" << files[i] << "' is not a valid name for a parameter file.\n";
                         std::cerr << "       Valid filename extensions are 'param'.\n";
-                        OPM_THROW(std::runtime_error, "ParameterGroup cannot handle argument: " << files[i]);
+                        OPM_THROW(std::runtime_error, "ParameterGroup cannot handle argument: " + files[i]);
                     } else {
                         unhandled_arguments_.push_back(files[i]);
                     }

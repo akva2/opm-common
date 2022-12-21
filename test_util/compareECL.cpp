@@ -251,8 +251,11 @@ int main(int argc, char** argv) {
             comparator.results_rft();
         }
 
-        if (comparator.getNoErrors() > 0)
-            OPM_THROW(std::runtime_error, comparator.getNoErrors() << " errors encountered in comparisons.");
+        if (comparator.getNoErrors() > 0)  {
+            OPM_THROW(std::runtime_error,
+                      std::to_string(comparator.getNoErrors()) +
+                      " errors encountered in comparisons.");
+        }
     }
 
     catch (const std::exception& e) {

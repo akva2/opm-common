@@ -38,7 +38,6 @@
 
 #include <algorithm>
 #include <cassert>
-#include <sstream>
 #include <string>
 #include <vector>
 
@@ -62,10 +61,8 @@ namespace Opm {
 	struct ParameterRequirementProbability {
 	    std::string operator()(double x) const {
 		if ( (x < 0.0) || (x > 1.0) ) {
-		    std::ostringstream stream;
-		    stream << "The value '" << x
-                           << "' is not in the interval [0, 1].";
-		    return stream.str();
+        return "The value '" + std::to_string(x) +
+               "' is not in the interval [0, 1].";
 		} else {
 		    return "";
 		}
@@ -83,9 +80,7 @@ namespace Opm {
 		if (x > 0) {
 		    return "";
 		} else {
-		    std::ostringstream stream;
-		    stream << "The value '" << x << "' is not positive.";
-		    return stream.str();
+        return "The value '" + std::to_string(x) + "' is not positive.";
 		}
 	    }
 	};
@@ -101,9 +96,7 @@ namespace Opm {
 		if (x < 0) {
 		    return "";
 		} else {
-		    std::ostringstream stream;
-		    stream << "The value '" << x << "' is not negative.";
-		    return stream.str();
+        return "The value '" + std::to_string(x) + "' is not negative.";
 		}
 	    }
 	};
@@ -117,9 +110,7 @@ namespace Opm {
 	    template<typename T>
 	    std::string operator()(const T& x) const {
 		if (x > 0) {
-		    std::ostringstream stream;
-		    stream << "The value '" << x << "' is positive.";
-		    return stream.str();
+		    return "The value '" + std::to_string(x) + "' is positive.";
 		} else {
 		    return "";
 		}
@@ -135,9 +126,7 @@ namespace Opm {
 	    template<typename T>
 	    std::string operator()(const T& x) const {
 		if (x < 0) {
-		    std::ostringstream stream;
-		    stream << "The value '" << x << "' is negative.";
-		    return stream.str();
+        return "The value '" + std::to_string(x) + "' is negative.";
 		} else {
 		    return "";
 		}
@@ -219,16 +208,15 @@ namespace Opm {
 		    if (elements_.size() == 1) {
 			return "The string '" + x + "' is not '" + elements_[0] + "'.";
 		    }
-		    std::ostringstream stream;
-		    stream << "The string '" << x << "' is not among '";
+		    std::string stream;
+		    stream = "The string '" + x + "' is not among '";
 		    for (int i = 0; i < int(elements_.size()) - 2; ++i) {
-			stream << elements_[i] << "', '";
+          stream += elements_[i] + "', '";
 		    }
-		    stream << elements_[elements_.size() - 2]
-			   << "' and '"
-			   << elements_[elements_.size() - 1]
-			   << "'.";
-		    return stream.str();
+            stream += elements_[elements_.size() - 2] +
+                      "' and '" +
+                      elements_[elements_.size() - 1] + "'.";
+		    return stream;
 		} else {
 		    return "";
 		}

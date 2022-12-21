@@ -36,8 +36,10 @@
 #if HAVE_CONFIG_H
 #include "config.h"
 #endif
-#include <string>
 #include <opm/common/utility/parameters/Parameter.hpp>
+
+#include <sstream>
+#include <string>
 
 namespace Opm {
 	std::string
@@ -69,4 +71,61 @@ namespace Opm {
 		return "";
 	    }
 	}
+
+int ParameterMapItemTrait<int>::
+convert(const ParameterMapItem& item,
+        std::string& conversion_error,
+        const bool)
+{
+    conversion_error = correct_parameter_tag(item);
+    if (conversion_error != "") {
+        return 0;
+    }
+    const Parameter& parameter = dynamic_cast<const Parameter&>(item);
+    conversion_error = correct_type(parameter, ID_param_type__int);
+    if (conversion_error != "") {
+        return 0;
+    }
+    std::stringstream stream;
+    stream << parameter.getValue();
+    int value;
+    stream >> value;
+    if (stream.fail()) {
+        conversion_error = "Conversion to '" +
+                           ID_param_type__int +
+                           "' failed. Data was '" +
+                           parameter.getValue() + "'.\n";
+        return 0;
+    }
+    return value;
+}
+
+double ParameterMapItemTrait<double>::
+convert(const ParameterMapItem& item,
+        std::string& conversion_error,
+        const bool)
+{
+    conversion_error = correct_parameter_tag(item);
+    if (conversion_error != "") {
+        return 0.0;
+    }
+    const Parameter& parameter = dynamic_cast<const Parameter&>(item);
+    conversion_error = correct_type(parameter, ID_param_type__float);
+    if (conversion_error != "") {
+        return 0.0;
+    }
+    std::stringstream stream;
+    stream << parameter.getValue();
+    double value;
+    stream >> value;
+    if (stream.fail()) {
+        conversion_error = "Conversion to '" +
+                           ID_param_type__float +
+                           "' failed. Data was '" +
+                           parameter.getValue() + "'.\n";
+        return 0.0;
+    }
+    return value;
+}
+
 } // namespace Opm
