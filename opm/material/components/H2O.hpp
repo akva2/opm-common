@@ -41,7 +41,6 @@
 
 #include <cmath>
 #include <cassert>
-#include <type_traits>
 
 namespace Opm {
 
@@ -980,16 +979,10 @@ private:
                                    const Evaluation& temperature,
                                    const Evaluation& pressure)
     {
-        std::string msg = type + " is only implemented for temperatures "
-            "below 623.15K and pressures below 100MPa. (T = ";
-        if constexpr (std::is_floating_point_v<Evaluation>) {
-            msg += std::to_string(temperature) + ", p="  +
-                   std::to_string(pressure);
-        } else {
-            return domainError(type, temperature.value(), pressure.value());
-        }
-
-        return msg;
+        return type + " is only implemented for temperatures "
+               "below 623.15K and pressures below 100MPa. (T = " +
+               std::to_string(getValue(temperature)) + ", p="  +
+               std::to_string(getValue(pressure));
     }
 }; // end class
 
