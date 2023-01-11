@@ -32,7 +32,6 @@
 #include <vector>
 
 #include <opm/input/eclipse/EclipseState/Runspec.hpp>
-#include <opm/input/eclipse/Parser/InputErrorAction.hpp>
 #include <opm/input/eclipse/Schedule/MessageLimits.hpp>
 #include <opm/input/eclipse/Schedule/ScheduleDeck.hpp>
 #include <opm/input/eclipse/Schedule/ScheduleState.hpp>
@@ -62,6 +61,7 @@ namespace Opm
     class GTNode;
     class GuideRateConfig;
     class GuideRateModel;
+    enum class InputErrorAction;
     class ParseContext;
     class Python;
     class RPTConfig;
