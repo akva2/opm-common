@@ -33,7 +33,6 @@
 
 #include <opm/input/eclipse/EclipseState/Runspec.hpp>
 #include <opm/input/eclipse/Parser/InputErrorAction.hpp>
-#include <opm/input/eclipse/Schedule/Group/Group.hpp>
 #include <opm/input/eclipse/Schedule/MessageLimits.hpp>
 #include <opm/input/eclipse/Schedule/ScheduleDeck.hpp>
 #include <opm/input/eclipse/Schedule/ScheduleState.hpp>
@@ -59,6 +58,7 @@ namespace Opm
     class ErrorGuard;
     class FieldPropsManager;
     class GasLiftOpt;
+    class Group;
     class GTNode;
     class GuideRateConfig;
     class GuideRateModel;

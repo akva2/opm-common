@@ -23,16 +23,15 @@
 #include <opm/output/eclipse/WindowedArray.hpp>
 
 #include <opm/io/eclipse/PaddedOutputString.hpp>
-#include <opm/input/eclipse/Schedule/Group/Group.hpp>
+
 #include <cstddef>
+#include <map>
 #include <string>
 #include <vector>
-#include <map>
 
 namespace Opm {
 class Schedule;
 class SummaryState;
-//class Group;
 class UnitSystem;
 } // Opm
 

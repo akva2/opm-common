@@ -23,7 +23,6 @@
 #include <opm/output/data/Aquifer.hpp>
 #include <opm/output/data/InterRegFlowMap.hpp>
 
-#include <opm/input/eclipse/Schedule/Group/Group.hpp>
 #include <opm/input/eclipse/Schedule/Well/PAvgCalculatorCollection.hpp>
 
 #include <cstddef>

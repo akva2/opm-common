@@ -34,7 +34,6 @@
 #include <opm/input/eclipse/Schedule/Tuning.hpp>
 #include <opm/input/eclipse/Schedule/OilVaporizationProperties.hpp>
 #include <opm/input/eclipse/Schedule/Events.hpp>
-#include <opm/input/eclipse/Schedule/Group/Group.hpp>
 #include <opm/input/eclipse/Schedule/Well/Well.hpp>
 #include <opm/input/eclipse/Schedule/MessageLimits.hpp>
 #include <opm/input/eclipse/Schedule/VFPProdTable.hpp>
@@ -62,6 +61,7 @@ namespace Opm {
     class GasLiftOpt;
     class GConSale;
     class GConSump;
+    class Group;
     class GroupOrder;
     class GuideRateConfig;
     class NameOrder;

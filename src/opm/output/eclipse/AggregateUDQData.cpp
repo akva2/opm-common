@@ -25,6 +25,7 @@
 #include <opm/output/eclipse/VectorItems/intehead.hpp>
 
 #include <opm/input/eclipse/Schedule/Schedule.hpp>
+#include <opm/input/eclipse/Schedule/Group/Group.hpp>
 
 #include <opm/input/eclipse/Schedule/UDQ/UDQState.hpp>
 #include <opm/input/eclipse/Schedule/UDQ/UDQInput.hpp>
