@@ -34,6 +34,7 @@
 #include <unordered_map>
 #include <utility>
 
+#include <opm/output/data/Aquifer.hpp>
 #include <opm/output/data/Wells.hpp>
 #include <opm/output/data/Groups.hpp>
 #include <opm/output/eclipse/Summary.hpp>

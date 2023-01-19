@@ -33,6 +33,7 @@
 
 #include <fmt/format.h>
 
+#include <opm/output/data/Aquifer.hpp>
 #include <opm/output/data/Groups.hpp>
 #include <opm/output/data/GuideRateValue.hpp>
 #include <opm/output/data/Wells.hpp>

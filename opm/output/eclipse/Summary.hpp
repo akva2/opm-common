@@ -20,7 +20,6 @@
 #ifndef OPM_OUTPUT_SUMMARY_HPP
 #define OPM_OUTPUT_SUMMARY_HPP
 
-#include <opm/output/data/Aquifer.hpp>
 #include <opm/output/data/InterRegFlowMap.hpp>
 
 #include <opm/input/eclipse/Schedule/Group/Group.hpp>
@@ -34,6 +33,7 @@
 #include <vector>
 
 namespace Opm {
+    namespace data { class AquiferData; }
     class EclipseGrid;
     class EclipseState;
     class PAvgCalculatorCollection;
@@ -80,7 +80,7 @@ public:
               const PAvgCalculatorCollection&    ,
               const RegionParameters&            region_values = {},
               const BlockValues&                 block_values  = {},
-              const data::Aquifers&              aquifers_values = {},
+              const std::map<int,data::AquiferData>& aquifers_values = {},
               const InterRegFlowValues&          interreg_flows = {}) const;
 
     void write(const bool is_final_summary = false) const;
