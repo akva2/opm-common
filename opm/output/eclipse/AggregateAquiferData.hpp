@@ -23,12 +23,12 @@
 #include <opm/output/eclipse/InteHEAD.hpp>
 #include <opm/output/eclipse/WindowedArray.hpp>
 
-#include <opm/output/data/Aquifer.hpp>
-
+#include <map>
 #include <vector>
 
 namespace Opm {
     class AquiferConfig;
+    namespace data { class AquiferData; }
     class EclipseGrid;
     class SummaryState;
     class UnitSystem;
@@ -75,7 +75,7 @@ namespace Opm { namespace RestartIO { namespace Helpers {
         /// \param[in] usys Unit system.  Needed to convert quantities from
         ///    internal to output units.
         void captureDynamicdAquiferData(const AquiferConfig&  aqConfig,
-                                        const data::Aquifers& aquData,
+                                        const std::map<int,data::AquiferData>& aquData,
                                         const SummaryState&   summaryState,
                                         const UnitSystem&     usys);
 

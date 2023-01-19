@@ -19,6 +19,8 @@
 
 #include <opm/output/eclipse/AggregateAquiferData.hpp>
 
+#include <opm/output/data/Aquifer.hpp>
+
 #include <opm/output/eclipse/InteHEAD.hpp>
 #include <opm/output/eclipse/WindowedArray.hpp>
 #include <opm/output/eclipse/ActiveIndexByColumns.hpp>
