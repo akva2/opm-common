@@ -28,6 +28,18 @@
 
 namespace Opm {
 
+EclHysteresisConfig EclHysteresisConfig::serializationTestObject()
+{
+    EclHysteresisConfig result;
+    result.enableHysteresis_ = true;
+    result.pcHysteresisModel_ = 1;
+    result.krHysteresisModel_ = 2;
+    result.modParamTrapped_ = 3.0;
+    result.curvatureCapPrs_ = 4.0;
+
+    return result;
+}
+
 void EclHysteresisConfig::initFromState(const Runspec& runspec)
 {
     enableHysteresis_ = false;
@@ -41,6 +53,15 @@ void EclHysteresisConfig::initFromState(const Runspec& runspec)
     pcHysteresisModel_ = runspec.hysterPar().pcHysteresisModel();
     modParamTrapped_ = runspec.hysterPar().modParamTrapped();
     curvatureCapPrs_ = runspec.hysterPar().curvatureCapPrs();
+}
+
+bool EclHysteresisConfig::operator==(const EclHysteresisConfig& rhs) const
+{
+    return this->enableHysteresis_ == rhs.enableHysteresis_ &&
+           this->pcHysteresisModel_ == rhs.pcHysteresisModel_ &&
+           this->krHysteresisModel_ == rhs.krHysteresisModel_ &&
+           this->modParamTrapped_== rhs.modParamTrapped_ &&
+           this->curvatureCapPrs_ == rhs.curvatureCapPrs_;
 }
 
 } // namespace Opm

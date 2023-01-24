@@ -41,6 +41,8 @@ class Runspec;
 class EclHysteresisConfig
 {
 public:
+    static EclHysteresisConfig serializationTestObject();
+
     /*!
      * \brief Specify whether hysteresis is enabled or not.
      */
@@ -115,12 +117,24 @@ public:
 
 #if HAVE_ECL_INPUT
     /*!
-     * \brief Reads all relevant material parameters form a cell of a parsed ECL deck.
+     * \brief Reads all relevant material parameters from a cell of a parsed ECL deck.
      *
      * This requires that the opm-parser module is available.
      */
     void initFromState(const Runspec& runspec);
 #endif
+
+    bool operator==(const EclHysteresisConfig&) const;
+
+    template<class Serializer>
+    void serializeOp(Serializer& serializer)
+    {
+        serializer(enableHysteresis_);
+        serializer(pcHysteresisModel_);
+        serializer(krHysteresisModel_);
+        serializer(modParamTrapped_);
+        serializer(curvatureCapPrs_);
+    }
 
 private:
     // enable hysteresis at all

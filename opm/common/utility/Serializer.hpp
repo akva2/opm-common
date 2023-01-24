@@ -27,12 +27,17 @@
 #include <memory>
 #include <optional>
 #include <set>
+#include <stdexcept>
 #include <type_traits>
 #include <utility>
 #include <unordered_map>
 #include <unordered_set>
 #include <variant>
 #include <vector>
+
+#if HAVE_DUNE_ISTL
+#include <dune/istl/bvector.hh>
+#endif
 
 namespace Opm {
 namespace detail {
@@ -180,8 +185,8 @@ protected:
     //! \brief Handler for vectors.
     //! \tparam T Type for vector elements
     //! \param data The vector to (de-)serialize
-    template <typename T>
-    void vector(const std::vector<T>& data)
+    template <template<typename,typename> typename Vector, typename T, typename A>
+    void vector(const Vector<T,A>& data)
     {
         if constexpr (std::is_pod_v<T>) {
           if (m_op == Operation::PACKSIZE) {
@@ -193,16 +198,18 @@ protected:
           } else if (m_op == Operation::UNPACK) {
               std::size_t size = 0;
               (*this)(size);
-              auto& data_mut = const_cast<std::vector<T>&>(data);
-              data_mut.resize(size);
+              auto& data_mut = const_cast<Vector<T,A>&>(data);
+              if (data_mut.size() != size)
+                  data_mut.resize(size);
               m_packer.unpack(data_mut.data(), size, m_buffer, m_position);
           }
         } else {
             if (m_op == Operation::UNPACK) {
                 std::size_t size = 0;
                 (*this)(size);
-                auto& data_mut = const_cast<std::vector<T>&>(data);
-                data_mut.resize(size);
+                auto& data_mut = const_cast<Vector<T,A>&>(data);
+                if (data_mut.size() != size)
+                    data_mut.resize(size);
                 std::for_each(data_mut.begin(), data_mut.end(), std::ref(*this));
             } else {
                 (*this)(data.size());
@@ -316,7 +323,8 @@ protected:
             for (size_t i = 0; i < size; ++i) {
                 typename Map::value_type entry;
                 (*this)(entry);
-                data_mut.insert(entry);
+                data_mut.insert_or_assign(std::move(entry.first),
+                                          std::move(entry.second));
             }
         } else {
             (*this)(data.size());
@@ -385,6 +393,13 @@ protected:
     struct is_vector<std::vector<T1,Allocator>> {
         constexpr static bool value = true;
     };
+
+#if HAVE_DUNE_ISTL
+    template<class B, class A>
+    struct is_vector<Dune::BlockVector<B,A>> {
+        constexpr static bool value = true;
+    };
+#endif
 
     //! \brief Predicate for detecting variants.
     template<class T>

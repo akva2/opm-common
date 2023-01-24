@@ -43,6 +43,14 @@
 namespace Opm {
 
 template<class Scalar>
+EclEpsScalingPointsInfo<Scalar>
+EclEpsScalingPointsInfo<Scalar>::serializationTestObject()
+{
+    return {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0,
+            11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 17.0, 18.0, 19.0, 20.0};
+}
+
+template<class Scalar>
 void EclEpsScalingPointsInfo<Scalar>::print() const
 {
     std::cout << "    Swl: " << Swl << '\n'
@@ -269,12 +277,68 @@ init(const EclEpsScalingPointsInfo<Scalar>& epsInfo,
 }
 
 template<class Scalar>
+bool EclEpsScalingPointsInfo<Scalar>::operator==(const EclEpsScalingPointsInfo<Scalar>& data) const
+{
+    return Swl == data.Swl &&
+           Sgl == data.Sgl &&
+           Swcr == data.Swcr &&
+           Sgcr == data.Sgcr &&
+           Sowcr == data.Sowcr &&
+           Sogcr == data.Sogcr &&
+           Swu == data.Swu &&
+           Sgu == data.Sgu &&
+           maxPcow == data.maxPcow &&
+           maxPcgo == data.maxPcgo &&
+           pcowLeverettFactor == data.pcowLeverettFactor &&
+           pcgoLeverettFactor == data.pcgoLeverettFactor &&
+           Krwr == data.Krwr &&
+           Krgr == data.Krgr &&
+           Krorw == data.Krorw &&
+           Krorg == data.Krorg &&
+           maxKrw == data.maxKrw &&
+           maxKrow == data.maxKrow &&
+           maxKrog == data.maxKrog &&
+           maxKrg == data.maxKrg;
+}
+
+template<class Scalar>
 void EclEpsScalingPoints<Scalar>::print() const
 {
     std::cout << "    saturationKrnPoints_[0]: " << saturationKrnPoints_[0] << "\n"
               << "    saturationKrnPoints_[1]: " << saturationKrnPoints_[1] << "\n"
               << "    saturationKrnPoints_[2]: " << saturationKrnPoints_[2] << "\n";
 
+}
+
+template<class Scalar>
+EclEpsScalingPoints<Scalar>
+EclEpsScalingPoints<Scalar>::serializationTestObject()
+{
+    EclEpsScalingPoints<Scalar> result;
+    result.maxPcnwOrLeverettFactor_ = 1.0;
+    result.maxKrw_ = 2.0;
+    result.Krwr_ = 3.0;
+    result.maxKrn_ = 4.0;
+    result.Krnr_ = 5.0;
+    result.saturationPcPoints_ = {6.0, 7.0, 8.0};
+    result.saturationKrwPoints_ = {9.0, 10.0, 11.0};
+    result.saturationKrnPoints_ = {12.0, 13.0, 14.0};
+
+    return result;
+}
+
+template<class Scalar>
+bool EclEpsScalingPoints<Scalar>::
+operator==(const EclEpsScalingPoints<Scalar>& rhs) const
+{
+    return this->maxPcnwOrLeverettFactor_ == rhs.maxPcnwOrLeverettFactor_ &&
+           this->maxKrw_ == rhs.maxKrw_ &&
+           this->Krwr_ == rhs.Krwr_ &&
+           this->maxKrn_  == rhs.maxKrn_ &&
+           this->Krnr_ == rhs.Krnr_ &&
+           this->saturationPcPoints_ == rhs.saturationPcPoints_ &&
+           this->saturationKrwPoints_ == rhs.saturationKrwPoints_ &&
+           this->saturationKrnPoints_ == rhs.saturationKrnPoints_;
 }
 
 template struct EclEpsScalingPointsInfo<float>;

@@ -140,12 +140,12 @@
 #include <opm/output/data/Aquifer.hpp>
 #include <opm/output/eclipse/RestartValue.hpp>
 #include <opm/common/utility/Serializer.hpp>
-#include "SimplePacker.hpp"
+#include <opm/common/utility/SimplePacker.hpp>
 
 template<class T>
 std::tuple<T,int,int> PackUnpack(T& in)
 {
-    Opm::TestUtil::Packer packer;
+    Opm::Serialization::Packer packer;
     Opm::Serializer ser(packer);
     ser.pack(in);
     size_t pos1 = ser.position();

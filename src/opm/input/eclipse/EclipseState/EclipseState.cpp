@@ -472,4 +472,44 @@ bool rst_cmp_obj(const T& full_arg, const T& rst_arg, const std::string& object_
             rst_cmp_obj(full_state.tracer_config, rst_state.tracer_config, "Tracer");
     }
 
+    EclipseState EclipseState::serializationTestObject()
+    {
+        EclipseState result;
+
+        result.m_tables = TableManager::serializationTestObject();
+        result.m_runspec  = Runspec::serializationTestObject();
+        result.m_eclipseConfig = EclipseConfig::serializationTestObject();
+        result.m_deckUnitSystem = UnitSystem::serializationTestObject();
+        //result.m_inputGrid = EclipseGrid::serializationTestObject();
+        result.m_inputNnc = NNC::serializationTestObject();
+        result.m_gridDims = GridDims::serializationTestObject();
+        result.m_simulationConfig = SimulationConfig::serializationTestObject();
+        result.aquifer_config = AquiferConfig::serializationTestObject();
+        result.m_transMult = TransMult::serializationTestObject();
+        result.tracer_config = TracerConfig::serializationTestObject();
+        result.m_micppara = MICPpara::serializationTestObject();
+        result.m_title = "test";
+        result.m_faults = FaultCollection::serializationTestObject();
+
+        return result;
+    }
+
+    bool EclipseState::operator==(const EclipseState& eclState) const
+    {
+        return this->m_tables  == eclState.m_tables &&
+               this->m_runspec == eclState.m_runspec &&
+               this->m_eclipseConfig == eclState.m_eclipseConfig &&
+               this->m_deckUnitSystem == eclState.m_deckUnitSystem &&
+//               this->m_inputGrid == eclState.m_inputGrid &&
+               this->m_inputNnc == eclState.m_inputNnc &&
+               this->m_gridDims == eclState.m_gridDims &&
+               this->m_simulationConfig == eclState.m_simulationConfig &&
+               this->aquifer_config == eclState.aquifer_config &&
+               this->m_transMult == eclState.m_transMult &&
+               this->tracer_config == eclState.tracer_config &&
+               this->m_micppara == eclState.m_micppara &&
+               this->m_title == eclState.m_title &&
+               this->m_faults == eclState.m_faults;
+    }
+
 }

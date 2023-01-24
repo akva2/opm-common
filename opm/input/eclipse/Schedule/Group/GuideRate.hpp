@@ -56,6 +56,14 @@ public:
         double eval(const Group::GuideRateProdTarget target) const;
         double eval(const GuideRateModel::Target target) const;
 
+        template<class Serializer>
+        void serializeOp(Serializer& serializer)
+        {
+            serializer(oil_rat);
+            serializer(gas_rat);
+            serializer(wat_rat);
+        }
+
         double oil_rat{0.0};
         double gas_rat{0.0};
         double wat_rat{0.0};
@@ -78,6 +86,14 @@ public:
         bool operator!=(const GuideRateValue& other) const
         {
             return !(*this == other);
+        }
+
+        template<class Serializer>
+        void serializeOp(Serializer& serializer)
+        {
+            serializer(sim_time);
+            serializer(value);
+            serializer(target);
         }
 
         double sim_time { std::numeric_limits<double>::lowest() };
@@ -119,11 +135,27 @@ public:
     void updateGuideRateExpiration(const double      sim_time,
                                    const std::size_t report_step);
 
+    template<class Serializer>
+    void serializeOp(Serializer& serializer)
+    {
+        serializer(values);
+        serializer(injection_group_values);
+        serializer(potentials);
+        serializer(guide_rates_expired);
+    }
+
 private:
     struct GRValState
     {
         GuideRateValue curr{};
         GuideRateValue prev{};
+
+        template<class Serializer>
+        void serializeOp(Serializer& serializer)
+        {
+            serializer(curr);
+            serializer(prev);
+        }
     };
 
     struct pair_hash

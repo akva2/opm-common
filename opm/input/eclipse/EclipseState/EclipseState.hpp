@@ -65,6 +65,8 @@ namespace Opm {
         explicit EclipseState(const Deck& deck);
         virtual ~EclipseState() = default;
 
+        static EclipseState serializationTestObject();
+
         const IOConfig& getIOConfig() const;
         IOConfig& getIOConfig();
 
@@ -135,6 +137,7 @@ namespace Opm {
 
         static bool rst_cmp(const EclipseState& full_state, const EclipseState& rst_state);
 
+        bool operator==(const EclipseState&) const;
 
     private:
         void initIOConfigPostSchedule(const Deck& deck);

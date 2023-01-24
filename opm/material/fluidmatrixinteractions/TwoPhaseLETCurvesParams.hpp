@@ -30,6 +30,8 @@
 #include <opm/material/common/Valgrind.hpp>
 #include <opm/material/common/EnsureFinalized.hpp>
 
+#include <array>
+
 namespace Opm {
 
 /*!
@@ -57,6 +59,14 @@ public:
     }
 
     virtual ~TwoPhaseLETCurvesParams() {}
+
+    static TwoPhaseLETCurvesParams serializationTestObject()
+    {
+        TwoPhaseLETCurvesParams result;
+        result.Smin_ = {1,2};
+
+        return result;
+    }
 
     /*!
      * \brief Calculate all dependent quantities once the independent
@@ -194,6 +204,41 @@ public:
         dSpc_ = 1.0 - letProp[0] - letProp[1];
     }
 
+    bool operator==(const TwoPhaseLETCurvesParams& rhs) const
+    {
+        return this->Smin_ == rhs.Smin_ &&
+               this->dS_ == rhs.dS_ &&
+               this->L_ == rhs.L_ &&
+               this->E_ == rhs.E_ &&
+               this->T_ == rhs.T_ &&
+               this->Krt_ == rhs.Krt_ &&
+               this->Sminpc_ == rhs.Sminpc_ &&
+               this->dSpc_ == rhs.dSpc_ &&
+               this->Lpc_ == rhs.Lpc_ &&
+               this->Epc_ == rhs.Epc_ &&
+               this->Tpc_ == rhs.Tpc_ &&
+               this->Pcir_ == rhs.Pcir_ &&
+               this->Pct_ == rhs.Pct_;
+    }
+
+    template<class Serializer>
+    void serializeOp(Serializer& serializer)
+    {
+        serializer(Smin_);
+        serializer(dS_);
+        serializer(L_);
+        serializer(E_);
+        serializer(T_);
+        serializer(Krt_);
+        serializer(Sminpc_);
+        serializer(dSpc_);
+        serializer(Lpc_);
+        serializer(Epc_);
+        serializer(Tpc_);
+        serializer(Pcir_);
+        serializer(Pct_);
+    }
+
 private:
     /*!
      * \brief Set the LET coefficients for phase relperm
@@ -254,21 +299,21 @@ private:
 */
     }
 
-    Scalar Smin_[Traits::numPhases];
-    Scalar dS_[Traits::numPhases];
+    std::array<Scalar,Traits::numPhases> Smin_{};
+    std::array<Scalar,Traits::numPhases> dS_{};
 
-    Scalar L_[Traits::numPhases];
-    Scalar E_[Traits::numPhases];
-    Scalar T_[Traits::numPhases];
-    Scalar Krt_[Traits::numPhases];
+    std::array<Scalar,Traits::numPhases> L_{};
+    std::array<Scalar,Traits::numPhases> E_{};
+    std::array<Scalar,Traits::numPhases> T_{};
+    std::array<Scalar,Traits::numPhases> Krt_{};
 
-    Scalar Sminpc_;
-    Scalar dSpc_;
-    Scalar Lpc_;
-    Scalar Epc_;
-    Scalar Tpc_;
-    Scalar Pcir_;
-    Scalar Pct_;
+    Scalar Sminpc_{};
+    Scalar dSpc_{};
+    Scalar Lpc_{};
+    Scalar Epc_{};
+    Scalar Tpc_{};
+    Scalar Pcir_{};
+    Scalar Pct_{};
 };
 
 } // namespace Opm

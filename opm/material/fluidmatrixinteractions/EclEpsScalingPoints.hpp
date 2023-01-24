@@ -90,29 +90,9 @@ struct EclEpsScalingPointsInfo
     Scalar maxKrog; // maximum relative permability of oil in the gas-oil system
     Scalar maxKrg; // maximum relative permability of gas
 
-    bool operator==(const EclEpsScalingPointsInfo<Scalar>& data) const
-    {
-        return Swl == data.Swl &&
-               Sgl == data.Sgl &&
-               Swcr == data.Swcr &&
-               Sgcr == data.Sgcr &&
-               Sowcr == data.Sowcr &&
-               Sogcr == data.Sogcr &&
-               Swu == data.Swu &&
-               Sgu == data.Sgu &&
-               maxPcow == data.maxPcow &&
-               maxPcgo == data.maxPcgo &&
-               pcowLeverettFactor == data.pcowLeverettFactor &&
-               pcgoLeverettFactor == data.pcgoLeverettFactor &&
-               Krwr == data.Krwr &&
-               Krgr == data.Krgr &&
-               Krorw == data.Krorw &&
-               Krorg == data.Krorg &&
-               maxKrw == data.maxKrw &&
-               maxKrow == data.maxKrow &&
-               maxKrog == data.maxKrog &&
-               maxKrg == data.maxKrg;
-    }
+    static EclEpsScalingPointsInfo<Scalar> serializationTestObject();
+
+    bool operator==(const EclEpsScalingPointsInfo<Scalar>& data) const;
 
     void print() const;
 
@@ -143,6 +123,31 @@ struct EclEpsScalingPointsInfo
                        unsigned activeIndex);
 #endif
 
+    template<class Serializer>
+    void serializeOp(Serializer& serializer)
+    {
+        serializer(Swl);
+        serializer(Sgl);
+        serializer(Swcr);
+        serializer(Sgcr);
+        serializer(Sowcr);
+        serializer(Sogcr);
+        serializer(Swu);
+        serializer(Sgu);
+        serializer(maxPcow);
+        serializer(maxPcgo);
+        serializer(pcowLeverettFactor);
+        serializer(pcgoLeverettFactor);
+        serializer(Krwr);
+        serializer(Krgr);
+        serializer(Krorw);
+        serializer(Krorg);
+        serializer(maxKrw);
+        serializer(maxKrow);
+        serializer(maxKrog);
+        serializer(maxKrg);
+    }
+
 private:
     void extractGridPropertyValue_(Scalar& targetValue,
                                    const std::vector<double>* propData,
@@ -165,6 +170,7 @@ template <class Scalar>
 class EclEpsScalingPoints
 {
 public:
+    static EclEpsScalingPoints<Scalar> serializationTestObject();
     /*!
      * \brief Assigns the scaling points which actually ought to be used.
      */
@@ -285,6 +291,21 @@ public:
     { return maxKrn_; }
 
     void print() const;
+
+    bool operator==(const EclEpsScalingPoints<Scalar>&) const;
+
+    template<class Serializer>
+    void serializeOp(Serializer& serializer)
+    {
+        serializer(maxPcnwOrLeverettFactor_);
+        serializer(maxKrw_);
+        serializer(Krwr_);
+        serializer(maxKrn_);
+        serializer(Krnr_);
+        serializer(saturationPcPoints_);
+        serializer(saturationKrwPoints_);
+        serializer(saturationKrnPoints_);
+    }
 
 private:
     // Points used for vertical scaling of capillary pressure

@@ -34,6 +34,8 @@
 #include <opm/material/common/Valgrind.hpp>
 #include <opm/material/common/ConditionalStorage.hpp>
 
+#include <numeric>
+
 namespace Opm {
 
 OPM_GENERATE_HAS_MEMBER(pvtRegionIndex, ) // Creates 'HasMember_pvtRegionIndex<T>'.
@@ -130,6 +132,42 @@ public:
     using Scalar = ScalarT;
     enum { numPhases = FluidSystem::numPhases };
     enum { numComponents = FluidSystem::numComponents };
+
+    static BlackOilFluidState serializationTestObject()
+    {
+        BlackOilFluidState result;
+        if constexpr (enableTemperature || enableEnergy) {
+            *result.temperature_ = 1.0;
+        }
+        if constexpr (enableEnergy) {
+            std::iota(result.enthalpy_->begin(), result.enthalpy_->end(), 2.0);
+        }
+        result.totalSaturation_ = 3.0;
+        std::iota(result.pressure_.begin(), result.pressure_.end(), 4.0);
+        std::iota(result.pc_.begin(), result.pc_.end(), 5.0);
+        std::iota(result.saturation_.begin(), result.saturation_.end(), 6.0);
+        std::iota(result.invB_.begin(), result.invB_.end(), 7.0);
+        std::iota(result.density_.begin(), result.density_.end(), 7.0);
+        if constexpr (enableDissolution) {
+            *result.Rs_ = 8.0;
+            *result.Rv_ = 9.0;
+        }
+        if constexpr (enableEvaporation) {
+            *result.Rvw_ = 10.0;
+        }
+        if constexpr (enableDissolutionInWater) {
+            *result.Rsw_ = 11.0;
+        }
+        if constexpr (enableBrine) {
+            *result.saltConcentration_ = 12.0;
+        }
+        if constexpr (enableSaltPrecipitation) {
+            *result.saltSaturation_ = 13.0;
+        }
+        result.pvtRegionIdx_ = 14;
+
+        return result;
+    }
 
     /*!
      * \brief Make sure that all attributes are defined.
@@ -660,6 +698,76 @@ public:
             fugacityCoefficient(phaseIdx, compIdx)
             *moleFraction(phaseIdx, compIdx)
             *pressure(phaseIdx);
+    }
+
+    bool operator==(const BlackOilFluidState& rhs) const
+    {
+        bool result = this->totalSaturation_ == rhs.totalSaturation_ &&
+                      this->pressure_ == rhs.pressure_ &&
+                      this->pc_ == rhs.pc_ &&
+                      this->saturation_ == rhs.saturation_ &&
+                      this->invB_ == rhs.invB_ &&
+                      this->density_ == rhs.density_ &&
+                      this->pvtRegionIdx_ == rhs.pvtRegionIdx_;
+
+        if constexpr (enableTemperature || enableEnergy) {
+            result &= *this->temperature_ == *rhs.temperature_;
+        }
+        if constexpr (enableEnergy) {
+            result &= *this->enthalpy_ == *rhs.enthalpy_;
+        }
+        if constexpr (enableDissolution) {
+            result &= *this->Rs_ == *rhs.Rs_ &&
+                      *this->Rv_ == *rhs.Rv_;
+        }
+        if constexpr (enableEvaporation) {
+            result &= *this->Rvw_ == *rhs.Rvw_;
+        }
+        if constexpr (enableDissolutionInWater) {
+            result &= *this->Rsw_ == *rhs.Rsw_;
+        }
+        if constexpr (enableBrine) {
+            result &= *this->saltConcentration_ == *rhs.saltConcentration_;
+        }
+        if constexpr (enableSaltPrecipitation) {
+            result &= *this->saltSaturation_ == *rhs.saltSaturation_;
+        }
+
+        return result;
+    }
+
+    template<class Serializer>
+    void serializeOp(Serializer& serializer)
+    {
+        if constexpr (enableTemperature || enableEnergy) {
+            serializer(*temperature_);
+        }
+        if constexpr (enableEnergy) {
+            serializer(*enthalpy_);
+        }
+        serializer(totalSaturation_);
+        serializer(pressure_);
+        serializer(pc_);
+        serializer(saturation_);
+        serializer(invB_);
+        serializer(density_);
+        if constexpr (enableDissolution) {
+            serializer(*Rs_);
+            serializer(*Rv_);
+        }
+        if constexpr (enableEvaporation) {
+            serializer(*Rvw_);
+        }
+        if constexpr (enableDissolutionInWater) {
+            serializer(*Rsw_);
+        }
+        if constexpr (enableBrine) {
+            serializer(*saltConcentration_);
+        }
+        if constexpr (enableSaltPrecipitation) {
+            serializer(*saltSaturation_);
+        }
+        serializer(pvtRegionIdx_);
     }
 
 private:

@@ -35,6 +35,7 @@
 
 #include <opm/material/fluidmatrixinteractions/SatCurveMultiplexer.hpp>
 #include <opm/material/fluidmatrixinteractions/EclEpsTwoPhaseLaw.hpp>
+#include <opm/material/fluidmatrixinteractions/EclHysteresisConfig.hpp>
 #include <opm/material/fluidmatrixinteractions/EclHysteresisTwoPhaseLaw.hpp>
 #include <opm/material/fluidmatrixinteractions/EclMultiplexerMaterial.hpp>
 #include <opm/material/fluidmatrixinteractions/MaterialTraits.hpp>
@@ -51,9 +52,9 @@ namespace Opm {
 
 class EclipseState;
 class EclEpsConfig;
+class EclEpsGridProperties;
 template<class Scalar> class EclEpsScalingPoints;
 template<class Scalar> struct EclEpsScalingPointsInfo;
-class EclHysteresisConfig;
 enum class EclTwoPhaseSystemType;
 class Runspec;
 class SgfnTable;
@@ -114,6 +115,8 @@ public:
 
     EclMaterialLawManager();
     ~EclMaterialLawManager();
+
+    static EclMaterialLawManager<TraitsT> serializationTestObject();
 
 private:
     // internal typedefs
@@ -349,6 +352,40 @@ public:
 
     const EclEpsScalingPointsInfo<Scalar>& oilWaterScaledEpsInfoDrainage(size_t elemIdx) const
     { return oilWaterScaledEpsInfoDrainage_[elemIdx]; }
+
+    template<class Serializer>
+    void serializeOp(Serializer& serializer)
+    {
+        serializer(enableEndPointScaling_);
+        serializer(hysteresisConfig_);
+        serializer(oilWaterEclEpsConfig_);
+        serializer(unscaledEpsInfo_);
+        serializer(oilWaterScaledEpsInfoDrainage_);
+        serializer(gasWaterEclEpsConfig_);
+        serializer(gasOilUnscaledPointsVector_);
+        serializer(oilWaterUnscaledPointsVector_);
+        serializer(gasWaterUnscaledPointsVector_);
+        serializer(gasOilEffectiveParamVector_);
+        serializer(oilWaterEffectiveParamVector_);
+        serializer(gasWaterEffectiveParamVector_);
+        serializer(threePhaseApproach_);
+        serializer(twoPhaseApproach_);
+        serializer(materialLawParams_);
+        serializer(satnumRegionArray_);
+        serializer(krnumXArray_);
+        serializer(krnumYArray_);
+        serializer(krnumZArray_);
+        serializer(imbnumRegionArray_);
+        serializer(stoneEtas);
+        serializer(hasGas);
+        serializer(hasOil);
+        serializer(hasWater);
+        serializer(gasOilConfig);
+        serializer(oilWaterConfig);
+        serializer(gasWaterConfig);
+    }
+
+    bool operator==(const EclMaterialLawManager<TraitsT>&) const;
 
 private:
     const MaterialLawParams& materialLawParamsFunc_(unsigned elemIdx, FaceDir::DirEnum facedir) const;

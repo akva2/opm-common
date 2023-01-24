@@ -98,6 +98,14 @@ public:
         setApproach( other.approach() );
     }
 
+    static EclMultiplexerMaterialParams serializationTestObject()
+    {
+        EclMultiplexerMaterialParams result;
+        result.setApproach(EclMultiplexerApproach::Stone2);
+
+        return result;
+    }
+
     EclMultiplexerMaterialParams& operator= ( const EclMultiplexerMaterialParams& other )
     {
         realParams_.reset();
@@ -202,6 +210,49 @@ public:
     {
         assert(approach() == approachV);
         return this->template castTo<TwoPhaseParams>();
+    }
+
+    bool operator==(const EclMultiplexerMaterialParams& rhs) const
+    {
+        if (this->approach_ != rhs.approach_) {
+            return false;
+        }
+
+        switch (approach()) {
+        case EclMultiplexerApproach::Stone1:
+            return this->template getRealParams<EclMultiplexerApproach::Stone1>() ==
+                   rhs.template getRealParams<EclMultiplexerApproach::Stone1>();
+
+        case EclMultiplexerApproach::Stone2:
+            return this->template getRealParams<EclMultiplexerApproach::Stone2>() ==
+                   rhs.template getRealParams<EclMultiplexerApproach::Stone2>();
+
+        case EclMultiplexerApproach::Default:
+            return this->template getRealParams<EclMultiplexerApproach::Default>() ==
+                   rhs.template getRealParams<EclMultiplexerApproach::Default>();
+
+        case EclMultiplexerApproach::TwoPhase:
+            return this->template getRealParams<EclMultiplexerApproach::TwoPhase>() ==
+                   rhs.template getRealParams<EclMultiplexerApproach::TwoPhase>();
+
+        case EclMultiplexerApproach::OnePhase:
+            return true;
+        }
+
+        return false;
+    }
+
+    template<class Serializer>
+    void serializeOp(Serializer& serializer)
+    {
+        if (serializer.isSerializing()) {
+            serializer(approach_);
+        } else {
+            EclMultiplexerApproach approach;
+            serializer(approach);
+            this->setApproach(approach);
+        }
+        serializer(this->getRealParams());
     }
 
 private:

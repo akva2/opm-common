@@ -32,6 +32,7 @@
 #include "TwoPhaseLETCurvesParams.hpp"
 #include "PiecewiseLinearTwoPhaseMaterial.hpp"
 #include "PiecewiseLinearTwoPhaseMaterialParams.hpp"
+#include "opm/material/fluidmatrixinteractions/EclMultiplexerMaterialParams.hpp"
 
 #include <opm/material/common/EnsureFinalized.hpp>
 
@@ -95,6 +96,26 @@ public:
         setApproach( other.approach() );
     }
 
+    static SatCurveMultiplexerParams serializationTestObjectLET()
+    {
+        SatCurveMultiplexerParams result;
+        result.setApproach(SatCurveMultiplexerApproach::LET);
+        result.template getRealParams<SatCurveMultiplexerApproach::LET>() =
+            LETParams::serializationTestObject();
+
+        return result;
+    }
+
+    static SatCurveMultiplexerParams serializationTestObjectPL()
+    {
+        SatCurveMultiplexerParams result;
+        result.setApproach(SatCurveMultiplexerApproach::PiecewiseLinear);
+        result.template getRealParams<SatCurveMultiplexerApproach::PiecewiseLinear>() =
+            PLParams::serializationTestObject();
+
+        return result;
+    }
+
     SatCurveMultiplexerParams& operator= ( const SatCurveMultiplexerParams& other )
     {
         realParams_.reset();
@@ -153,6 +174,46 @@ public:
     {
         assert(approach() == approachV);
         return this->template castTo<PLParams>();
+    }
+
+    template<class Serializer>
+    void serializeOp(Serializer& serializer)
+    {
+        if (serializer.isSerializing()) {
+            serializer(approach_);
+        } else {
+            SatCurveMultiplexerApproach approach;
+            serializer(approach);
+            this->setApproach(approach);
+        }
+        switch (approach_) {
+        case SatCurveMultiplexerApproach::LET:
+            serializer(this->template getRealParams<SatCurveMultiplexerApproach::LET>());
+            break;
+        case SatCurveMultiplexerApproach::PiecewiseLinear:
+            serializer(this->template getRealParams<SatCurveMultiplexerApproach::PiecewiseLinear>());
+            break;
+        }
+    }
+
+    bool operator==(const SatCurveMultiplexerParams& rhs) const
+    {
+        if (this->approach_ != rhs.approach_)
+            return false;
+
+        switch (approach_) {
+        case SatCurveMultiplexerApproach::LET:
+            return this->template getRealParams<SatCurveMultiplexerApproach::LET>() ==
+                   rhs.template getRealParams<SatCurveMultiplexerApproach::LET>();
+            break;
+        case SatCurveMultiplexerApproach::PiecewiseLinear:
+            return this->template getRealParams<SatCurveMultiplexerApproach::PiecewiseLinear>() ==
+                   rhs.template getRealParams<SatCurveMultiplexerApproach::PiecewiseLinear>();
+            break;
+
+        }
+
+        return false;
     }
 
 private:

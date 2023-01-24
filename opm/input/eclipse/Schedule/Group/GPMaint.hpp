@@ -27,27 +27,34 @@ namespace Opm {
 
 class DeckRecord;
 
-class GPMaint {
-public:
-
-enum class FlowTarget {
-    RESV_PROD = 0,
-    RESV_OINJ = 1,
-    RESV_WINJ = 2,
-    RESV_GINJ = 3,
-    SURF_OINJ = 4,
-    SURF_WINJ = 5,
-    SURF_GINJ = 6,
-};
-
-class State {
-friend class GPMaint;
+struct GPMaintState {
     std::optional<std::size_t> report_step;
     double error_integral;
     double initial_rate;
+
+    template<class Serializer>
+    void serializeOp(Serializer& serializer)
+    {
+        serializer(report_step);
+        serializer(error_integral);
+        serializer(initial_rate);
+    }
 };
 
 
+class GPMaint {
+public:
+    enum class FlowTarget {
+        RESV_PROD = 0,
+        RESV_OINJ = 1,
+        RESV_WINJ = 2,
+        RESV_GINJ = 3,
+        SURF_OINJ = 4,
+        SURF_WINJ = 5,
+        SURF_GINJ = 6,
+    };
+
+    using State = GPMaintState;
 
     GPMaint() = default;
     GPMaint(std::size_t report_step, const DeckRecord& record);

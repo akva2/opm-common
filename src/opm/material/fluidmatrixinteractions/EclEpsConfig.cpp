@@ -35,6 +35,21 @@
 
 namespace Opm {
 
+EclEpsConfig EclEpsConfig::serializationTestObject()
+{
+    EclEpsConfig result;
+    result.enableSatScaling_ = true;
+    result.enableThreePointKrSatScaling_ = true;
+    result.enablePcScaling_ = false;
+    result.enableLeverettScaling_ = true;
+    result.enableKrwScaling_ = true;
+    result.enableKrnScaling_ = false;
+    result.enableThreePointKrwScaling_ = false;
+    result.enableThreePointKrnScaling_ = true;
+
+    return result;
+}
+
 void EclEpsConfig::initFromState(const EclipseState& eclState,
                                  EclTwoPhaseSystemType twoPhaseSystemType,
                                 const std::string& prefix,
@@ -107,6 +122,18 @@ void EclEpsConfig::initFromState(const EclipseState& eclState,
             "and the JFUNC keyword applies to the water phase."
         };
     }
+}
+
+bool EclEpsConfig::operator==(const EclEpsConfig& rhs) const
+{
+    return this->enableSatScaling_ == rhs.enableSatScaling_ &&
+           this->enableThreePointKrSatScaling_ == rhs.enableThreePointKrSatScaling_ &&
+           this->enablePcScaling_ == rhs.enablePcScaling_ &&
+           this->enableLeverettScaling_ == rhs.enableLeverettScaling_ &&
+           this->enableKrwScaling_ == rhs.enableKrwScaling_ &&
+           this->enableKrnScaling_ == rhs.enableKrnScaling_ &&
+           this->enableThreePointKrwScaling_ == rhs.enableThreePointKrwScaling_ &&
+           this->enableThreePointKrnScaling_ == rhs.enableThreePointKrnScaling_;
 }
 
 } // namespace Opm

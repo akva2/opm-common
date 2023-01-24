@@ -58,11 +58,15 @@ public:
     using OilWaterParams = OilWaterParamsT;
     using GasWaterParams = GasWaterParamsT;
 
-    /*!
-     * \brief The default constructor.
-     */
-    EclTwoPhaseMaterialParams()
+    static EclTwoPhaseMaterialParams serializationTestObject()
     {
+        EclTwoPhaseMaterialParams result;
+        result.gasOilParams_ = std::make_shared<GasOilParams>(GasOilParams::serializationTestObject());
+        result.oilWaterParams_ = std::make_shared<OilWaterParams>(OilWaterParams::serializationTestObject());
+        result.gasWaterParams_ = std::make_shared<GasWaterParams>(GasWaterParams::serializationTestObject());
+        result.approach = EclTwoPhaseApproach::OilWater;
+
+        return result;
     }
 
     void setApproach(EclTwoPhaseApproach newApproach)
@@ -124,6 +128,36 @@ public:
      */
     void setGasWaterParams(std::shared_ptr<GasWaterParams> val)
     { gasWaterParams_ = val; }
+
+    bool operator==(const EclTwoPhaseMaterialParams& rhs) const
+    {
+        auto cmp_ptr = [](const auto& a, const auto& b)
+        {
+            if (!a && !b) {
+                return true;
+            }
+
+            if (a && b) {
+                return *a == *b;
+            }
+
+            return false;
+        };
+
+        return this->approach_ == rhs.approach_ &&
+               cmp_ptr(this->gasOilParams_, rhs.gasOilParams_) &&
+               cmp_ptr(this->oilWaterParams_, rhs.oilWaterParams_) &&
+               cmp_ptr(this->gasWaterParams_, rhs.gasOilParams_);
+    }
+
+    template<class Serializer>
+    void serializeOp(Serializer& serializer)
+    {
+        serializer(approach_);
+        serializer(gasOilParams_);
+        serializer(oilWaterParams_);
+        serializer(gasWaterParams_);
+    }
     
 private:
     EclTwoPhaseApproach approach_;

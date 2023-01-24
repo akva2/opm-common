@@ -55,6 +55,8 @@ enum class EclTwoPhaseSystemType {
 class EclEpsConfig
 {
 public:
+    static EclEpsConfig serializationTestObject();
+
     /*!
      * \brief Specify whether saturation scaling is enabled.
      */
@@ -176,6 +178,21 @@ public:
                        const std::string& prefix = "",
                        const std::string& suffix = "");
 #endif
+
+    bool operator==(const EclEpsConfig&) const;
+
+    template<class Serializer>
+    void serializeOp(Serializer& serializer)
+    {
+        serializer(enableSatScaling_);
+        serializer(enableThreePointKrSatScaling_);
+        serializer(enablePcScaling_);
+        serializer(enableLeverettScaling_);
+        serializer(enableKrwScaling_);
+        serializer(enableKrnScaling_);
+        serializer(enableThreePointKrwScaling_);
+        serializer(enableThreePointKrnScaling_);
+    }
 
 private:
     // enable scaling of the input saturations (i.e., rescale the x-Axis)

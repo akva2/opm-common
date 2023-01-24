@@ -44,9 +44,9 @@ namespace Opm {
 } // namespace Opm
 
 namespace Opm { namespace data {
-    class Wells;
+    class AquiferData;
     class GroupAndNetworkValues;
-    class InterRegFlowMap;
+    class Wells;
 }} // namespace Opm::data
 
 namespace Opm { namespace out {

@@ -42,6 +42,41 @@ template<class TraitsT>
 EclMaterialLawManager<TraitsT>::~EclMaterialLawManager() = default;
 
 template<class TraitsT>
+EclMaterialLawManager<TraitsT> EclMaterialLawManager<TraitsT>::
+serializationTestObject()
+{
+    EclMaterialLawManager<TraitsT> result;
+    result.enableEndPointScaling_ = true;
+    result.hysteresisConfig_ = std::make_shared<EclHysteresisConfig>(EclHysteresisConfig::serializationTestObject());
+    result.oilWaterEclEpsConfig_ = std::make_shared<EclEpsConfig>(EclEpsConfig::serializationTestObject());
+    result.unscaledEpsInfo_ = {EclEpsScalingPointsInfo<Scalar>::serializationTestObject()};
+    result.oilWaterScaledEpsInfoDrainage_ = {EclEpsScalingPointsInfo<Scalar>::serializationTestObject()};
+    result.gasWaterEclEpsConfig_ = std::make_shared<EclEpsConfig>(EclEpsConfig::serializationTestObject());
+    result.gasOilUnscaledPointsVector_ = {std::make_shared<EclEpsScalingPoints<Scalar>>(EclEpsScalingPoints<Scalar>::serializationTestObject())};
+    result.oilWaterUnscaledPointsVector_ = {std::make_shared<EclEpsScalingPoints<Scalar>>(EclEpsScalingPoints<Scalar>::serializationTestObject())};
+    result.gasWaterUnscaledPointsVector_ = {std::make_shared<EclEpsScalingPoints<Scalar>>(EclEpsScalingPoints<Scalar>::serializationTestObject())};
+    result.gasOilEffectiveParamVector_ = {std::make_shared<GasOilEffectiveTwoPhaseParams>(GasOilEffectiveTwoPhaseParams::serializationTestObjectLET())};
+    result.oilWaterEffectiveParamVector_ = {std::make_shared<OilWaterEffectiveTwoPhaseParams>(OilWaterEffectiveTwoPhaseParams::serializationTestObjectPL())};
+    result.gasWaterEffectiveParamVector_ = {std::make_shared<GasWaterEffectiveTwoPhaseParams>(GasWaterEffectiveTwoPhaseParams::serializationTestObjectPL())};
+    result.threePhaseApproach_ = EclMultiplexerApproach::Stone1;
+    result.twoPhaseApproach_ = EclTwoPhaseApproach::OilWater;
+    result.satnumRegionArray_ = {1, 2, 3};
+    result.krnumXArray_ = {4, 5};
+    result.krnumYArray_ = {6, 7, 8};
+    result.krnumZArray_ = {9};
+    result.imbnumRegionArray_ = {10, 11, 12, 13};
+    result.stoneEtas = {14.0, 15.0};
+    result.hasGas = true;
+    result.hasOil = false;
+    result.hasWater = true;
+    result.gasOilConfig = std::make_shared<EclEpsConfig>(EclEpsConfig::serializationTestObject());
+    result.oilWaterConfig = std::make_shared<EclEpsConfig>(EclEpsConfig::serializationTestObject());
+    result.gasWaterConfig = std::make_shared<EclEpsConfig>(EclEpsConfig::serializationTestObject());
+
+    return result;
+}
+
+template<class TraitsT>
 void EclMaterialLawManager<TraitsT>::
 initFromState(const EclipseState& eclState)
 {
@@ -432,6 +467,66 @@ readGlobalThreePhaseOptions_(const Runspec& runspec)
     }
 }
 
+
+template<class TraitsT>
+bool EclMaterialLawManager<TraitsT>::
+operator==(const EclMaterialLawManager<TraitsT>& rhs) const
+{
+    auto cmp_ptr = [](const auto& a, const auto& b)
+    {
+        if (!a && !b) {
+            return true;
+        }
+
+        if (a && b) {
+            return *a == *b;
+        }
+
+        return false;
+    };
+
+    auto cmp_ptr_vec = [cmp_ptr](const auto& a, const auto& b)
+    {
+        if (a.size() != b.size())
+            return false;
+
+        for (size_t i = 0; i < a.size(); ++i) {
+            if (!cmp_ptr(a[i], b[i])) {
+                return false;
+            }
+        }
+
+        return true;
+    };
+
+    return this->enableEndPointScaling_ == rhs.enableEndPointScaling_ &&
+        cmp_ptr(this->hysteresisConfig_, rhs.hysteresisConfig_) &&
+        cmp_ptr(this->oilWaterEclEpsConfig_, rhs.oilWaterEclEpsConfig_) &&
+        this->unscaledEpsInfo_ == rhs.unscaledEpsInfo_ &&
+        this->oilWaterScaledEpsInfoDrainage_ == rhs.oilWaterScaledEpsInfoDrainage_ &&
+        cmp_ptr(this->gasWaterEclEpsConfig_, rhs.gasWaterEclEpsConfig_) &&
+        cmp_ptr_vec(this->gasOilUnscaledPointsVector_, rhs.gasOilUnscaledPointsVector_) &&
+        cmp_ptr_vec(this->oilWaterUnscaledPointsVector_, rhs.oilWaterUnscaledPointsVector_) &&
+        cmp_ptr_vec(this->gasWaterUnscaledPointsVector_, rhs.gasWaterUnscaledPointsVector_) &&
+        cmp_ptr_vec(this->gasOilEffectiveParamVector_, rhs.gasOilEffectiveParamVector_) &&
+        cmp_ptr_vec(this->oilWaterEffectiveParamVector_, rhs.oilWaterEffectiveParamVector_) &&
+        cmp_ptr_vec(this->gasWaterEffectiveParamVector_, rhs.gasWaterEffectiveParamVector_) &&
+        this->threePhaseApproach_ == rhs.threePhaseApproach_ &&
+        this->twoPhaseApproach_ == rhs.twoPhaseApproach_ &&
+        //this->materialLawParams_ == rhs.materialLawParams_ &&
+        this->satnumRegionArray_ == rhs.satnumRegionArray_ &&
+        this->krnumXArray_ == rhs.krnumXArray_ &&
+        this->krnumYArray_ == rhs.krnumYArray_ &&
+        this->krnumZArray_ == rhs.krnumZArray_ &&
+        this->imbnumRegionArray_ == rhs.imbnumRegionArray_ &&
+        this->stoneEtas == rhs.stoneEtas &&
+        this->hasGas == rhs.hasGas &&
+        this->hasOil == rhs.hasOil &&
+        this->hasWater == rhs.hasWater &&
+        cmp_ptr(this->gasOilConfig, rhs.gasOilConfig) &&
+        cmp_ptr(this->oilWaterConfig, rhs.oilWaterConfig) &&
+        cmp_ptr(this->gasWaterConfig, rhs.gasWaterConfig);
+}
 
 template class EclMaterialLawManager<ThreePhaseMaterialTraits<double,0,1,2>>;
 template class EclMaterialLawManager<ThreePhaseMaterialTraits<float,0,1,2>>;

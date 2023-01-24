@@ -27,6 +27,7 @@
 #include <opm/common/utility/OpmInputError.hpp>
 #include <opm/common/utility/TimeService.hpp>
 
+#include <opm/output/data/Aquifer.hpp>
 #include <opm/output/eclipse/Inplace.hpp>
 #include <opm/input/eclipse/EclipseState/Aquifer/AquiferConfig.hpp>
 #include <opm/input/eclipse/EclipseState/Aquifer/AquiferCT.hpp>

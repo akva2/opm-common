@@ -54,6 +54,19 @@ public:
     {
     }
 
+    static PiecewiseLinearTwoPhaseMaterialParams serializationTestObject()
+    {
+        PiecewiseLinearTwoPhaseMaterialParams result;
+        result.SwPcwnSamples_ = {1.0, 2.0, 3.0};
+        result.SwKrwSamples_ = {4.0, 5.0};
+        result.SwKrnSamples_ = {6.0, 7.0, 8.0, 9.0};
+        result.pcwnSamples_ = {10.0};
+        result.krwSamples_ = {11.0, 12.0};
+        result.krnSamples_ = {13.0, 14.0, 15.0};
+
+        return result;
+    }
+
     /*!
      * \brief Calculate all dependent quantities once the independent
      *        quantities of the parameter object have been set.
@@ -174,6 +187,27 @@ public:
 
         std::copy(SwValues.begin(), SwValues.end(), SwKrnSamples_.begin());
         std::copy(values.begin(), values.end(), krnSamples_.begin());
+    }
+
+    bool operator==(const PiecewiseLinearTwoPhaseMaterialParams& rhs) const
+    {
+        return this->SwPcwnSamples_ == rhs.SwPcwnSamples_ &&
+               this->SwKrwSamples_ == rhs.SwKrwSamples_ &&
+               this->SwKrnSamples_ == rhs.SwKrnSamples_ &&
+               this->pcwnSamples_ == rhs.pcwnSamples_ &&
+               this->krwSamples_ == rhs.krwSamples_ &&
+               this->krnSamples_ == rhs.krnSamples_;
+    }
+
+    template<class Serializer>
+    void serializeOp(Serializer& serializer)
+    {
+        serializer(SwPcwnSamples_);
+        serializer(SwKrwSamples_);
+        serializer(SwKrnSamples_);
+        serializer(pcwnSamples_);
+        serializer(krwSamples_);
+        serializer(krnSamples_);
     }
 
 private:

@@ -27,7 +27,7 @@
 #include <string>
 
 namespace Opm {
-namespace TestUtil {
+namespace Serialization {
 namespace detail {
 
 //! \brief Abstract struct for packing which is (partially) specialized for specific types.
@@ -286,7 +286,7 @@ struct Packer {
     }
 };
 
-} // end namespace TestUtil
+} // end namespace Serialization
 } // end namespace Opm
 
 #endif // SIMPLE_PACKER_HPP

@@ -77,6 +77,8 @@ namespace Opm {
         /// explicitly.  If a null pointer is passed, every cell is active.
         EclipseGrid(const Deck& deck, const int * actnum = nullptr);
 
+        static EclipseGrid serializationTestObject();
+
         static bool hasGDFILE(const Deck& deck);
         static bool hasCylindricalKeywords(const Deck& deck);
         static bool hasCornerPointKeywords(const Deck&);

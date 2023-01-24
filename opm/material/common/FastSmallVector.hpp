@@ -141,6 +141,17 @@ public:
     size_t size() const
     { return size_; }
 
+    template<class Serializer>
+    void serializeOp(Serializer& serializer)
+    {
+        serializer(smallBuf_);
+        serializer(data_);
+        serializer(size_);
+        if (!serializer.isSerializing()) {
+            dataPtr_ = size_ <= N ? smallBuf_.data() : data_.data();
+        }
+    }
+
 private:
     void init_(size_t numElem)
     {

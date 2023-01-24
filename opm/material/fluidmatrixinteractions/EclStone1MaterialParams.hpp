@@ -51,11 +51,16 @@ public:
     using GasOilParams = typename GasOilLawT::Params;
     using OilWaterParams = typename OilWaterLawT::Params;
 
-    /*!
-     * \brief The default constructor.
-     */
-    EclStone1MaterialParams()
+    static EclStone1MaterialParams serializationTestObject()
     {
+        EclStone1MaterialParams result;
+        result.gasOilParams_ = std::make_shared<OilWaterParams>(OilWaterParams::serializationTestObject());
+        result.oilWaterParams_ = std::make_shared<OilWaterParams>(OilWaterParams::serializationTestObject());
+        result.Swl_ = 1.0;
+        result.eta_ = 2.0;
+        result.krocw_ = 3.0;
+
+        return result;
     }
 
     /*!
@@ -142,6 +147,38 @@ public:
      */
     Scalar eta() const
     { EnsureFinalized::check(); return eta_; }
+
+    bool operator==(const EclStone1MaterialParams& rhs) const
+    {
+        auto cmp_ptr = [](const auto& a, const auto& b)
+        {
+            if (!a && !b) {
+                return true;
+            }
+
+            if (a && b) {
+                return *a == *b;
+            }
+
+            return false;
+        };
+
+        return cmp_ptr(this->gasOilParams_, rhs.gasOilParams_) &&
+               cmp_ptr(this->oilWaterParams_, rhs.oilWaterParams_) &&
+               this->Swl == rhs.Swl &&
+               this->eta_ == rhs.eta_ &&
+               this->krocw_ == rhs.krocw_;
+    }
+
+    template<class Serializer>
+    void serializeOp(Serializer& serializer)
+    {
+        serializer(gasOilParams_);
+        serializer(oilWaterParams_);
+        serializer(Swl_);
+        serializer(eta_);
+        serializer(krocw_);
+    }
 
 private:
     std::shared_ptr<GasOilParams> gasOilParams_;
