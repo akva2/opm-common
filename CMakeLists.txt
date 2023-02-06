@@ -208,7 +208,7 @@ if (OPM_ENABLE_PYTHON)
       list(APPEND opm-common_LIBRARIES ${PYTHON_LIBRARY})
       set(PYTHON_INCLUDE_DIRS ${Python3_INCLUDE_DIRS})
     else()
-      find_package(Python3 REQUIRED COMPONENTS Interpreter)
+      find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
     endif()
     # Make sure we fail gracefully here without setuptool
     execute_process(COMMAND ${Python3_EXECUTABLE} -c "import setuptools"
