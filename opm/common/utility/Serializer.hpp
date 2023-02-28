@@ -36,7 +36,10 @@
 #include <vector>
 
 #if HAVE_DUNE_COMMON
+#include <dune/common/version.hh>
+#if DUNE_VERSION_LT(DUNE_COMMON, 2, 7)
 namespace Dune { template<typename,int> class FieldVector; }
+#endif
 #endif
 
 #if HAVE_DUNE_ISTL
@@ -500,10 +503,12 @@ protected:
     };
 
 #if HAVE_DUNE_COMMON
+#if DUNE_VERSION_LT(DUNE_COMMON, 2, 7)
     template<class T, int N>
     struct is_array<Dune::FieldVector<T,N>> {
         constexpr static bool value = true;
     };
+#endif
 #endif
 
     //! Detect existence of \c serializeOp member function
