@@ -17,6 +17,7 @@ set (opm-common_DEPS
 	"C99"
 	# valgrind client requests
 	"Valgrind"
+  "Tracy"
 )
 
 list(APPEND opm-common_DEPS
@@ -30,4 +31,6 @@ list(APPEND opm-common_DEPS
       "fmt 7.0.3"
       "QuadMath"
 )
+
+set(__extra_libs__ Tracy::TracyClient)
 find_package_deps(opm-common)

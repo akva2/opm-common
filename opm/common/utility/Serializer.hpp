@@ -21,6 +21,8 @@
 #ifndef SERIALIZER_HPP
 #define SERIALIZER_HPP
 
+#include <opm/common/TimingMacros.hpp>
+
 #include <algorithm>
 #include <functional>
 #include <map>
@@ -142,13 +144,19 @@ public:
     template<class... Args>
     void pack(const Args&... data)
     {
-        m_op = Operation::PACKSIZE;
-        m_packSize = 0;
-        variadic_call(data...);
+        {
+          OPM_TIMEBLOCK(serializePackSize);
+          m_op = Operation::PACKSIZE;
+          m_packSize = 0;
+          variadic_call(data...);
+        }
         m_position = 0;
         m_buffer.resize(m_packSize);
-        m_op = Operation::PACK;
-        variadic_call(data...);
+        {
+            OPM_TIMEBLOCK(serializeDataPack);
+            m_op = Operation::PACK;
+            variadic_call(data...);
+        }
     }
 
     //! \brief Call this to de-serialize data.

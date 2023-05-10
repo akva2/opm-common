@@ -58,7 +58,7 @@ macro (opm_compile opm)
           set(_public_libs ${${opm}_LIBRARIES})
           unset(_interface)
         endif()
-        target_link_libraries (${${opm}_TARGET} PUBLIC ${_public_libs}
+        target_link_libraries (${${opm}_TARGET} PUBLIC ${_public_libs} ${__extra_libs__}
           INTERFACE ${_interface_libs})
 
         if (STRIP_DEBUGGING_SYMBOLS)

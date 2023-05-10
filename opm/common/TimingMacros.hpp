@@ -19,6 +19,11 @@
 #ifndef OPM_TIMINGMACROS_HPP
 #define OPM_TIMINGMACROS_HPP
 
+#define TRACY_ENABLE 1
+#include "tracy/Tracy.hpp"
+#define OPM_TIMEBLOCK(blockname) ZoneNamedN(blockname, #blockname, true);
+#define OPM_TIMEBLOCK_LOCAL(blockname) ZoneNamedN(blockname, #blockname, true);
+
 // macros used to time blocks for example with tracy
 // time block of main part of codes which do not effect performance
 #ifndef OPM_TIMEBLOCK
