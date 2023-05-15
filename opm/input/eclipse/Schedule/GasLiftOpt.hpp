@@ -31,7 +31,7 @@ class GasLiftGroup {
 public:
     GasLiftGroup() = default;
 
-    GasLiftGroup(const std::string& name) :
+    explicit GasLiftGroup(const std::string& name) :
         m_name(name)
     {}
 
@@ -250,9 +250,9 @@ public:
     }
 
 private:
-    double m_increment = 0;
-    double m_min_eco_gradient;
-    double m_min_wait;
+    double m_increment = 0.0;
+    double m_min_eco_gradient = 0.0;
+    double m_min_wait = 0.0;
     bool   m_all_newton = true;
 
     std::map<std::string, GasLiftGroup> m_groups;

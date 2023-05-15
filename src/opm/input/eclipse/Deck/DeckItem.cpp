@@ -424,8 +424,8 @@ bool double_equal(double value1, double value2, double abs_eps , double rel_eps)
 
 
 bool DeckItem::equal(const DeckItem& other, bool cmp_default, bool cmp_numeric) const {
-    double rel_eps = 1e-4;
-    double abs_eps = 1e-4;
+    constexpr double rel_eps = 1e-4;
+    constexpr double abs_eps = 1e-4;
 
     if (this->type != other.type)
         return false;

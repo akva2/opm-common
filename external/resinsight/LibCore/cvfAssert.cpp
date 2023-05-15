@@ -45,11 +45,11 @@ namespace cvf {
 
 
 // User actions (interactive responses)
-static const int USERACTION_CONTINUE    = 0;
 #ifdef WIN32
+static const int USERACTION_CONTINUE    = 0;
 static const int USERACTION_DEBUGBREAK  = 1;
-#endif
 static const int USERACTION_ABORT       = 2;
+#endif
 
 
 
@@ -81,11 +81,10 @@ public:
 class AssertHandlerConsole : public AssertHandler
 {
 public:
-    virtual Assert::FailAction  handleAssert(const char* fileName, int lineNumber, const char* expr, const char* msg);
+    Assert::FailAction  handleAssert(const char* fileName, int lineNumber, const char* expr, const char* msg) override;
 
 private:
     static void reportToConsole(const char* fileName, int lineNumber, const char* expr, const char* msg);
-    static int  askForUserActionUsingConsole();
 #ifdef WIN32
     static void winCreateConsoleAndRedirectIO(bool redirectInput);
 #endif
@@ -151,58 +150,6 @@ void AssertHandlerConsole::reportToConsole(const char* fileName, int lineNumber,
 
 
 //--------------------------------------------------------------------------------------------------
-/// Ask for user action using console input
-/// 
-/// \return  One of the USERACTION_ constants
-//--------------------------------------------------------------------------------------------------
-int AssertHandlerConsole::askForUserActionUsingConsole()
-{
-#ifdef WIN32
-    // Make sure we have a console (applicable to Windows GUI applications)
-    // Also ensures that input is redirected
-    winCreateConsoleAndRedirectIO(true);
-#endif
-
-    // Let abort be the default choice
-#ifdef WIN32
-    std::cerr << "Choose action: [A]bort, [R]etry (debug) or [I]gnore: default [A]\n";
-#else
-    std::cerr << "Choose action: [A]bort or [I]gnore: default [A]\n";
-#endif
-
-    // Reset failstate, just in case.
-    std::cin.clear();
-
-    std::string line;
-    while (std::getline(std::cin, line))
-    {
-        int ch = 0;
-        if (!std::cin.fail() && line.length() == 1)
-        {
-            ch = tolower(line[0]);
-        }
-
-        if (ch == 'i')
-        {
-            return USERACTION_CONTINUE;
-        }
-#ifdef WIN32
-        else if (ch == 'r')
-        {
-            return USERACTION_DEBUGBREAK;
-        }
-#endif
-        else if (ch == 'a' || line.length() == 0)
-        {
-            return USERACTION_ABORT;
-        }
-    }
-
-    return USERACTION_ABORT;
-}
-
-
-//--------------------------------------------------------------------------------------------------
 /// Creates a console and redirects I/O from/to it (Windows only)
 /// 
 /// \param redirectInput  If true, input will also be redirected.
@@ -222,7 +169,7 @@ void AssertHandlerConsole::winCreateConsoleAndRedirectIO(bool redirectInput)
     bool redirStdErr = true;
     bool redirStdIn = redirectInput;
 
-    if (redirStdOut)
+    //if (redirStdOut)
     {
         HANDLE stdHandle = GetStdHandle(STD_OUTPUT_HANDLE);
         int fileDescriptor = _open_osfhandle((intptr_t)stdHandle, _O_TEXT);
@@ -232,7 +179,7 @@ void AssertHandlerConsole::winCreateConsoleAndRedirectIO(bool redirectInput)
         setvbuf(stdout, NULL, _IONBF, 0);
     }
 
-    if (redirStdErr)
+    //if (redirStdErr)
     {
         HANDLE stdHandle = GetStdHandle(STD_ERROR_HANDLE);
         int fileDescriptor = _open_osfhandle((intptr_t)stdHandle, _O_TEXT);
@@ -272,13 +219,10 @@ void AssertHandlerConsole::winCreateConsoleAndRedirectIO(bool redirectInput)
 class AssertHandlerWinDialog : public AssertHandler
 {
 public:
-    virtual Assert::FailAction  handleAssert(const char* fileName, int lineNumber, const char* expr, const char* msg);
+    Assert::FailAction  handleAssert(const char* fileName, int lineNumber, const char* expr, const char* msg) override;
 
 private:
     static int  handleUsingDialog(const char* fileName, int lineNumber, const char* expr, const char* msg);
-#ifdef _DEBUG
-    static int  handleUsingCrtDbgReport(const char* fileName, int lineNumber, const char* expr, const char* msg);
-#endif
 };
 #endif
 
@@ -375,40 +319,6 @@ int AssertHandlerWinDialog::handleUsingDialog(const char* fileName, int lineNumb
     else                            return USERACTION_ABORT;
 }
 #endif
-
-
-//--------------------------------------------------------------------------------------------------
-/// Wrapper function for the CRT _CrtDbgReport() function 
-/// 
-/// This function never returns if the user chooses 'Abort'
-/// Note that the underlying function is only available in debug builds
-//--------------------------------------------------------------------------------------------------
-#if defined WIN32 && defined _DEBUG
-int AssertHandlerWinDialog::handleUsingCrtDbgReport(const char* fileName, int lineNumber, const char* expr, const char* msg)
-{
-    // Create message combining expression and message
-    char szMsgBuf[2048];
-    szMsgBuf[0] = '\0';
-
-    if (expr)
-    {
-        System::strcat(szMsgBuf, sizeof(szMsgBuf), expr);
-    }
-
-    if (msg)
-    {
-        System::strcat(szMsgBuf, sizeof(szMsgBuf), "\n");
-        System::strcat(szMsgBuf, sizeof(szMsgBuf), msg);
-    }
-
-    int retVal = _CrtDbgReport(_CRT_ASSERT, fileName, lineNumber, NULL, szMsgBuf);
-
-    if      (retVal == 0)   return USERACTION_CONTINUE;
-    else if (retVal == 1)   return USERACTION_DEBUGBREAK;
-    else                    return USERACTION_ABORT;
-}
-#endif
-
 
 
 //==================================================================================================

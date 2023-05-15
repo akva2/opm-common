@@ -93,12 +93,12 @@ namespace Opm {
 	    void setRightPolicy(RangePolicy rp);
 
 	protected:
-            double xmin_;
-            double xmax_;
-            double xdelta_;
-	    std::vector<T> y_values_;
-	    RangePolicy left_;
-	    RangePolicy right_;
+            double xmin_{};
+            double xmax_{};
+            double xdelta_{};
+            std::vector<T> y_values_;
+            RangePolicy left_{Throw};
+            RangePolicy right_{Throw};
             template <typename U>
             friend std::ostream& operator<<(std::ostream& os, const UniformTableLinear<U>& t);
 	};

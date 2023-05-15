@@ -72,13 +72,13 @@ public:
     void                    assign(const std::vector<T>& data);
     void                    resize(size_t size);
     void                    clear();
-    inline virtual size_t   size() const;
+    inline size_t           size() const override;
 
     inline void             set(size_t index, const T& val);
     inline void             setAll(const T& val);
     inline void             setConsecutive(const T& startVal);
     inline const T&         get(size_t index) const;
-    inline virtual T        val(size_t index) const;
+    inline T                val(size_t index) const override;
 
     inline const T* ptr() const;
     inline T*       ptr();
@@ -133,9 +133,9 @@ private:
 
 // Only works for simple types that don't require copy operators.
 typedef Array<int>              IntArray;
-typedef Array<uint>				UIntArray;
-typedef Array<ushort>			UShortArray;
-typedef Array<ubyte>			UByteArray;
+typedef Array<uint>		UIntArray;
+typedef Array<ushort>		UShortArray;
+typedef Array<ubyte>		UByteArray;
 typedef Array<float>            FloatArray;
 typedef Array<double>           DoubleArray;
 typedef Array<Vec2f>            Vec2fArray;

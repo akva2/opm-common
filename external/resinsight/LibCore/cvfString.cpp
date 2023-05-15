@@ -82,8 +82,8 @@ String::String(const std::string& str)
 /// Create a string from the given std::wstring
 //--------------------------------------------------------------------------------------------------
 String::String(const std::wstring& str)
+    : m_string(str)
 {
-    m_string = str;
 }
 
 
@@ -91,6 +91,7 @@ String::String(const std::wstring& str)
 /// Create a string from the given String
 //--------------------------------------------------------------------------------------------------
 String::String(const String& str)
+    : m_string(str.m_string)
 {
     m_string = str.m_string;
 }
