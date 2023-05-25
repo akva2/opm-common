@@ -133,7 +133,7 @@ void ensurePvtApiBrine(const BrinePvt& brinePvt)
         Evaluation pressure = 1e5;
         Evaluation saltconcentration = 0.0;
         Evaluation rs = 0.0;
-        Evaluation tmp;
+        [[maybe_unused]] Evaluation tmp;
 
         ////
         // Water PVT API
@@ -148,9 +148,6 @@ void ensurePvtApiBrine(const BrinePvt& brinePvt)
                                                     pressure,
                                                     rs,
                                                     saltconcentration);
-
-        // prevent GCC from producing a "variable assigned but unused" warning
-        tmp = 2.0*tmp;
     }
 }
 
@@ -165,7 +162,7 @@ void ensurePvtApiGas(const Co2Pvt& co2Pvt)
         Evaluation Rvw = 0.0;
         Evaluation So = 0.5;
         Evaluation maxSo = 1.0;
-        Evaluation tmp;
+        [[maybe_unused]] Evaluation tmp;
 
         /////
         // co2 PVT API
@@ -197,9 +194,6 @@ void ensurePvtApiGas(const Co2Pvt& co2Pvt)
                                                     pressure,
                                                     So,
                                                     maxSo);
-
-        // prevent GCC from producing a "variable assigned but unused" warning
-        tmp = 2.0*tmp;
     }
 }
 
@@ -213,7 +207,7 @@ void ensurePvtApiBrineOil(const BrinePvt& brinePvt)
         Evaluation Rs = 0.0;
         Evaluation So = 0.5;
         Evaluation maxSo = 1.0;
-        Evaluation tmp;
+        [[maybe_unused]] Evaluation tmp;
 
         /////
         // brine PVT API
