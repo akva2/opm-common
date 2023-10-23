@@ -338,6 +338,11 @@ namespace Opm {
         }
     }
 
+    void UDQConfig::add_table(const std::string& name, UDT udt)
+    {
+        m_tables.emplace(name, std::move(udt));
+    }
+
     bool UDQConfig::clear_pending_assignments()
     {
         const auto update = ! this->pending_assignments_.empty();
