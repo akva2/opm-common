@@ -25,6 +25,7 @@
 #include <opm/input/eclipse/EclipseState/Tables/Regdims.hpp>
 #include <opm/input/eclipse/EclipseState/EndpointScaling.hpp>
 #include <opm/input/eclipse/Schedule/UDQ/UDQParams.hpp>
+#include <opm/input/eclipse/Schedule/UDQ/UDTParams.hpp>
 #include <opm/input/eclipse/Schedule/Action/Actdims.hpp>
 
 #include <optional>
@@ -455,6 +456,7 @@ public:
 
     std::time_t start_time() const noexcept;
     const UDQParams& udqParams() const noexcept;
+    const UDTParams& udtParams() const noexcept;
     const Phases& phases() const noexcept;
     const Tabdims&  tabdims() const noexcept;
     const Regdims&  regdims() const noexcept;
@@ -490,6 +492,7 @@ public:
         serializer(netwrkdims);
         serializer(aquiferdims);
         serializer(udq_params);
+        serializer(udt_params);
         serializer(hystpar);
         serializer(m_actdims);
         serializer(m_sfuncctrl);
@@ -511,6 +514,7 @@ private:
     NetworkDims netwrkdims;
     AquiferDimensions aquiferdims;
     UDQParams udq_params;
+    UDTParams udt_params;
     EclHysterConfig hystpar;
     Actdims m_actdims;
     SatFuncControls m_sfuncctrl;

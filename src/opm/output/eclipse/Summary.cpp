@@ -4545,7 +4545,7 @@ configureUDQ(const EclipseState& es,
             continue;
         }
 
-        if (node.is_user_defined()) {
+        if (node.is_user_defined() || node.keyword.substr(0,3) == "TU_") {
             continue;
         }
 

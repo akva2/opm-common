@@ -20,6 +20,8 @@
 #ifndef PAVE_HPP
 #define PAVE_HPP
 
+#include <ostream>
+
 namespace Opm {
     class DeckRecord;
 } // Namespace Opm
@@ -78,6 +80,13 @@ public:
 
     bool operator==(const PAvg& other) const;
     bool operator!=(const PAvg& other) const;
+
+    void print(std::ostream& out) const
+    {
+        out << m_inner_weight << " " << m_conn_weight
+            << " " << static_cast<int>(m_depth_correction)
+            << " " << m_open_connections;
+    }
 
 private:
     double m_inner_weight;

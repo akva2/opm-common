@@ -21,6 +21,7 @@ along with OPM.  If not, see <http://www.gnu.org/licenses/>.
 #define OPM_WINJMULT_HPP
 
 #include <limits>
+#include <ostream>
 
 
 namespace Opm {
@@ -49,6 +50,11 @@ struct InjMult {
     }
 
     bool operator==(const InjMult& rhs) const;
+
+    void print(std::ostream& out) const
+    {
+        out << fracture_pressure << " " << multiplier_gradient;
+    }
 
     static InjMult serializationTestObject();
     static std::string InjMultToString(const InjMult&);

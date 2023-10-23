@@ -618,6 +618,7 @@ Runspec::Runspec( const Deck& deck )
     , netwrkdims( deck )
     , aquiferdims( deck )
     , udq_params( deck )
+    , udt_params( deck )
     , hystpar( deck )
     , m_actdims( deck )
     , m_sfuncctrl( deck )
@@ -804,6 +805,11 @@ int Runspec::eclPhaseMask( ) const noexcept {
 
 const UDQParams& Runspec::udqParams() const noexcept {
     return this->udq_params;
+}
+
+const UDTParams& Runspec::udtParams() const noexcept
+{
+    return this->udt_params;
 }
 
 bool Runspec::rst_cmp(const Runspec& full_spec, const Runspec& rst_spec) {

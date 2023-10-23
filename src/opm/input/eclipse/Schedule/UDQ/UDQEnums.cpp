@@ -76,6 +76,7 @@ namespace {
             || (t == Opm::UDQVarType::NONE)
             || (t == Opm::UDQVarType::SCALAR)
             || (t == Opm::UDQVarType::FIELD_VAR)
+            || (t == Opm::UDQVarType::TABLE_LOOKUP)
             ;
     }
 
@@ -244,6 +245,7 @@ UDQVarType targetType(const std::string& keyword)
     case 'B': return UDQVarType::BLOCK_VAR;
     case 'W': return UDQVarType::WELL_VAR;
     case 'G': return UDQVarType::GROUP_VAR;
+    case 'T': return UDQVarType::TABLE_LOOKUP;
 
     default:
         if (const auto double_value = try_parse_double(keyword);
@@ -409,8 +411,16 @@ UDQTokenType tokenType(const std::string& token)
         return UDQTokenType::open_paren;
     }
 
+    if (token == "[") {
+        return UDQTokenType::table_lookup_start;
+    }
+
     if (token == ")") {
         return UDQTokenType::close_paren;
+    }
+
+    if (token == "]") {
+        return UDQTokenType::table_lookup_end;
     }
 
     if (const auto number = try_parse_double(token);

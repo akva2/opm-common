@@ -26,6 +26,7 @@
 #include <map>
 #include <memory>
 #include <optional>
+#include <ostream>
 #include <string>
 #include <utility>
 #include <vector>
@@ -107,6 +108,12 @@ public:
         double guide_rate;
         GuideRateTarget guide_phase;
         double scale_factor;
+
+        void print(std::ostream& out) const
+        {
+            out << available << " " << guide_rate << " "
+                << static_cast<int>(guide_phase) << " " << scale_factor;
+        }
 
         static WellGuideRate serializationTestObject()
         {
@@ -556,6 +563,42 @@ public:
         serializer(inj_mult_mode);
         serializer(well_inj_mult);
         serializer(m_filter_concentration);
+    }
+
+    void print(std::ostream& out) const
+    {
+        out << "\nWell for " << wname
+            << "\n\t\tgroup_name" << group_name
+            << "\n\t\tinit_step " << init_step
+            << "\n\t\tinsert_index " << insert_index
+            << "\n\t\theadI " << headI
+            << "\n\t\theadJ " << headJ
+            << "\n\t\tref_depth" << ref_depth.value_or(-1.0)
+            << "\n\t\twpave_ref_depth " << wpave_ref_depth.value_or(-1.0)
+            << "\n\t\tdrainage_radius " << drainage_radius
+            << "\n\t\tallow_cross_flow " << allow_cross_flow
+            << "\n\t\tautomatic_shutin " << automatic_shutin
+            << "\n\t\tpvt_table " << pvt_table
+            << "\n\t\tgas_inflow " << static_cast<int>(gas_inflow)
+            << "\n\t\tude_undefined " << udq_undefined
+            << "\n\t\twtype ";
+        wtype.print(out);
+        out << "\n\t\tguide_rate ";
+        guide_rate.print(out);
+        out << "\n\t\t" << efficiency_factor
+            << "\n\t\tsolvent_fraction " << solvent_fraction
+            << "\n\t\thas_produced " << has_produced
+            << "\n\t\thas_injected " << has_injected
+            << "\n\t\tprediction_mode " << prediction_mode
+            << "\n\t\tstatus " << status
+            << "\n\t\tm_pavg ";
+        m_pavg.print(out);
+        out << "\n\t\twell_temperature " << well_temperature
+            << "\n\t\tinj_mult_mode " << static_cast<int>(inj_mult_mode)
+            << "\n\t\twell_inj_mult ";
+        if (well_inj_mult.has_value())
+            well_inj_mult->print(out);
+        out << "\n\t\tm_filter_concentration " << m_filter_concentration;
     }
 
 private:

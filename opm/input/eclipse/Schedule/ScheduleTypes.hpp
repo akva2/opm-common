@@ -21,6 +21,7 @@
 #define OPM_SCHEDULE_TYPES_HPP
 
 #include <string>
+#include <ostream>
 #include <opm/input/eclipse/EclipseState/Phase.hpp>
 
 namespace Opm {
@@ -67,6 +68,11 @@ public:
         serializer(m_producer);
         serializer(m_injection_phase);
         serializer(m_welspecs_phase);
+    }
+
+    void print(std::ostream& out) const
+    {
+        out << m_producer << " " << m_injection_phase << " " << m_welspecs_phase;
     }
 
 private:
