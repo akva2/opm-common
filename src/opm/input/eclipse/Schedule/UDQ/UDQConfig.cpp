@@ -633,7 +633,7 @@ namespace Opm {
                          UDQState&             udq_state) const
     {
         UDQContext context {
-            this->function_table(), wm, std::move(create_segment_matcher), st, udq_state
+            this->function_table(), wm, m_tables, std::move(create_segment_matcher), st, udq_state
         };
         this->eval_assign(report_step, sched, context);
         this->eval_define(report_step, udq_state, context);
@@ -647,7 +647,7 @@ namespace Opm {
                                 UDQState&             udq_state) const
     {
         UDQContext context {
-            this->function_table(), wm, std::move(create_segment_matcher), st, udq_state
+            this->function_table(), wm, m_tables, std::move(create_segment_matcher), st, udq_state
         };
         this->eval_assign(report_step, sched, context);
     }
