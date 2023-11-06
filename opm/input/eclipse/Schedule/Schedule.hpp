@@ -558,6 +558,14 @@ namespace Opm
                 schedule_.exit_status = code;
             }
 
+            bool updateWellStatus(const std::string& well,
+                                  WellStatus status,
+                                  std::optional<KeywordLocation> location) override
+            {
+                return schedule_.updateWellStatus(well, currentStep,
+                                                  status, location);
+            }
+
         protected:
             bool isWList(const std::string& pattern) const override
             {
@@ -687,11 +695,6 @@ namespace Opm
         // Normal keyword handlers -- in KeywordHandlers.cpp
 
         void handleGRUPTREE  (HandlerContext&);
-        void handleWCONHIST  (HandlerContext&);
-        void handleWCONINJE  (HandlerContext&);
-        void handleWCONINJH  (HandlerContext&);
-        void handleWCONPROD  (HandlerContext&);
-        void handleWELOPEN   (HandlerContext&);
         void handleWELSPECS  (HandlerContext&);
     };
 }

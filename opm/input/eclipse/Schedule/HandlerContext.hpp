@@ -24,6 +24,7 @@
 #include <cstddef>
 #include <set>
 #include <string>
+#include <optional>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -40,6 +41,7 @@ class ScheduleGrid;
 class ScheduleState;
 struct SimulatorUpdate;
 class UnitSystem;
+enum class WellStatus;
 
 struct HandlerContext {
     struct PairComp
@@ -151,6 +153,11 @@ struct HandlerContext {
 
     //! \brief Set an exit code.
     virtual void setExitCode(int code) = 0;
+
+    //! \brief Update status for a well.
+    virtual bool updateWellStatus(const std::string& well,
+                                  WellStatus status,
+                                  std::optional<KeywordLocation> = {}) = 0;
 
 protected:
     //! \brief Checks if pattern is a WList.

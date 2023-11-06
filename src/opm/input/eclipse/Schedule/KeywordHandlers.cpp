@@ -1310,6 +1310,307 @@ void handleVFPPROD(HandlerContext& handlerContext)
     handlerContext.state().vfpprod.update( std::move(table) );
 }
 
+void handleWCONHIST(HandlerContext& handlerContext)
+{
+    for (const auto& record : handlerContext.keyword) {
+        const std::string& wellNamePattern = record.getItem("WELL").getTrimmedString(0);
+        const auto well_names = handlerContext.wellNames(wellNamePattern, false);
+
+        const Well::Status status = WellStatusFromString(record.getItem("STATUS").getTrimmedString(0));
+
+        for (const auto& well_name : well_names) {
+            handlerContext.updateWellStatus(well_name , status,
+                                            handlerContext.keyword.location());
+
+            std::optional<VFPProdTable::ALQ_TYPE> alq_type;
+            auto well2 = handlerContext.state().wells.get( well_name );
+            const bool switching_from_injector = !well2.isProducer();
+            auto properties = std::make_shared<Well::WellProductionProperties>(well2.getProductionProperties());
+            bool update_well = false;
+
+            auto table_nr = record.getItem("VFP_TABLE").get< int >(0);
+            if (record.getItem("VFP_TABLE").defaultApplied(0)) {
+                table_nr = properties->VFPTableNumber;
+            }
+
+            if (table_nr != 0) {
+                const auto& vfpprod = handlerContext.state().vfpprod;
+                if (vfpprod.has(table_nr)) {
+                    alq_type = handlerContext.state().vfpprod(table_nr).getALQType();
+                } else {
+                    std::string reason = fmt::format("Problem with well:{} VFP table: {} not defined", well_name, table_nr);
+                    throw OpmInputError(reason, handlerContext.keyword.location());
+                }
+            }
+            properties->handleWCONHIST(alq_type, handlerContext.unitSystem(), record);
+
+            if (switching_from_injector) {
+                properties->resetDefaultBHPLimit();
+
+                auto inj_props = std::make_shared<Well::WellInjectionProperties>(well2.getInjectionProperties());
+                inj_props->resetBHPLimit();
+                well2.updateInjection(inj_props);
+                update_well = true;
+                handlerContext.state().wellgroup_events().addEvent(well2.name(),
+                                                                   ScheduleEvents::WELL_SWITCHED_INJECTOR_PRODUCER);
+            }
+
+            if (well2.updateProduction(properties)) {
+                update_well = true;
+            }
+
+            if (well2.updatePrediction(false)) {
+                update_well = true;
+            }
+
+            if (well2.updateHasProduced()) {
+                update_well = true;
+            }
+
+            if (update_well) {
+                handlerContext.state().events().addEvent( ScheduleEvents::PRODUCTION_UPDATE );
+                handlerContext.state().wellgroup_events().addEvent( well2.name(), ScheduleEvents::PRODUCTION_UPDATE);
+                handlerContext.state().wells.update( well2 );
+            }
+
+            if (!well2.getAllowCrossFlow()) {
+                // The numerical content of the rate UDAValues is accessed unconditionally;
+                // since this is in history mode use of UDA values is not allowed anyway.
+                const auto& oil_rate = properties->OilRate;
+                const auto& water_rate = properties->WaterRate;
+                const auto& gas_rate = properties->GasRate;
+                if (oil_rate.zero() && water_rate.zero() && gas_rate.zero()) {
+                    const auto elapsed = handlerContext.state().start_time() - handlerContext.state(0).start_time();
+                    const auto seconds = std::chrono::duration_cast<std::chrono::seconds>(elapsed).count();
+                    std::string msg =
+                        "Well " + well2.name() + " is a history matched well with zero rate where crossflow is banned. " +
+                        "This well will be closed at " + std::to_string(seconds / (60*60*24)) + " days";
+                    OpmLog::note(msg);
+                    handlerContext.updateWellStatus(well_name, Well::Status::SHUT);
+                }
+            }
+        }
+    }
+}
+
+void handleWCONINJE(HandlerContext& handlerContext)
+{
+    for (const auto& record : handlerContext.keyword) {
+        const std::string& wellNamePattern = record.getItem("WELL").getTrimmedString(0);
+        const auto well_names = handlerContext.wellNames(wellNamePattern);
+
+        const Well::Status status = WellStatusFromString(record.getItem("STATUS").getTrimmedString(0));
+
+        for (const auto& well_name : well_names) {
+            handlerContext.updateWellStatus(well_name, status, handlerContext.keyword.location());
+
+            bool update_well = false;
+            auto well2 = handlerContext.state().wells.get( well_name );
+
+            auto injection = std::make_shared<Well::WellInjectionProperties>(well2.getInjectionProperties());
+            auto previousInjectorType = injection->injectorType;
+            injection->handleWCONINJE(record, well2.isAvailableForGroupControl(), well_name);
+            const bool switching_from_producer = well2.isProducer();
+            if (well2.updateInjection(injection)) {
+                update_well = true;
+            }
+
+            if (switching_from_producer) {
+                handlerContext.state().wellgroup_events().addEvent(well2.name(),
+                                                                   ScheduleEvents::WELL_SWITCHED_INJECTOR_PRODUCER);
+            }
+
+            if (well2.updatePrediction(true)) {
+                update_well = true;
+            }
+
+            if (well2.updateHasInjected()) {
+                update_well = true;
+            }
+
+            if (update_well) {
+                handlerContext.state().events().addEvent(ScheduleEvents::INJECTION_UPDATE);
+                handlerContext.state().wellgroup_events().addEvent(well_name,
+                                                                   ScheduleEvents::INJECTION_UPDATE);
+                if (previousInjectorType != injection->injectorType) {
+                    handlerContext.state().wellgroup_events().addEvent(well_name,
+                                                                       ScheduleEvents::INJECTION_TYPE_CHANGED);
+                }
+                handlerContext.state().wells.update(std::move(well2));
+            }
+
+            // if the well has zero surface rate limit or reservior rate limit, while does not allow crossflow,
+            // it should be turned off.
+            if ( ! well2.getAllowCrossFlow() ) {
+                const auto elapsed = handlerContext.state().start_time() - handlerContext.state(0).start_time();
+                const auto seconds = std::chrono::duration_cast<std::chrono::seconds>(elapsed).count();
+                std::string msg =
+                    "Well " + well_name + " is an injector with zero rate where crossflow is banned. " +
+                    "This well will be closed at " + std::to_string (seconds / (60*60*24) ) + " days";
+
+                if (injection->surfaceInjectionRate.is<double>()) {
+                    if (injection->hasInjectionControl(Well::InjectorCMode::RATE) && injection->surfaceInjectionRate.zero()) {
+                        OpmLog::note(msg);
+                        handlerContext.updateWellStatus(well_name, Well::Status::SHUT);
+                    }
+                }
+
+                if (injection->reservoirInjectionRate.is<double>()) {
+                    if (injection->hasInjectionControl(Well::InjectorCMode::RESV) && injection->reservoirInjectionRate.zero()) {
+                        OpmLog::note(msg);
+                        handlerContext.updateWellStatus(well_name, Well::Status::SHUT);
+                    }
+                }
+            }
+
+            if (handlerContext.state().wells.get( well_name ).getStatus() == Well::Status::OPEN) {
+                handlerContext.state().wellgroup_events().addEvent(well_name,
+                                                                   ScheduleEvents::REQUEST_OPEN_WELL);
+            }
+
+            auto udq_active = handlerContext.state().udq_active.get();
+            const auto& udq = handlerContext.state(handlerContext.currentStep).udq.get();
+            if (injection->updateUDQActive(udq, udq_active)) {
+                handlerContext.state().udq_active.update(std::move(udq_active));
+            }
+
+            handlerContext.affected_well(well_name);
+        }
+    }
+}
+
+void handleWCONINJH(HandlerContext& handlerContext)
+{
+    for (const auto& record : handlerContext.keyword) {
+        const std::string& wellNamePattern = record.getItem("WELL").getTrimmedString(0);
+        const auto well_names = handlerContext.wellNames(wellNamePattern, false);
+        const Well::Status status = WellStatusFromString( record.getItem("STATUS").getTrimmedString(0));
+
+        for (const auto& well_name : well_names) {
+            handlerContext.updateWellStatus(well_name, status, handlerContext.keyword.location());
+            bool update_well = false;
+            auto well2 = handlerContext.state().wells.get( well_name );
+            auto injection = std::make_shared<Well::WellInjectionProperties>(well2.getInjectionProperties());
+            auto previousInjectorType = injection->injectorType;
+            injection->handleWCONINJH(record, well2.isProducer(), well_name, handlerContext.keyword.location());
+            const bool switching_from_producer = well2.isProducer();
+
+            if (well2.updateInjection(injection)) {
+                update_well = true;
+            }
+
+            if (switching_from_producer) {
+                handlerContext.state().wellgroup_events().addEvent(well2.name(),
+                                                                   ScheduleEvents::WELL_SWITCHED_INJECTOR_PRODUCER);
+            }
+
+            if (well2.updatePrediction(false)) {
+                update_well = true;
+            }
+
+            if (well2.updateHasInjected()) {
+                update_well = true;
+            }
+
+            if (update_well) {
+                handlerContext.state().events().addEvent( ScheduleEvents::INJECTION_UPDATE );
+                handlerContext.state().wellgroup_events().addEvent( well_name, ScheduleEvents::INJECTION_UPDATE);
+                if (previousInjectorType != injection->injectorType) {
+                    handlerContext.state().wellgroup_events().addEvent(well_name,
+                                                                       ScheduleEvents::INJECTION_TYPE_CHANGED);
+                }
+                handlerContext.state().wells.update( std::move(well2) );
+            }
+
+            if ( ! well2.getAllowCrossFlow() && (injection->surfaceInjectionRate.zero())) {
+                const auto elapsed = handlerContext.state().start_time() - handlerContext.state(0).start_time();
+                const auto seconds = std::chrono::duration_cast<std::chrono::seconds>(elapsed).count();
+                std::string msg =
+                    "Well " + well_name + " is an injector with zero rate where crossflow is banned. " +
+                    "This well will be closed at " + std::to_string (seconds / (60*60*24) ) + " days";
+                OpmLog::note(msg);
+                handlerContext.updateWellStatus(well_name, Well::Status::SHUT);
+            }
+        }
+    }
+}
+
+void handleWCONPROD(HandlerContext& handlerContext)
+{
+    for (const auto& record : handlerContext.keyword) {
+        const std::string& wellNamePattern = record.getItem("WELL").getTrimmedString(0);
+        const auto well_names = handlerContext.wellNames(wellNamePattern, false);
+
+        const Well::Status status = WellStatusFromString(record.getItem("STATUS").getTrimmedString(0));
+
+        for (const auto& well_name : well_names) {
+            bool update_well = handlerContext.updateWellStatus(well_name, status, handlerContext.keyword.location());
+            std::optional<VFPProdTable::ALQ_TYPE> alq_type;
+            auto well2 = handlerContext.state().wells.get( well_name );
+            const bool switching_from_injector = !well2.isProducer();
+            auto properties = std::make_shared<Well::WellProductionProperties>(well2.getProductionProperties());
+            properties->clearControls();
+            if (well2.isAvailableForGroupControl()) {
+                properties->addProductionControl(Well::ProducerCMode::GRUP);
+            }
+
+            auto table_nr = record.getItem("VFP_TABLE").get< int >(0);
+            if (record.getItem("VFP_TABLE").defaultApplied(0)) {
+                table_nr = properties->VFPTableNumber;
+            }
+
+            if (table_nr != 0) {
+                const auto& vfpprod = handlerContext.state().vfpprod;
+                if (vfpprod.has(table_nr)) {
+                    alq_type = handlerContext.state().vfpprod(table_nr).getALQType();
+                } else {
+                    std::string reason = fmt::format("Problem with well:{} VFP table: {} not defined", well_name, table_nr);
+                    throw OpmInputError(reason, handlerContext.keyword.location());
+                }
+            }
+            properties->handleWCONPROD(alq_type, handlerContext.unitSystem(), well_name, record);
+
+            if (switching_from_injector) {
+                properties->resetDefaultBHPLimit();
+                update_well = true;
+                handlerContext.state().wellgroup_events().addEvent(well2.name(),
+                                                                   ScheduleEvents::WELL_SWITCHED_INJECTOR_PRODUCER);
+            }
+
+            if (well2.updateProduction(properties)) {
+                update_well = true;
+            }
+
+            if (well2.updatePrediction(true)) {
+                update_well = true;
+            }
+
+            if (well2.updateHasProduced()) {
+                update_well = true;
+            }
+
+            if (well2.getStatus() == WellStatus::OPEN) {
+                handlerContext.state().wellgroup_events().addEvent(well2.name(),
+                                                                   ScheduleEvents::REQUEST_OPEN_WELL);
+            }
+
+            if (update_well) {
+                handlerContext.state().events().addEvent( ScheduleEvents::PRODUCTION_UPDATE );
+                handlerContext.state().wellgroup_events().addEvent( well2.name(), ScheduleEvents::PRODUCTION_UPDATE);
+                handlerContext.state().wells.update( std::move(well2) );
+            }
+
+            auto udq_active = handlerContext.state().udq_active.get();
+            const auto& udq = handlerContext.state(handlerContext.currentStep).udq.get();
+            if (properties->updateUDQActive(udq, udq_active)) {
+                handlerContext.state().udq_active.update(std::move(udq_active));
+            }
+
+            handlerContext.affected_well(well_name);
+        }
+    }
+}
+
 void handleWDFAC(HandlerContext& handlerContext)
 {
     for (const auto& record : handlerContext.keyword) {
@@ -1459,6 +1760,90 @@ void handleWELTARG(HandlerContext& handlerContext)
             }
 
             handlerContext.affected_well(well_name);
+        }
+    }
+}
+
+void handleWELOPEN(HandlerContext& handlerContext)
+{
+    const auto& keyword = handlerContext.keyword;
+    const auto& currentStep = handlerContext.currentStep;
+
+    auto conn_defaulted = []( const DeckRecord& rec ) {
+        auto defaulted = []( const DeckItem& item ) {
+            return item.defaultApplied( 0 );
+        };
+
+        return std::all_of( rec.begin() + 2, rec.end(), defaulted );
+    };
+
+    constexpr auto open = Well::Status::OPEN;
+
+    for (const auto& record : keyword) {
+        const auto& wellNamePattern = record.getItem( "WELL" ).getTrimmedString(0);
+        const auto& status_str = record.getItem( "STATUS" ).getTrimmedString( 0 );
+        const auto well_names = handlerContext.wellNames(wellNamePattern);
+
+        /* if all records are defaulted or just the status is set, only
+         * well status is updated
+         */
+        if (conn_defaulted(record)) {
+            const auto new_well_status = WellStatusFromString(status_str);
+            for (const auto& wname : well_names) {
+                const auto did_update_well_status =
+                    handlerContext.updateWellStatus(wname, new_well_status);
+
+                handlerContext.affected_well(wname);
+
+                if (did_update_well_status) {
+                    handlerContext.record_well_structure_change();
+                }
+
+                if (did_update_well_status && (new_well_status == open)) {
+                    // Record possible well injection/production status change
+                    auto well2 = handlerContext.state(currentStep).wells.get(wname);
+
+                    const auto did_flow_update =
+                        (well2.isProducer() && well2.updateHasProduced())
+                        ||
+                        (well2.isInjector() && well2.updateHasInjected());
+
+                    if (did_flow_update) {
+                        handlerContext.state(currentStep).wells.update(std::move(well2));
+                    }
+                }
+
+                if (new_well_status == open) {
+                    handlerContext.state().wellgroup_events().addEvent(wname,
+                                                                       ScheduleEvents::REQUEST_OPEN_WELL);
+                }
+            }
+            continue;
+        }
+
+        /*
+          Some of the connection information has been entered, in this case
+          we *only* update the status of the connections, and not the well
+          itself. Unless all connections are shut - then the well is also
+          shut.
+         */
+        for (const auto& wname : well_names) {
+            {
+                auto well = handlerContext.state(currentStep).wells.get(wname);
+                handlerContext.state(currentStep).wells.update(std::move(well));
+            }
+
+            const auto connection_status = Connection::StateFromString( status_str );
+            {
+                auto well = handlerContext.state(currentStep).wells.get(wname);
+                well.handleWELOPENConnections(record, connection_status);
+                handlerContext.state(currentStep).wells.update(std::move(well));
+            }
+
+            handlerContext.affected_well(wname);
+            handlerContext.record_well_structure_change();
+
+            handlerContext.state().events().addEvent(ScheduleEvents::COMPLETION_CHANGE);
         }
     }
 }
@@ -2457,350 +2842,6 @@ void handleWWPAVE(HandlerContext& handlerContext)
         }
     }
 
-    void Schedule::handleWCONHIST(HandlerContext& handlerContext) {
-        for (const auto& record : handlerContext.keyword) {
-            const std::string& wellNamePattern = record.getItem("WELL").getTrimmedString(0);
-            const auto well_names = this->wellNames(wellNamePattern, handlerContext);
-
-            const Well::Status status = WellStatusFromString(record.getItem("STATUS").getTrimmedString(0));
-
-            for (const auto& well_name : well_names) {
-                this->updateWellStatus( well_name , handlerContext.currentStep , status, handlerContext.keyword.location() );
-
-                std::optional<VFPProdTable::ALQ_TYPE> alq_type;
-                auto well2 = this->snapshots.back().wells.get( well_name );
-                const bool switching_from_injector = !well2.isProducer();
-                auto properties = std::make_shared<Well::WellProductionProperties>(well2.getProductionProperties());
-                bool update_well = false;
-
-                auto table_nr = record.getItem("VFP_TABLE").get< int >(0);
-                if(record.getItem("VFP_TABLE").defaultApplied(0))
-                    table_nr = properties->VFPTableNumber;
-
-                if (table_nr != 0) {
-                    const auto& vfpprod = this->snapshots.back().vfpprod;
-                    if (vfpprod.has(table_nr))
-                        alq_type = this->snapshots.back().vfpprod(table_nr).getALQType();
-                    else {
-                        std::string reason = fmt::format("Problem with well:{} VFP table: {} not defined", well_name, table_nr);
-                        throw OpmInputError(reason, handlerContext.keyword.location());
-                    }
-                }
-                properties->handleWCONHIST(alq_type, this->m_static.m_unit_system, record);
-
-                if (switching_from_injector) {
-                    properties->resetDefaultBHPLimit();
-
-                    auto inj_props = std::make_shared<Well::WellInjectionProperties>(well2.getInjectionProperties());
-                    inj_props->resetBHPLimit();
-                    well2.updateInjection(inj_props);
-                    update_well = true;
-                    this->snapshots.back().wellgroup_events().addEvent( well2.name(), ScheduleEvents::WELL_SWITCHED_INJECTOR_PRODUCER);
-                }
-
-                if (well2.updateProduction(properties))
-                    update_well = true;
-
-                if (well2.updatePrediction(false))
-                    update_well = true;
-
-                if (well2.updateHasProduced())
-                    update_well = true;
-
-                if (update_well) {
-                    this->snapshots.back().events().addEvent( ScheduleEvents::PRODUCTION_UPDATE );
-                    this->snapshots.back().wellgroup_events().addEvent( well2.name(), ScheduleEvents::PRODUCTION_UPDATE);
-                    this->snapshots.back().wells.update( well2 );
-                }
-
-                if (!well2.getAllowCrossFlow()) {
-                    // The numerical content of the rate UDAValues is accessed unconditionally;
-                    // since this is in history mode use of UDA values is not allowed anyway.
-                    const auto& oil_rate = properties->OilRate;
-                    const auto& water_rate = properties->WaterRate;
-                    const auto& gas_rate = properties->GasRate;
-                    if (oil_rate.zero() && water_rate.zero() && gas_rate.zero()) {
-                        std::string msg =
-                            "Well " + well2.name() + " is a history matched well with zero rate where crossflow is banned. " +
-                            "This well will be closed at " + std::to_string(this->seconds(handlerContext.currentStep) / (60*60*24)) + " days";
-                        OpmLog::note(msg);
-                        this->updateWellStatus( well_name, handlerContext.currentStep, Well::Status::SHUT);
-                    }
-                }
-            }
-        }
-    }
-
-    void Schedule::handleWCONPROD(HandlerContext& handlerContext) {
-        for (const auto& record : handlerContext.keyword) {
-            const std::string& wellNamePattern = record.getItem("WELL").getTrimmedString(0);
-            const auto well_names = this->wellNames(wellNamePattern, handlerContext);
-
-            const Well::Status status = WellStatusFromString(record.getItem("STATUS").getTrimmedString(0));
-
-            for (const auto& well_name : well_names) {
-                bool update_well = this->updateWellStatus(well_name, handlerContext.currentStep, status, handlerContext.keyword.location());
-                std::optional<VFPProdTable::ALQ_TYPE> alq_type;
-                auto well2 = this->snapshots.back().wells.get( well_name );
-                const bool switching_from_injector = !well2.isProducer();
-                auto properties = std::make_shared<Well::WellProductionProperties>(well2.getProductionProperties());
-                properties->clearControls();
-                if (well2.isAvailableForGroupControl())
-                    properties->addProductionControl(Well::ProducerCMode::GRUP);
-
-                auto table_nr = record.getItem("VFP_TABLE").get< int >(0);
-                if(record.getItem("VFP_TABLE").defaultApplied(0))
-                    table_nr = properties->VFPTableNumber;
-
-                if (table_nr != 0) {
-                    const auto& vfpprod = this->snapshots.back().vfpprod;
-                    if (vfpprod.has(table_nr))
-                        alq_type = this->snapshots.back().vfpprod(table_nr).getALQType();
-                    else {
-                        std::string reason = fmt::format("Problem with well:{} VFP table: {} not defined", well_name, table_nr);
-                        throw OpmInputError(reason, handlerContext.keyword.location());
-                    }
-                }
-                properties->handleWCONPROD(alq_type, this->m_static.m_unit_system, well_name, record);
-
-                if (switching_from_injector) {
-                    properties->resetDefaultBHPLimit();
-                    update_well = true;
-                    this->snapshots.back().wellgroup_events().addEvent( well2.name(), ScheduleEvents::WELL_SWITCHED_INJECTOR_PRODUCER);
-                }
-
-                if (well2.updateProduction(properties))
-                    update_well = true;
-
-                if (well2.updatePrediction(true))
-                    update_well = true;
-
-                if (well2.updateHasProduced())
-                    update_well = true;
-
-                if (well2.getStatus() == WellStatus::OPEN) {
-                    this->snapshots.back().wellgroup_events().addEvent(well2.name(), ScheduleEvents::REQUEST_OPEN_WELL);
-                }
-
-                if (update_well) {
-                    this->snapshots.back().events().addEvent( ScheduleEvents::PRODUCTION_UPDATE );
-                    this->snapshots.back().wellgroup_events().addEvent( well2.name(), ScheduleEvents::PRODUCTION_UPDATE);
-                    this->snapshots.back().wells.update( std::move(well2) );
-                }
-
-                auto udq_active = this->snapshots.back().udq_active.get();
-                if (properties->updateUDQActive(this->getUDQConfig(handlerContext.currentStep), udq_active))
-                    this->snapshots.back().udq_active.update( std::move(udq_active));
-
-                handlerContext.affected_well(well_name);
-            }
-        }
-    }
-
-    void Schedule::handleWCONINJE(HandlerContext& handlerContext) {
-        for (const auto& record : handlerContext.keyword) {
-            const std::string& wellNamePattern = record.getItem("WELL").getTrimmedString(0);
-            const auto well_names = wellNames(wellNamePattern, handlerContext,
-                                              isWList(handlerContext.currentStep,
-                                                      wellNamePattern));
-
-            const Well::Status status = WellStatusFromString(record.getItem("STATUS").getTrimmedString(0));
-
-            for (const auto& well_name : well_names) {
-                this->updateWellStatus(well_name, handlerContext.currentStep, status, handlerContext.keyword.location());
-
-                bool update_well = false;
-                auto well2 = this->snapshots.back().wells.get( well_name );
-
-                auto injection = std::make_shared<Well::WellInjectionProperties>(well2.getInjectionProperties());
-                auto previousInjectorType = injection->injectorType;
-                injection->handleWCONINJE(record, well2.isAvailableForGroupControl(), well_name);
-                const bool switching_from_producer = well2.isProducer();
-                if (well2.updateInjection(injection))
-                    update_well = true;
-
-                if (switching_from_producer)
-                    this->snapshots.back().wellgroup_events().addEvent( well2.name(), ScheduleEvents::WELL_SWITCHED_INJECTOR_PRODUCER);
-
-                if (well2.updatePrediction(true))
-                    update_well = true;
-
-                if (well2.updateHasInjected())
-                    update_well = true;
-
-                if (update_well) {
-                    this->snapshots.back().events().addEvent(ScheduleEvents::INJECTION_UPDATE);
-                    this->snapshots.back().wellgroup_events().addEvent( well_name, ScheduleEvents::INJECTION_UPDATE);
-                    if(previousInjectorType != injection->injectorType)
-                        this->snapshots.back().wellgroup_events().addEvent( well_name, ScheduleEvents::INJECTION_TYPE_CHANGED);
-                    this->snapshots.back().wells.update( std::move(well2) );
-                }
-
-                // if the well has zero surface rate limit or reservior rate limit, while does not allow crossflow,
-                // it should be turned off.
-                if ( ! well2.getAllowCrossFlow() ) {
-                    std::string msg =
-                        "Well " + well_name + " is an injector with zero rate where crossflow is banned. " +
-                        "This well will be closed at " + std::to_string ( this->seconds(handlerContext.currentStep) / (60*60*24) ) + " days";
-
-                    if (injection->surfaceInjectionRate.is<double>()) {
-                        if (injection->hasInjectionControl(Well::InjectorCMode::RATE) && injection->surfaceInjectionRate.zero()) {
-                            OpmLog::note(msg);
-                            this->updateWellStatus( well_name, handlerContext.currentStep, Well::Status::SHUT);
-                        }
-                    }
-
-                    if (injection->reservoirInjectionRate.is<double>()) {
-                        if (injection->hasInjectionControl(Well::InjectorCMode::RESV) && injection->reservoirInjectionRate.zero()) {
-                            OpmLog::note(msg);
-                            this->updateWellStatus( well_name, handlerContext.currentStep, Well::Status::SHUT);
-                        }
-                    }
-                }
-
-                if (this->snapshots.back().wells.get( well_name ).getStatus() == Well::Status::OPEN) {
-                    this->snapshots.back().wellgroup_events().addEvent(well_name, ScheduleEvents::REQUEST_OPEN_WELL);
-                }
-
-                auto udq_active = this->snapshots.back().udq_active.get();
-                if (injection->updateUDQActive(this->getUDQConfig(handlerContext.currentStep), udq_active))
-                    this->snapshots.back().udq_active.update( std::move(udq_active) );
-
-                handlerContext.affected_well(well_name);
-            }
-        }
-    }
-
-    void Schedule::handleWCONINJH(HandlerContext& handlerContext) {
-        for (const auto& record : handlerContext.keyword) {
-            const std::string& wellNamePattern = record.getItem("WELL").getTrimmedString(0);
-            const auto well_names = wellNames(wellNamePattern, handlerContext);
-            const Well::Status status = WellStatusFromString( record.getItem("STATUS").getTrimmedString(0));
-
-            for (const auto& well_name : well_names) {
-                this->updateWellStatus(well_name, handlerContext.currentStep, status, handlerContext.keyword.location());
-                bool update_well = false;
-                auto well2 = this->snapshots.back().wells.get( well_name );
-                auto injection = std::make_shared<Well::WellInjectionProperties>(well2.getInjectionProperties());
-                auto previousInjectorType = injection->injectorType;
-                injection->handleWCONINJH(record, well2.isProducer(), well_name, handlerContext.keyword.location());
-                const bool switching_from_producer = well2.isProducer();
-
-                if (well2.updateInjection(injection))
-                    update_well = true;
-
-                if (switching_from_producer)
-                    this->snapshots.back().wellgroup_events().addEvent( well2.name(), ScheduleEvents::WELL_SWITCHED_INJECTOR_PRODUCER);
-
-                if (well2.updatePrediction(false))
-                    update_well = true;
-
-                if (well2.updateHasInjected())
-                    update_well = true;
-
-                if (update_well) {
-                    this->snapshots.back().events().addEvent( ScheduleEvents::INJECTION_UPDATE );
-                    this->snapshots.back().wellgroup_events().addEvent( well_name, ScheduleEvents::INJECTION_UPDATE);
-                    if(previousInjectorType != injection->injectorType)
-                        this->snapshots.back().wellgroup_events().addEvent( well_name, ScheduleEvents::INJECTION_TYPE_CHANGED);
-                    this->snapshots.back().wells.update( std::move(well2) );
-                }
-
-                if ( ! well2.getAllowCrossFlow() && (injection->surfaceInjectionRate.zero())) {
-                    std::string msg =
-                        "Well " + well_name + " is an injector with zero rate where crossflow is banned. " +
-                        "This well will be closed at " + std::to_string ( this->seconds(handlerContext.currentStep) / (60*60*24) ) + " days";
-                    OpmLog::note(msg);
-                    this->updateWellStatus( well_name, handlerContext.currentStep, Well::Status::SHUT);
-                }
-            }
-        }
-    }
-
-    void Schedule::handleWELOPEN(HandlerContext& handlerContext) {
-        const auto& keyword = handlerContext.keyword;
-        const auto& currentStep = handlerContext.currentStep;
-
-        auto conn_defaulted = []( const DeckRecord& rec ) {
-            auto defaulted = []( const DeckItem& item ) {
-                return item.defaultApplied( 0 );
-            };
-
-            return std::all_of( rec.begin() + 2, rec.end(), defaulted );
-        };
-
-        constexpr auto open = Well::Status::OPEN;
-
-        for (const auto& record : keyword) {
-            const auto& wellNamePattern = record.getItem( "WELL" ).getTrimmedString(0);
-            const auto& status_str = record.getItem( "STATUS" ).getTrimmedString( 0 );
-            const auto well_names = this->wellNames(wellNamePattern, handlerContext,
-                                                    isWList(handlerContext.currentStep,
-                                                            wellNamePattern));
-
-            /* if all records are defaulted or just the status is set, only
-             * well status is updated
-             */
-            if (conn_defaulted(record)) {
-                const auto new_well_status = WellStatusFromString(status_str);
-                for (const auto& wname : well_names) {
-                    const auto did_update_well_status =
-                        this->updateWellStatus(wname, currentStep, new_well_status);
-
-                    handlerContext.affected_well(wname);
-
-                    if (did_update_well_status) {
-                        handlerContext.record_well_structure_change();
-                    }
-
-                    if (did_update_well_status && (new_well_status == open)) {
-                        // Record possible well injection/production status change
-                        auto well2 = this->snapshots[currentStep].wells.get(wname);
-
-                        const auto did_flow_update =
-                            (well2.isProducer() && well2.updateHasProduced())
-                            ||
-                            (well2.isInjector() && well2.updateHasInjected());
-
-                        if (did_flow_update) {
-                            this->snapshots[currentStep].wells.update(std::move(well2));
-                        }
-                    }
-
-                    if (new_well_status == open) {
-                        this->snapshots.back().wellgroup_events().addEvent( wname, ScheduleEvents::REQUEST_OPEN_WELL);
-                    }
-                }
-                continue;
-            }
-
-            /*
-              Some of the connection information has been entered, in this case
-              we *only* update the status of the connections, and not the well
-              itself. Unless all connections are shut - then the well is also
-              shut.
-             */
-            for (const auto& wname : well_names) {
-                {
-                    auto well = this->snapshots[currentStep].wells.get(wname);
-                    this->snapshots[currentStep].wells.update( std::move(well) );
-                }
-
-                const auto connection_status = Connection::StateFromString( status_str );
-                {
-                    auto well = this->snapshots[currentStep].wells.get(wname);
-                    well.handleWELOPENConnections(record, connection_status);
-                    this->snapshots[currentStep].wells.update( std::move(well) );
-                }
-
-                handlerContext.affected_well(wname);
-                handlerContext.record_well_structure_change();
-
-                this->snapshots.back().events().addEvent(ScheduleEvents::COMPLETION_CHANGE);
-            }
-        }
-    }
-
     void Schedule::handleWELSPECS(HandlerContext& handlerContext)
     {
         using Kw = ParserKeywords::WELSPECS;
@@ -2982,10 +3023,15 @@ Well{0} entered with 'FIELD' parent group:
             { "VAPPARS" , &handleVAPPARS   },
             { "VFPINJ"  , &handleVFPINJ    },
             { "VFPPROD" , &handleVFPPROD   },
+            { "WCONHIST", &handleWCONHIST  },
+            { "WCONINJE", &handleWCONINJE  },
+            { "WCONINJH", &handleWCONINJH  },
+            { "WCONPROD", &handleWCONPROD  },
             { "WDFAC"   , &handleWDFAC     },
             { "WDFACCOR", &handleWDFACCOR  },
             { "WECON"   , &handleWECON     },
             { "WEFAC"   , &handleWEFAC     },
+            { "WELOPEN" , &handleWELOPEN   },
             { "WELPI"   , &handleWELPI     },
             { "WELSEGS" , &handleWELSEGS   },
             { "WELTARG" , &handleWELTARG   },
@@ -3028,11 +3074,6 @@ Well{0} entered with 'FIELD' parent group:
         using handler_function = void (Schedule::*) (HandlerContext&);
         static const std::unordered_map<std::string,handler_function> handler_functions = {
             { "GRUPTREE", &Schedule::handleGRUPTREE  },
-            { "WCONHIST", &Schedule::handleWCONHIST  },
-            { "WCONINJE", &Schedule::handleWCONINJE  },
-            { "WCONINJH", &Schedule::handleWCONINJH  },
-            { "WCONPROD", &Schedule::handleWCONPROD  },
-            { "WELOPEN" , &Schedule::handleWELOPEN   },
             { "WELSPECS", &Schedule::handleWELSPECS  },
         };
 
