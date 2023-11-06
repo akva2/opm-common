@@ -371,7 +371,7 @@ Schedule::Schedule(const Deck& deck, const EclipseState& es, const std::optional
                                  SimulatorUpdate* sim_update,
                                  const std::unordered_map<std::string, double>* target_wellpi,
                                  std::unordered_map<std::string, double>* wpimult_global_factor,
-                                 WelSegsSet* welsegs_wells,
+                                 HandlerContext::WelSegsSet* welsegs_wells,
                                  std::set<std::string>* compsegs_wells)
     {
 
@@ -528,7 +528,7 @@ namespace
 /// \brief Check whether each MS well has COMPSEGS entry andissue error if not.
 /// \param welsegs All wells with a WELSEGS entry together with the location.
 /// \param compegs All wells with a COMPSEGS entry
-void check_compsegs_consistency(::Opm::Schedule::WelSegsSet& welsegs, 
+void check_compsegs_consistency(::Opm::HandlerContext::WelSegsSet& welsegs,
                                 std::set<std::string>&  compsegs,
                                 const std::vector<::Opm::Well>& wells)
 {
@@ -537,7 +537,7 @@ void check_compsegs_consistency(::Opm::Schedule::WelSegsSet& welsegs,
     std::set_difference(welsegs.begin(), welsegs.end(),
                         compsegs.begin(), compsegs.end(),
                         std::back_inserter(difference),
-                        ::Opm::Schedule::PairComp());
+                        ::Opm::HandlerContext::PairComp());
     // Ignore wells without connections
     const auto empty_conn = [&wells](const std::pair<std::string,::Opm::KeywordLocation> &x) -> bool {
         return std::any_of(wells.begin(), wells.end(),
@@ -622,7 +622,7 @@ void Schedule::iterateScheduleSection(std::size_t load_start, std::size_t load_e
         }
 
         std::set<std::string> compsegs_wells;
-        WelSegsSet welsegs_wells;
+        HandlerContext::WelSegsSet welsegs_wells;
 
         for (auto report_step = load_start; report_step < load_end; report_step++) {
             std::size_t keyword_index = 0;
@@ -2458,19 +2458,6 @@ std::ostream& operator<<(std::ostream& os, const Schedule& sched)
 {
     sched.dump_deck(os);
     return os;
-}
-
-void Schedule::HandlerContext::affected_well(const std::string& well_name)
-{
-    if (this->sim_update)
-        this->sim_update->affected_wells.insert(well_name);
-}
-
-void Schedule::HandlerContext::record_well_structure_change()
-{
-    if (this->sim_update != nullptr) {
-        this->sim_update->well_structure_changed = true;
-    }
 }
 
 }

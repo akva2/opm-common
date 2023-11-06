@@ -176,6 +176,7 @@ if(ENABLE_ECL_INPUT)
     src/opm/input/eclipse/Schedule/Group/GConSump.cpp
     src/opm/input/eclipse/Schedule/Group/GroupEconProductionLimits.cpp
     src/opm/input/eclipse/Schedule/Group/GTNode.cpp
+    src/opm/input/eclipse/Schedule/HandlerContext.cpp
     src/opm/input/eclipse/Schedule/KeywordHandlers.cpp
     src/opm/input/eclipse/Schedule/MessageLimits.cpp
     src/opm/input/eclipse/Schedule/MSW/icd.cpp
@@ -1233,6 +1234,7 @@ if(ENABLE_ECL_INPUT)
        opm/input/eclipse/Schedule/ArrayDimChecker.hpp
        opm/input/eclipse/Schedule/BCProp.hpp
        opm/input/eclipse/Schedule/GasLiftOpt.hpp
+       opm/input/eclipse/Schedule/HandlerContext.hpp
        opm/input/eclipse/Schedule/Network/Balance.hpp
        opm/input/eclipse/Schedule/Network/Branch.hpp
        opm/input/eclipse/Schedule/Network/ExtNetwork.hpp

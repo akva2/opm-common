@@ -149,7 +149,7 @@ namespace {
         throw OpmInputError("AQUFETP is not supported as SCHEDULE keyword", handlerContext.keyword.location());
     }
 
-    void Schedule::handleAQUFLUX(Schedule::HandlerContext& handlerContext) {
+    void Schedule::handleAQUFLUX(HandlerContext& handlerContext) {
         // auto& aqufluxs = this->snapshots.back().aqufluxs;
         auto& aqufluxs = this->snapshots.back().aqufluxs;
         for (const auto& record : handlerContext.keyword) {
@@ -158,7 +158,7 @@ namespace {
         }
     }
 
-    void Schedule::handleBCProp(Schedule::HandlerContext& handlerContext) {
+    void Schedule::handleBCProp(HandlerContext& handlerContext) {
         auto& bcprop = this->snapshots.back().bcprop;
         for (const auto& record : handlerContext.keyword) {
             bcprop.updateBCProp(record);
@@ -2043,7 +2043,7 @@ Well{0} entered with 'FIELD' parent group:
         }
     }
 
-    void Schedule::handleWINJMULT(Opm::Schedule::HandlerContext& handlerContext) {
+    void Schedule::handleWINJMULT(HandlerContext& handlerContext) {
         for (const auto& record : handlerContext.keyword) {
             const std::string& wellNamePattern = record.getItem("WELL_NAME").getTrimmedString(0);
             const auto well_names = wellNames(wellNamePattern);
