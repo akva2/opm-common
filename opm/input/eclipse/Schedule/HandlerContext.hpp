@@ -112,6 +112,9 @@ struct HandlerContext {
 
     /// \brief Mark that the well occured in a  COMPSEGS keyword
     void compsegs_handled(const std::string& well_name);
+
+    //! \brief Obtain a reference to a state variable.
+    virtual ScheduleState& state(int idx = -1) = 0;
 };
 
 }

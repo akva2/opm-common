@@ -489,6 +489,42 @@ namespace Opm
         void dump_deck(std::ostream& os) const;
 
     private:
+        struct HandlerContextSched : public HandlerContext
+        {
+            HandlerContextSched(Schedule& schedule,
+                                const ScheduleBlock& block_,
+                                const DeckKeyword& keyword_,
+                                const ScheduleGrid& grid_,
+                                const std::size_t currentStep_,
+                                const std::vector<std::string>& matching_wells_,
+                                bool actionx_mode_,
+                                const ParseContext& parseContext_,
+                                ErrorGuard& errors_,
+                                SimulatorUpdate* sim_update_,
+                                const std::unordered_map<std::string, double>* target_wellpi_,
+                                std::unordered_map<std::string, double>* wpimult_global_factor_,
+                                WelSegsSet* welsegs_wells_,
+                                std::set<std::string>* compsegs_wells_)
+                : HandlerContext(block_, keyword_, grid_, currentStep_, matching_wells_,
+                                 actionx_mode_, parseContext_, errors_, sim_update_,
+                                 target_wellpi_, wpimult_global_factor_,
+                                 welsegs_wells_, compsegs_wells_)
+                , schedule_(schedule)
+            {}
+
+            ScheduleState& state(int idx = -1)
+            {
+                if (idx < 0) {
+                    return schedule_.snapshots.back();
+                } else {
+                    return schedule_.snapshots[idx];
+                }
+            }
+
+        private:
+            Schedule& schedule_;
+        };
+
         // Please update the member functions
         //   - operator==(const Schedule&) const
         //   - serializationTestObject()
