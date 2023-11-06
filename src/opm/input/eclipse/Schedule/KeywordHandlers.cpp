@@ -948,6 +948,22 @@ void handleGRUPNET(HandlerContext& handlerContext)
     handlerContext.state().network.update(std::move(network));
 }
 
+void handleGRUPTREE(HandlerContext& handlerContext)
+{
+    for (const auto& record : handlerContext.keyword) {
+        const std::string& childName = trim_wgname(handlerContext.keyword, record.getItem("CHILD_GROUP").get<std::string>(0), handlerContext.parseContext, handlerContext.errors);
+        const std::string& parentName = trim_wgname(handlerContext.keyword, record.getItem("PARENT_GROUP").get<std::string>(0), handlerContext.parseContext, handlerContext.errors);
+
+        if (!handlerContext.state().groups.has(childName))
+            handlerContext.addGroup(childName);
+
+        if (!handlerContext.state().groups.has(parentName))
+            handlerContext.addGroup(parentName);
+
+        handlerContext.addGroupToGroup(parentName, childName);
+    }
+}
+
 void handleLIFTOPT(HandlerContext& handlerContext)
 {
     auto glo = handlerContext.state().glo();
@@ -2827,21 +2843,6 @@ void handleWWPAVE(HandlerContext& handlerContext)
 
 }
 
-    void Schedule::handleGRUPTREE(HandlerContext& handlerContext) {
-        for (const auto& record : handlerContext.keyword) {
-            const std::string& childName = trim_wgname(handlerContext.keyword, record.getItem("CHILD_GROUP").get<std::string>(0), handlerContext.parseContext, handlerContext.errors);
-            const std::string& parentName = trim_wgname(handlerContext.keyword, record.getItem("PARENT_GROUP").get<std::string>(0), handlerContext.parseContext, handlerContext.errors);
-
-            if (!this->snapshots.back().groups.has(childName))
-                addGroup(childName, handlerContext.currentStep);
-
-            if (!this->snapshots.back().groups.has(parentName))
-                addGroup(parentName, handlerContext.currentStep);
-
-            this->addGroupToGroup(parentName, childName);
-        }
-    }
-
     void Schedule::handleWELSPECS(HandlerContext& handlerContext)
     {
         using Kw = ParserKeywords::WELSPECS;
@@ -2987,6 +2988,7 @@ Well{0} entered with 'FIELD' parent group:
             { "GLIFTOPT", &handleGLIFTOPT  },
             { "GPMAINT" , &handleGPMAINT   },
             { "GRUPNET" , &handleGRUPNET   },
+            { "GRUPTREE", &handleGRUPTREE  },
             { "GUIDERAT", &handleGUIDERAT  },
             { "LIFTOPT" , &handleLIFTOPT   },
             { "LINCOM"  , &handleLINCOM    },
@@ -3073,7 +3075,6 @@ Well{0} entered with 'FIELD' parent group:
         // handlers that need access to schedule members
         using handler_function = void (Schedule::*) (HandlerContext&);
         static const std::unordered_map<std::string,handler_function> handler_functions = {
-            { "GRUPTREE", &Schedule::handleGRUPTREE  },
             { "WELSPECS", &Schedule::handleWELSPECS  },
         };
 

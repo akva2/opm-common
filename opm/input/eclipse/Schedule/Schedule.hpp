@@ -566,6 +566,17 @@ namespace Opm
                                                   status, location);
             }
 
+            void addGroup(const std::string& groupName) override
+            {
+                schedule_.addGroup(groupName, currentStep);
+            }
+
+            void addGroupToGroup(const std::string& parent_group,
+                                 const std::string& child_group) override
+            {
+                schedule_.addGroupToGroup(parent_group, child_group);
+            }
+
         protected:
             bool isWList(const std::string& pattern) const override
             {
@@ -694,7 +705,6 @@ namespace Opm
 
         // Normal keyword handlers -- in KeywordHandlers.cpp
 
-        void handleGRUPTREE  (HandlerContext&);
         void handleWELSPECS  (HandlerContext&);
     };
 }

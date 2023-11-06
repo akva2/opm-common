@@ -159,6 +159,14 @@ struct HandlerContext {
                                   WellStatus status,
                                   std::optional<KeywordLocation> = {}) = 0;
 
+    //! \brief Adds a group to the schedule.
+    virtual void addGroup(const std::string& groupName) = 0;
+
+    //! \brief Adds a group to a group.
+    virtual void addGroupToGroup(const std::string& parent_group,
+                                 const std::string& child_group) = 0;
+
+
 protected:
     //! \brief Checks if pattern is a WList.
     virtual bool isWList(const std::string& pattern) const = 0;
