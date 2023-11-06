@@ -149,6 +149,9 @@ struct HandlerContext {
       return this->wellNames(pattern, allowEmpty);
     }
 
+    //! \brief Set an exit code.
+    virtual void setExitCode(int code) = 0;
+
 protected:
     //! \brief Checks if pattern is a WList.
     virtual bool isWList(const std::string& pattern) const = 0;

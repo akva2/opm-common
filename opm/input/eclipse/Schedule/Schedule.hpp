@@ -553,6 +553,11 @@ namespace Opm
                 return schedule_.wellNames(pattern, *this, allowEmpty);
             }
 
+            void setExitCode(int code) override
+            {
+                schedule_.exit_status = code;
+            }
+
         protected:
             bool isWList(const std::string& pattern) const override
             {
@@ -657,7 +662,6 @@ namespace Opm
                                          const std::string&              groupName,
                                          HandlerContext&                 handlerContext);
 
-        void applyEXIT(const DeckKeyword&, std::size_t currentStep);
         SimulatorUpdate applyAction(std::size_t reportStep, const std::string& action_name, const std::vector<std::string>& matching_wells);
 
         /**
@@ -682,7 +686,6 @@ namespace Opm
 
         // Normal keyword handlers -- in KeywordHandlers.cpp
 
-        void handleEXIT      (HandlerContext&);
         void handleGRUPTREE  (HandlerContext&);
         void handleWCONHIST  (HandlerContext&);
         void handleWCONINJE  (HandlerContext&);

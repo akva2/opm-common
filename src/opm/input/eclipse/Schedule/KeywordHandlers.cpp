@@ -87,6 +87,7 @@
 #include <opm/input/eclipse/Parser/ParserKeywords/B.hpp>
 #include <opm/input/eclipse/Parser/ParserKeywords/C.hpp>
 #include <opm/input/eclipse/Parser/ParserKeywords/D.hpp>
+#include <opm/input/eclipse/Parser/ParserKeywords/E.hpp>
 #include <opm/input/eclipse/Parser/ParserKeywords/G.hpp>
 #include <opm/input/eclipse/Parser/ParserKeywords/L.hpp>
 #include <opm/input/eclipse/Parser/ParserKeywords/N.hpp>
@@ -448,6 +449,19 @@ void handleDRVDTR(HandlerContext& handlerContext)
     }
     auto& ovp = handlerContext.state().oilvap();
     OilVaporizationProperties::updateDRVDT(ovp, maximums);
+}
+
+void handleEXIT(HandlerContext& handlerContext)
+{
+    if (handlerContext.actionx_mode) {
+        using ES = ParserKeywords::EXIT;
+        int status = handlerContext.keyword.getRecord(0).getItem<ES::STATUS_CODE>().get<int>(0);
+        OpmLog::info("Simulation exit with status: " +
+                     std::to_string(status) +
+                     " requested as part of ACTIONX at report_step: " +
+                     std::to_string(handlerContext.currentStep));
+        handlerContext.setExitCode(status);
+    }
 }
 
 void handleGCONINJE(HandlerContext& handlerContext)
@@ -2428,11 +2442,6 @@ void handleWWPAVE(HandlerContext& handlerContext)
 
 }
 
-void Schedule::handleEXIT(HandlerContext& handlerContext) {
-    if (handlerContext.actionx_mode)
-        this->applyEXIT(handlerContext.keyword, handlerContext.currentStep);
-}
-
     void Schedule::handleGRUPTREE(HandlerContext& handlerContext) {
         for (const auto& record : handlerContext.keyword) {
             const std::string& childName = trim_wgname(handlerContext.keyword, record.getItem("CHILD_GROUP").get<std::string>(0), handlerContext.parseContext, handlerContext.errors);
@@ -2927,6 +2936,7 @@ Well{0} entered with 'FIELD' parent group:
             { "DRVDT"   , &handleDRVDT     },
             { "DRVDTR"  , &handleDRVDTR    },
             { "ENDBOX"  , &handleGEOKeyword},
+            { "EXIT",     &handleEXIT      },
             { "GCONINJE", &handleGCONINJE  },
             { "GCONPROD", &handleGCONPROD  },
             { "GCONSALE", &handleGCONSALE  },
@@ -3017,7 +3027,6 @@ Well{0} entered with 'FIELD' parent group:
         // handlers that need access to schedule members
         using handler_function = void (Schedule::*) (HandlerContext&);
         static const std::unordered_map<std::string,handler_function> handler_functions = {
-            { "EXIT",     &Schedule::handleEXIT      },
             { "GRUPTREE", &Schedule::handleGRUPTREE  },
             { "WCONHIST", &Schedule::handleWCONHIST  },
             { "WCONINJE", &Schedule::handleWCONINJE  },
