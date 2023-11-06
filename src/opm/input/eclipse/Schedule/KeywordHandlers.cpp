@@ -197,6 +197,51 @@ void handleBRANPROP(HandlerContext& handlerContext)
     handlerContext.state().network.update( std::move( ext_network ));
 }
 
+/*
+  The COMPORD keyword is handled together with the WELSPECS keyword in the
+  handleWELSPECS function.
+*/
+void handleCOMPORD(HandlerContext&)
+{
+}
+
+void handleCOMPSEGS(HandlerContext& handlerContext)
+{
+    const auto& record1 = handlerContext.keyword.getRecord(0);
+    const std::string& wname = record1.getItem("WELL").getTrimmedString(0);
+
+    if (!handlerContext.state(handlerContext.currentStep).wells.has(wname)) {
+        const auto& location = handlerContext.keyword.location();
+        if (handlerContext.wgnames().has_well(wname)) {
+            std::string msg = fmt::format(R"(Well: {} not yet defined for keyword {}.
+Expecting well to be defined with WELSPECS in ACTIONX before actual use.
+File {} line {}.)", wname, location.keyword, location.filename, location.lineno);
+            OpmLog::warning(msg);
+        } else
+            throw OpmInputError(fmt::format("No such well: ", wname), location);
+        return;
+    }
+
+    auto well = handlerContext.state().wells.get( wname );
+
+    if (well.getConnections().empty()) {
+        const auto& location = handlerContext.keyword.location();
+        auto msg = fmt::format("Problem with COMPSEGS/{0}\n"
+                               "In {1} line {2}\n"
+                               "Well {0} is not connected to grid - COMPSEGS will be ignored", wname, location.filename, location.lineno);
+        OpmLog::warning(msg);
+        return;
+    }
+
+    if (well.handleCOMPSEGS(handlerContext.keyword, handlerContext.grid, handlerContext.parseContext, handlerContext.errors))
+    {
+        handlerContext.state().wells.update( std::move(well) );
+        handlerContext.record_well_structure_change();
+    }
+
+    handlerContext.compsegs_handled(wname);
+}
+
 void handleDRSDT(HandlerContext& handlerContext)
 {
     std::size_t numPvtRegions = handlerContext.runspec().tabdims().getNumPVTTables();
@@ -834,50 +879,6 @@ void handleWSEGITER(HandlerContext& handlerContext)
                 }
             }
         }
-    }
-
-    /*
-      The COMPORD keyword is handled together with the WELSPECS keyword in the
-      handleWELSPECS function.
-    */
-    void Schedule::handleCOMPORD(HandlerContext& )
-    {
-    }
-
-    void Schedule::handleCOMPSEGS(HandlerContext& handlerContext) {
-        const auto& record1 = handlerContext.keyword.getRecord(0);
-        const std::string& wname = record1.getItem("WELL").getTrimmedString(0);
-
-        if (!this->hasWell(wname, handlerContext.currentStep)) {
-            const auto& location = handlerContext.keyword.location();
-            if (this->action_wgnames.has_well(wname)) {
-                std::string msg = fmt::format(R"(Well: {} not yet defined for keyword {}.
-Expecting well to be defined with WELSPECS in ACTIONX before actual use.
-File {} line {}.)", wname, location.keyword, location.filename, location.lineno);
-                OpmLog::warning(msg);
-            } else
-                throw OpmInputError(fmt::format("No such well: ", wname), location);
-            return;
-        }
-
-        auto well = this->snapshots.back().wells.get( wname );
-
-        if (well.getConnections().empty()) {
-            const auto& location = handlerContext.keyword.location();
-            auto msg = fmt::format("Problem with COMPSEGS/{0}\n"
-                                   "In {1} line {2}\n"
-                                   "Well {0} is not connected to grid - COMPSEGS will be ignored", wname, location.filename, location.lineno);
-            OpmLog::warning(msg);
-            return;
-        }
-
-        if (well.handleCOMPSEGS(handlerContext.keyword, handlerContext.grid, handlerContext.parseContext, handlerContext.errors))
-        {
-            this->snapshots.back().wells.update( std::move(well) );
-            handlerContext.record_well_structure_change();
-        }
-
-        handlerContext.compsegs_handled(wname);
     }
 
     void Schedule::handleCSKIN(HandlerContext& handlerContext) {
@@ -2819,6 +2820,8 @@ Well{0} entered with 'FIELD' parent group:
             { "BCPROP"  , &handleBCProp    },
             { "BOX"     , &handleGEOKeyword},
             { "BRANPROP", &handleBRANPROP  },
+            { "COMPORD" , &handleCOMPORD   },
+            { "COMPSEGS", &handleCOMPSEGS  },
             { "DRSDT"   , &handleDRSDT     },
             { "DRSDTCON", &handleDRSDTCON  },
             { "DRSDTR"  , &handleDRSDTR    },
@@ -2868,8 +2871,6 @@ Well{0} entered with 'FIELD' parent group:
         static const std::unordered_map<std::string,handler_function> handler_functions = {
             { "COMPDAT" , &Schedule::handleCOMPDAT   },
             { "COMPLUMP", &Schedule::handleCOMPLUMP  },
-            { "COMPORD" , &Schedule::handleCOMPORD   },
-            { "COMPSEGS", &Schedule::handleCOMPSEGS  },
             { "COMPTRAJ", &Schedule::handleCOMPTRAJ  },
             { "CSKIN",    &Schedule::handleCSKIN     },
             { "EXIT",     &Schedule::handleEXIT      },

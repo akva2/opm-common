@@ -30,6 +30,7 @@
 
 namespace Opm {
 
+namespace Action { class WGNames; }
 class DeckKeyword;
 class ErrorGuard;
 class ParseContext;
@@ -119,6 +120,9 @@ struct HandlerContext {
 
     //! \brief Returns a const reference to Runspec.
     virtual const Runspec& runspec() const = 0;
+
+    //! \brief Returns a const reference to WGNames.
+    virtual const Action::WGNames& wgnames() const = 0;
 };
 
 }

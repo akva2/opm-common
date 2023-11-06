@@ -526,6 +526,11 @@ namespace Opm
                 return schedule_.m_static.m_runspec;
             }
 
+            const Action::WGNames& wgnames() const override
+            {
+                return schedule_.action_wgnames;
+            }
+
         private:
             Schedule& schedule_;
         };
@@ -653,8 +658,6 @@ namespace Opm
 
         void handleCOMPDAT   (HandlerContext&);
         void handleCOMPLUMP  (HandlerContext&);
-        void handleCOMPORD   (HandlerContext&);
-        void handleCOMPSEGS  (HandlerContext&);
         void handleCOMPTRAJ  (HandlerContext&);
         void handleCSKIN     (HandlerContext&);
         void handleEXIT      (HandlerContext&);
