@@ -2841,119 +2841,118 @@ void handleWWPAVE(HandlerContext& handlerContext)
     }
 }
 
-}
+void handleWELSPECS(HandlerContext& handlerContext)
+{
+    using Kw = ParserKeywords::WELSPECS;
 
-    void Schedule::handleWELSPECS(HandlerContext& handlerContext)
+    auto getTrimmedName = [&handlerContext](const auto& item)
     {
-        using Kw = ParserKeywords::WELSPECS;
+        return trim_wgname(handlerContext.keyword,
+                           item.template get<std::string>(0),
+                           handlerContext.parseContext,
+                           handlerContext.errors);
+    };
 
-        auto getTrimmedName = [&handlerContext](const auto& item)
+    auto fieldWells = std::vector<std::string>{};
+    for (const auto& record : handlerContext.keyword) {
+        if (const auto fip_region_number = record.getItem<Kw::FIP_REGION>().get<int>(0);
+            fip_region_number != Kw::FIP_REGION::defaultValue)
         {
-            return trim_wgname(handlerContext.keyword,
-                               item.template get<std::string>(0),
-                               handlerContext.parseContext,
-                               handlerContext.errors);
-        };
+            const auto& location = handlerContext.keyword.location();
+            const auto msg = fmt::format("Non-defaulted FIP region {} in WELSPECS keyword "
+                                         "in file {} line {} is not supported. "
+                                         "Reset to default value {}.",
+                                         fip_region_number,
+                                         location.filename,
+                                         location.lineno,
+                                         Kw::FIP_REGION::defaultValue);
+            OpmLog::warning(msg);
+        }
 
-        auto fieldWells = std::vector<std::string>{};
-        for (const auto& record : handlerContext.keyword) {
-            if (const auto fip_region_number = record.getItem<Kw::FIP_REGION>().get<int>(0);
-                fip_region_number != Kw::FIP_REGION::defaultValue)
-            {
-                const auto& location = handlerContext.keyword.location();
-                const auto msg = fmt::format("Non-defaulted FIP region {} in WELSPECS keyword "
-                                             "in file {} line {} is not supported. "
-                                             "Reset to default value {}.",
-                                             fip_region_number,
-                                             location.filename,
-                                             location.lineno,
-                                             Kw::FIP_REGION::defaultValue);
-                OpmLog::warning(msg);
-            }
+        if (const auto& density_calc_type = record.getItem<Kw::DENSITY_CALC>().get<std::string>(0);
+            density_calc_type != Kw::DENSITY_CALC::defaultValue)
+        {
+            const auto& location = handlerContext.keyword.location();
+            const auto msg = fmt::format("Non-defaulted density calculation method '{}' "
+                                         "in WELSPECS keyword in file {} line {} is "
+                                         "not supported. Reset to default value {}.",
+                                         density_calc_type,
+                                         location.filename,
+                                         location.lineno,
+                                         Kw::DENSITY_CALC::defaultValue);
+            OpmLog::warning(msg);
+        }
 
-            if (const auto& density_calc_type = record.getItem<Kw::DENSITY_CALC>().get<std::string>(0);
-                density_calc_type != Kw::DENSITY_CALC::defaultValue)
-            {
-                const auto& location = handlerContext.keyword.location();
-                const auto msg = fmt::format("Non-defaulted density calculation method '{}' "
-                                             "in WELSPECS keyword in file {} line {} is "
-                                             "not supported. Reset to default value {}.",
-                                             density_calc_type,
-                                             location.filename,
-                                             location.lineno,
-                                             Kw::DENSITY_CALC::defaultValue);
-                OpmLog::warning(msg);
-            }
+        const auto wellName = getTrimmedName(record.getItem<Kw::WELL>());
+        const auto groupName = getTrimmedName(record.getItem<Kw::GROUP>());
 
-            const auto wellName = getTrimmedName(record.getItem<Kw::WELL>());
-            const auto groupName = getTrimmedName(record.getItem<Kw::GROUP>());
+        // We might get here from an ACTIONX context, or we might get
+        // called on a well (list) template, to reassign certain well
+        // properties--e.g, the well's controlling group--so check if
+        // 'wellName' matches any existing well names through pattern
+        // matching before treating the wellName as a simple well name.
+        //
+        // An empty list of well names is okay since that means we're
+        // creating a new well in this case.
+        constexpr auto allowEmptyWellList = true;
+        const auto existingWells =
+            handlerContext.wellNames(wellName, allowEmptyWellList);
 
-            // We might get here from an ACTIONX context, or we might get
-            // called on a well (list) template, to reassign certain well
-            // properties--e.g, the well's controlling group--so check if
-            // 'wellName' matches any existing well names through pattern
-            // matching before treating the wellName as a simple well name.
-            //
-            // An empty list of well names is okay since that means we're
-            // creating a new well in this case.
-            const auto allowEmptyWellList = true;
-            const auto existingWells =
-                this->wellNames(wellName, handlerContext, allowEmptyWellList);
-
-            if (groupName == "FIELD") {
-                if (existingWells.empty()) {
-                    fieldWells.push_back(wellName);
-                }
-                else {
-                    for (const auto& existingWell : existingWells) {
-                        fieldWells.push_back(existingWell);
-                    }
-                }
-            }
-
-            if (! this->snapshots.back().groups.has(groupName)) {
-                this->addGroup(groupName, handlerContext.currentStep);
-            }
-
+        if (groupName == "FIELD") {
             if (existingWells.empty()) {
-                // 'wellName' does not match any existing wells.  Create a
-                // new Well object for this well.
-                this->welspecsCreateNewWell(record,
-                                            wellName,
-                                            groupName,
-                                            handlerContext);
+                fieldWells.push_back(wellName);
             }
             else {
-                // 'wellName' matches one or more existing wells.  Assign
-                // new properties for those wells.
-                this->welspecsUpdateExistingWells(record,
-                                                  existingWells,
-                                                  groupName,
-                                                  handlerContext);
+                for (const auto& existingWell : existingWells) {
+                    fieldWells.push_back(existingWell);
+                }
             }
         }
 
-        if (! fieldWells.empty()) {
-            std::sort(fieldWells.begin(), fieldWells.end());
-            fieldWells.erase(std::unique(fieldWells.begin(), fieldWells.end()),
-                             fieldWells.end());
-
-            const auto* plural = (fieldWells.size() == 1) ? "" : "s";
-
-            const auto msg_fmt = fmt::format(R"(Well{0} parented directly to 'FIELD'; this is allowed but discouraged.
-Well{0} entered with 'FIELD' parent group:
- * {1})", plural, fmt::join(fieldWells, "\n * "));
-
-            handlerContext.parseContext.handleError(ParseContext::SCHEDULE_WELL_IN_FIELD_GROUP,
-                                                    msg_fmt,
-                                                    handlerContext.keyword.location(),
-                                                    handlerContext.errors);
+        if (! handlerContext.state().groups.has(groupName)) {
+            handlerContext.addGroup(groupName);
         }
 
-        if (! handlerContext.keyword.empty()) {
-            handlerContext.record_well_structure_change();
+        if (existingWells.empty()) {
+            // 'wellName' does not match any existing wells.  Create a
+            // new Well object for this well.
+            handlerContext.welspecsCreateNewWell(record,
+                                                 wellName,
+                                                 groupName);
+        }
+        else {
+            // 'wellName' matches one or more existing wells.  Assign
+            // new properties for those wells.
+            handlerContext.welspecsUpdateExistingWells(record,
+                                                       existingWells,
+                                                       groupName);
         }
     }
+
+    if (! fieldWells.empty()) {
+        std::sort(fieldWells.begin(), fieldWells.end());
+        fieldWells.erase(std::unique(fieldWells.begin(), fieldWells.end()),
+                         fieldWells.end());
+
+        const auto* plural = (fieldWells.size() == 1) ? "" : "s";
+
+        const auto msg_fmt = fmt::format(R"(Well{0} parented directly to 'FIELD'; this is allowed but discouraged.
+Well{0} entered with 'FIELD' parent group:
+* {1})", plural, fmt::join(fieldWells, "\n * "));
+
+        handlerContext.parseContext.handleError(ParseContext::SCHEDULE_WELL_IN_FIELD_GROUP,
+                                                msg_fmt,
+                                                handlerContext.keyword.location(),
+                                                handlerContext.errors);
+    }
+
+    if (! handlerContext.keyword.empty()) {
+        handlerContext.record_well_structure_change();
+    }
+}
+
+}
+
 
     bool Schedule::handleNormalKeyword(HandlerContext& handlerContext)
     {
@@ -3036,6 +3035,7 @@ Well{0} entered with 'FIELD' parent group:
             { "WELOPEN" , &handleWELOPEN   },
             { "WELPI"   , &handleWELPI     },
             { "WELSEGS" , &handleWELSEGS   },
+            { "WELSPECS", &handleWELSPECS  },
             { "WELTARG" , &handleWELTARG   },
             { "WELTRAJ" , &handleWELTRAJ   },
             { "WFOAM"   , &handleWFOAM     },
@@ -3075,7 +3075,6 @@ Well{0} entered with 'FIELD' parent group:
         // handlers that need access to schedule members
         using handler_function = void (Schedule::*) (HandlerContext&);
         static const std::unordered_map<std::string,handler_function> handler_functions = {
-            { "WELSPECS", &Schedule::handleWELSPECS  },
         };
 
         auto function_iterator = handler_functions.find(handlerContext.keyword.name());

@@ -577,6 +577,20 @@ namespace Opm
                 schedule_.addGroupToGroup(parent_group, child_group);
             }
 
+            void welspecsCreateNewWell(const DeckRecord&  record,
+                                       const std::string& wellName,
+                                       const std::string& groupName) override
+            {
+                schedule_.welspecsCreateNewWell(record, wellName, groupName, *this);
+            }
+
+            void welspecsUpdateExistingWells(const DeckRecord&               record,
+                                             const std::vector<std::string>& wellNames,
+                                             const std::string&              groupName) override
+            {
+                schedule_.welspecsUpdateExistingWells(record, wellNames, groupName, *this);
+            }
+
         protected:
             bool isWList(const std::string& pattern) const override
             {
@@ -702,10 +716,6 @@ namespace Opm
 
         // Keyword Handlers
         void handlePYACTION(const DeckKeyword&);
-
-        // Normal keyword handlers -- in KeywordHandlers.cpp
-
-        void handleWELSPECS  (HandlerContext&);
     };
 }
 

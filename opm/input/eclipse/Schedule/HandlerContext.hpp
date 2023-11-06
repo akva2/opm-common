@@ -33,6 +33,7 @@ namespace Opm {
 
 namespace Action { class WGNames; }
 class DeckKeyword;
+class DeckRecord;
 class ErrorGuard;
 class ParseContext;
 class Runspec;
@@ -166,6 +167,14 @@ struct HandlerContext {
     virtual void addGroupToGroup(const std::string& parent_group,
                                  const std::string& child_group) = 0;
 
+    //! \brief Create a well from WELSPECS
+    virtual void welspecsCreateNewWell(const DeckRecord&  record,
+                                       const std::string& wellName,
+                                       const std::string& groupName) = 0;
+
+    virtual void welspecsUpdateExistingWells(const DeckRecord&               record,
+                                             const std::vector<std::string>& wellNames,
+                                             const std::string&              groupName) = 0;
 
 protected:
     //! \brief Checks if pattern is a WList.
