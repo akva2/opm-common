@@ -536,6 +536,11 @@ namespace Opm
                 return schedule_.m_static.m_unit_system;
             }
 
+            bool gasLiftOptActive() const override
+            {
+                return schedule_.m_static.gaslift_opt_active;
+            }
+
         private:
             Schedule& schedule_;
         };
@@ -674,7 +679,6 @@ namespace Opm
         void handleGPMAINT   (HandlerContext&);
         void handleGRUPNET   (HandlerContext&);
         void handleGRUPTREE  (HandlerContext&);
-        void handleVFPPROD   (HandlerContext&);
         void handleWCONHIST  (HandlerContext&);
         void handleWCONINJE  (HandlerContext&);
         void handleWCONINJH  (HandlerContext&);

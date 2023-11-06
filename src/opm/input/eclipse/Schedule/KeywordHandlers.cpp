@@ -746,6 +746,15 @@ void handleVFPINJ(HandlerContext& handlerContext)
     handlerContext.state().vfpinj.update( std::move(table) );
 }
 
+void handleVFPPROD(HandlerContext& handlerContext)
+{
+    auto table = VFPProdTable(handlerContext.keyword,
+                              handlerContext.gasLiftOptActive(),
+                              handlerContext.unitSystem());
+    handlerContext.state().events().addEvent( ScheduleEvents::VFPPROD_UPDATE );
+    handlerContext.state().vfpprod.update( std::move(table) );
+}
+
 void handleWHISTCTL(HandlerContext& handlerContext)
 {
     const auto& record = handlerContext.keyword.getRecord(0);
@@ -755,7 +764,7 @@ void handleWHISTCTL(HandlerContext& handlerContext)
     if (controlMode != Well::ProducerCMode::NONE) {
         if (!Well::WellProductionProperties::effectiveHistoryProductionControl(controlMode) ) {
             std::string msg = "The WHISTCTL keyword specifies an un-supported control mode " + cmodeString
-                + ", which makes WHISTCTL keyword not affect the simulation at all";
+                            + ", which makes WHISTCTL keyword not affect the simulation at all";
             OpmLog::warning(msg);
         } else {
             handlerContext.state().update_whistctl( controlMode );
@@ -1358,12 +1367,6 @@ void handleWSEGITER(HandlerContext& handlerContext)
 
             this->addGroupToGroup(parentName, childName);
         }
-    }
-
-    void Schedule::handleVFPPROD(HandlerContext& handlerContext) {
-        auto table = VFPProdTable(handlerContext.keyword, this->m_static.gaslift_opt_active, this->m_static.m_unit_system);
-        this->snapshots.back().events().addEvent( ScheduleEvents::VFPPROD_UPDATE );
-        this->snapshots.back().vfpprod.update( std::move(table) );
     }
 
     void Schedule::handleWCONHIST(HandlerContext& handlerContext) {
@@ -2872,6 +2875,7 @@ Well{0} entered with 'FIELD' parent group:
             { "UDT"     , &handleUDT       },
             { "VAPPARS" , &handleVAPPARS   },
             { "VFPINJ"  , &handleVFPINJ    },
+            { "VFPPROD" , &handleVFPPROD   },
             { "WHISTCTL", &handleWHISTCTL  },
             { "WSEGITER", &handleWSEGITER  },
         };
@@ -2892,7 +2896,6 @@ Well{0} entered with 'FIELD' parent group:
             { "GPMAINT" , &Schedule::handleGPMAINT   },
             { "GRUPNET" , &Schedule::handleGRUPNET   },
             { "GRUPTREE", &Schedule::handleGRUPTREE  },
-            { "VFPPROD" , &Schedule::handleVFPPROD   },
             { "WCONHIST", &Schedule::handleWCONHIST  },
             { "WCONINJE", &Schedule::handleWCONINJE  },
             { "WCONINJH", &Schedule::handleWCONINJH  },

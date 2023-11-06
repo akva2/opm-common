@@ -127,6 +127,9 @@ struct HandlerContext {
 
     //! \brief Returns a const reference to UnitSystem.
     virtual const UnitSystem& unitSystem() const = 0;
+
+    //! \brief Returns whether gas lift opt is active.
+    virtual bool gasLiftOptActive() const = 0;
 };
 
 }
