@@ -347,6 +347,52 @@ void handleGUIDERAT(HandlerContext& handlerContext)
     }
 }
 
+void handleGCONSALE(HandlerContext& handlerContext)
+{
+    auto new_gconsale = handlerContext.state().gconsale.get();
+    for (const auto& record : handlerContext.keyword) {
+        const std::string& groupName = record.getItem("GROUP").getTrimmedString(0);
+        auto sales_target = record.getItem("SALES_TARGET").get<UDAValue>(0);
+        auto max_rate = record.getItem("MAX_SALES_RATE").get<UDAValue>(0);
+        auto min_rate = record.getItem("MIN_SALES_RATE").get<UDAValue>(0);
+        std::string procedure = record.getItem("MAX_PROC").getTrimmedString(0);
+        const auto& udq = handlerContext.state(handlerContext.currentStep).udq.get();
+        auto udqconfig = udq.params().undefinedValue();
+
+        new_gconsale.add(groupName, sales_target, max_rate, min_rate,
+                         procedure, udqconfig, handlerContext.unitSystem());
+
+        auto new_group = handlerContext.state().groups.get( groupName );
+        Group::GroupInjectionProperties injection{groupName};
+        injection.phase = Phase::GAS;
+        if (new_group.updateInjection(injection))
+            handlerContext.state().groups.update(new_group);
+    }
+    handlerContext.state().gconsale.update( std::move(new_gconsale) );
+}
+
+void handleGCONSUMP(HandlerContext& handlerContext)
+{
+    auto new_gconsump = handlerContext.state().gconsump.get();
+    for (const auto& record : handlerContext.keyword) {
+        const std::string& groupName = record.getItem("GROUP").getTrimmedString(0);
+        auto consumption_rate = record.getItem("GAS_CONSUMP_RATE").get<UDAValue>(0);
+        auto import_rate = record.getItem("GAS_IMPORT_RATE").get<UDAValue>(0);
+
+        std::string network_node_name;
+        auto network_node = record.getItem("NETWORK_NODE");
+        if (!network_node.defaultApplied(0))
+            network_node_name = network_node.getTrimmedString(0);
+
+        const auto& udq = handlerContext.state(handlerContext.currentStep).udq.get();
+        auto udqconfig = udq.params().undefinedValue();
+
+        new_gconsump.add(groupName, consumption_rate, import_rate,
+                         network_node_name, udqconfig, handlerContext.unitSystem());
+    }
+    handlerContext.state().gconsump.update( std::move(new_gconsump) );
+}
+
 void handleLIFTOPT(HandlerContext& handlerContext)
 {
     auto glo = handlerContext.state().glo();
@@ -691,6 +737,13 @@ void handleVAPPARS(HandlerContext& handlerContext)
         auto& ovp = handlerContext.state().oilvap();
         OilVaporizationProperties::updateVAPPARS(ovp, vap1, vap2);
     }
+}
+
+void handleVFPINJ(HandlerContext& handlerContext)
+{
+    auto table = VFPInjTable(handlerContext.keyword, handlerContext.unitSystem());
+    handlerContext.state().events().addEvent( ScheduleEvents::VFPINJ_UPDATE );
+    handlerContext.state().vfpinj.update( std::move(table) );
 }
 
 void handleWHISTCTL(HandlerContext& handlerContext)
@@ -1134,46 +1187,6 @@ void handleWSEGITER(HandlerContext& handlerContext)
         }
     }
 
-    void Schedule::handleGCONSALE(HandlerContext& handlerContext) {
-        auto new_gconsale = this->snapshots.back().gconsale.get();
-        for (const auto& record : handlerContext.keyword) {
-            const std::string& groupName = record.getItem("GROUP").getTrimmedString(0);
-            auto sales_target = record.getItem("SALES_TARGET").get<UDAValue>(0);
-            auto max_rate = record.getItem("MAX_SALES_RATE").get<UDAValue>(0);
-            auto min_rate = record.getItem("MIN_SALES_RATE").get<UDAValue>(0);
-            std::string procedure = record.getItem("MAX_PROC").getTrimmedString(0);
-            auto udqconfig = this->getUDQConfig(handlerContext.currentStep).params().undefinedValue();
-
-            new_gconsale.add(groupName, sales_target, max_rate, min_rate, procedure, udqconfig, this->m_static.m_unit_system);
-
-            auto new_group = this->snapshots.back().groups.get( groupName );
-            Group::GroupInjectionProperties injection{groupName};
-            injection.phase = Phase::GAS;
-            if (new_group.updateInjection(injection))
-                this->snapshots.back().groups.update(new_group);
-        }
-        this->snapshots.back().gconsale.update( std::move(new_gconsale) );
-    }
-
-    void Schedule::handleGCONSUMP(HandlerContext& handlerContext) {
-        auto new_gconsump = this->snapshots.back().gconsump.get();
-        for (const auto& record : handlerContext.keyword) {
-            const std::string& groupName = record.getItem("GROUP").getTrimmedString(0);
-            auto consumption_rate = record.getItem("GAS_CONSUMP_RATE").get<UDAValue>(0);
-            auto import_rate = record.getItem("GAS_IMPORT_RATE").get<UDAValue>(0);
-
-            std::string network_node_name;
-            auto network_node = record.getItem("NETWORK_NODE");
-            if (!network_node.defaultApplied(0))
-                network_node_name = network_node.getTrimmedString(0);
-
-            auto udqconfig = this->getUDQConfig(handlerContext.currentStep).params().undefinedValue();
-
-            new_gconsump.add(groupName, consumption_rate, import_rate, network_node_name, udqconfig, this->m_static.m_unit_system);
-        }
-        this->snapshots.back().gconsump.update( std::move(new_gconsump) );
-    }
-
     void
     Schedule::handleGECON(HandlerContext& handlerContext)
     {
@@ -1345,12 +1358,6 @@ void handleWSEGITER(HandlerContext& handlerContext)
 
             this->addGroupToGroup(parentName, childName);
         }
-    }
-
-    void Schedule::handleVFPINJ(HandlerContext& handlerContext) {
-        auto table = VFPInjTable(handlerContext.keyword, this->m_static.m_unit_system);
-        this->snapshots.back().events().addEvent( ScheduleEvents::VFPINJ_UPDATE );
-        this->snapshots.back().vfpinj.update( std::move(table) );
     }
 
     void Schedule::handleVFPPROD(HandlerContext& handlerContext) {
@@ -2828,6 +2835,8 @@ Well{0} entered with 'FIELD' parent group:
             { "DRVDT"   , &handleDRVDT     },
             { "DRVDTR"  , &handleDRVDTR    },
             { "ENDBOX"  , &handleGEOKeyword},
+            { "GCONSALE", &handleGCONSALE  },
+            { "GCONSUMP", &handleGCONSUMP  },
             { "GUIDERAT", &handleGUIDERAT  },
             { "LIFTOPT" , &handleLIFTOPT   },
             { "LINCOM"  , &handleLINCOM    },
@@ -2862,6 +2871,7 @@ Well{0} entered with 'FIELD' parent group:
             { "UDQ"     , &handleUDQ       },
             { "UDT"     , &handleUDT       },
             { "VAPPARS" , &handleVAPPARS   },
+            { "VFPINJ"  , &handleVFPINJ    },
             { "WHISTCTL", &handleWHISTCTL  },
             { "WSEGITER", &handleWSEGITER  },
         };
@@ -2876,15 +2886,12 @@ Well{0} entered with 'FIELD' parent group:
             { "EXIT",     &Schedule::handleEXIT      },
             { "GCONINJE", &Schedule::handleGCONINJE  },
             { "GCONPROD", &Schedule::handleGCONPROD  },
-            { "GCONSALE", &Schedule::handleGCONSALE  },
-            { "GCONSUMP", &Schedule::handleGCONSUMP  },
             { "GECON",    &Schedule::handleGECON     },
             { "GEFAC"   , &Schedule::handleGEFAC     },
             { "GLIFTOPT", &Schedule::handleGLIFTOPT  },
             { "GPMAINT" , &Schedule::handleGPMAINT   },
             { "GRUPNET" , &Schedule::handleGRUPNET   },
             { "GRUPTREE", &Schedule::handleGRUPTREE  },
-            { "VFPINJ"  , &Schedule::handleVFPINJ    },
             { "VFPPROD" , &Schedule::handleVFPPROD   },
             { "WCONHIST", &Schedule::handleWCONHIST  },
             { "WCONINJE", &Schedule::handleWCONINJE  },

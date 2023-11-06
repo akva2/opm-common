@@ -531,6 +531,11 @@ namespace Opm
                 return schedule_.action_wgnames;
             }
 
+            const UnitSystem& unitSystem() const override
+            {
+                return schedule_.m_static.m_unit_system;
+            }
+
         private:
             Schedule& schedule_;
         };
@@ -663,15 +668,12 @@ namespace Opm
         void handleEXIT      (HandlerContext&);
         void handleGCONINJE  (HandlerContext&);
         void handleGCONPROD  (HandlerContext&);
-        void handleGCONSALE  (HandlerContext&);
-        void handleGCONSUMP  (HandlerContext&);
         void handleGECON     (HandlerContext&);
         void handleGEFAC     (HandlerContext&);
         void handleGLIFTOPT  (HandlerContext&);
         void handleGPMAINT   (HandlerContext&);
         void handleGRUPNET   (HandlerContext&);
         void handleGRUPTREE  (HandlerContext&);
-        void handleVFPINJ    (HandlerContext&);
         void handleVFPPROD   (HandlerContext&);
         void handleWCONHIST  (HandlerContext&);
         void handleWCONINJE  (HandlerContext&);

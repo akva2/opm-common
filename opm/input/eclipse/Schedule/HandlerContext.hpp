@@ -39,6 +39,7 @@ class ScheduleBlock;
 class ScheduleGrid;
 class ScheduleState;
 struct SimulatorUpdate;
+class UnitSystem;
 
 struct HandlerContext {
     struct PairComp
@@ -123,6 +124,9 @@ struct HandlerContext {
 
     //! \brief Returns a const reference to WGNames.
     virtual const Action::WGNames& wgnames() const = 0;
+
+    //! \brief Returns a const reference to UnitSystem.
+    virtual const UnitSystem& unitSystem() const = 0;
 };
 
 }
