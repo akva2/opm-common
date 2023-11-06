@@ -33,6 +33,7 @@ namespace Opm {
 class DeckKeyword;
 class ErrorGuard;
 class ParseContext;
+class Runspec;
 class ScheduleBlock;
 class ScheduleGrid;
 class ScheduleState;
@@ -115,6 +116,9 @@ struct HandlerContext {
 
     //! \brief Obtain a reference to a state variable.
     virtual ScheduleState& state(int idx = -1) = 0;
+
+    //! \brief Returns a const reference to Runspec.
+    virtual const Runspec& runspec() const = 0;
 };
 
 }

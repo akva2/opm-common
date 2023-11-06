@@ -512,13 +512,18 @@ namespace Opm
                 , schedule_(schedule)
             {}
 
-            ScheduleState& state(int idx = -1)
+            ScheduleState& state(int idx = -1) override
             {
                 if (idx < 0) {
                     return schedule_.snapshots.back();
                 } else {
                     return schedule_.snapshots[idx];
                 }
+            }
+
+            const Runspec& runspec() const override
+            {
+                return schedule_.m_static.m_runspec;
             }
 
         private:
@@ -652,11 +657,6 @@ namespace Opm
         void handleCOMPSEGS  (HandlerContext&);
         void handleCOMPTRAJ  (HandlerContext&);
         void handleCSKIN     (HandlerContext&);
-        void handleDRSDT     (HandlerContext&);
-        void handleDRSDTCON  (HandlerContext&);
-        void handleDRSDTR    (HandlerContext&);
-        void handleDRVDT     (HandlerContext&);
-        void handleDRVDTR    (HandlerContext&);
         void handleEXIT      (HandlerContext&);
         void handleGCONINJE  (HandlerContext&);
         void handleGCONPROD  (HandlerContext&);

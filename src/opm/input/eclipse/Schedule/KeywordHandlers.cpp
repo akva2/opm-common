@@ -197,6 +197,79 @@ void handleBRANPROP(HandlerContext& handlerContext)
     handlerContext.state().network.update( std::move( ext_network ));
 }
 
+void handleDRSDT(HandlerContext& handlerContext)
+{
+    std::size_t numPvtRegions = handlerContext.runspec().tabdims().getNumPVTTables();
+    std::vector<double> maximums(numPvtRegions);
+    std::vector<std::string> options(numPvtRegions);
+    for (const auto& record : handlerContext.keyword) {
+        const auto& max = record.getItem<ParserKeywords::DRSDT::DRSDT_MAX>().getSIDouble(0);
+        const auto& option = record.getItem<ParserKeywords::DRSDT::OPTION>().get< std::string >(0);
+        std::fill(maximums.begin(), maximums.end(), max);
+        std::fill(options.begin(), options.end(), option);
+        auto& ovp = handlerContext.state().oilvap();
+        OilVaporizationProperties::updateDRSDT(ovp, maximums, options);
+    }
+}
+
+void handleDRSDTR(HandlerContext& handlerContext)
+{
+    std::size_t numPvtRegions = handlerContext.runspec().tabdims().getNumPVTTables();
+    std::vector<double> maximums(numPvtRegions);
+    std::vector<std::string> options(numPvtRegions);
+    std::size_t pvtRegionIdx = 0;
+    for (const auto& record : handlerContext.keyword) {
+        const auto& max = record.getItem<ParserKeywords::DRSDTR::DRSDT_MAX>().getSIDouble(0);
+        const auto& option = record.getItem<ParserKeywords::DRSDTR::OPTION>().get< std::string >(0);
+        maximums[pvtRegionIdx] = max;
+        options[pvtRegionIdx] = option;
+        pvtRegionIdx++;
+    }
+    auto& ovp = handlerContext.state().oilvap();
+    OilVaporizationProperties::updateDRSDT(ovp, maximums, options);
+}
+
+void handleDRSDTCON(HandlerContext& handlerContext)
+{
+    std::size_t numPvtRegions = handlerContext.runspec().tabdims().getNumPVTTables();
+    std::vector<double> maximums(numPvtRegions);
+    std::vector<std::string> options(numPvtRegions);
+    for (const auto& record : handlerContext.keyword) {
+        const auto& max = record.getItem<ParserKeywords::DRSDTCON::DRSDT_MAX>().getSIDouble(0);
+        const auto& option = record.getItem<ParserKeywords::DRSDTCON::OPTION>().get< std::string >(0);
+        std::fill(maximums.begin(), maximums.end(), max);
+        std::fill(options.begin(), options.end(), option);
+        auto& ovp = handlerContext.state().oilvap();
+        OilVaporizationProperties::updateDRSDTCON(ovp, maximums, options);
+    }
+}
+
+void handleDRVDT(HandlerContext& handlerContext)
+{
+    std::size_t numPvtRegions = handlerContext.runspec().tabdims().getNumPVTTables();
+    std::vector<double> maximums(numPvtRegions);
+    for (const auto& record : handlerContext.keyword) {
+        const auto& max = record.getItem<ParserKeywords::DRVDTR::DRVDT_MAX>().getSIDouble(0);
+        std::fill(maximums.begin(), maximums.end(), max);
+        auto& ovp = handlerContext.state().oilvap();
+        OilVaporizationProperties::updateDRVDT(ovp, maximums);
+    }
+}
+
+void handleDRVDTR(HandlerContext& handlerContext)
+{
+    std::size_t numPvtRegions = handlerContext.runspec().tabdims().getNumPVTTables();
+    std::size_t pvtRegionIdx = 0;
+    std::vector<double> maximums(numPvtRegions);
+    for (const auto& record : handlerContext.keyword) {
+        const auto& max = record.getItem<ParserKeywords::DRVDTR::DRVDT_MAX>().getSIDouble(0);
+        maximums[pvtRegionIdx] = max;
+        pvtRegionIdx++;
+    }
+    auto& ovp = handlerContext.state().oilvap();
+    OilVaporizationProperties::updateDRVDT(ovp, maximums);
+}
+
 void handleGEOKeyword(HandlerContext& handlerContext)
 {
     handlerContext.state().geo_keywords().push_back(handlerContext.keyword);
@@ -826,74 +899,6 @@ File {} line {}.)", wname, location.keyword, location.filename, location.lineno)
                 this->snapshots[currentStep].wells.update( std::move(well) );
             }
         }
-    }
-
-    void Schedule::handleDRSDT(HandlerContext& handlerContext) {
-        std::size_t numPvtRegions = this->m_static.m_runspec.tabdims().getNumPVTTables();
-        std::vector<double> maximums(numPvtRegions);
-        std::vector<std::string> options(numPvtRegions);
-        for (const auto& record : handlerContext.keyword) {
-            const auto& max = record.getItem<ParserKeywords::DRSDT::DRSDT_MAX>().getSIDouble(0);
-            const auto& option = record.getItem<ParserKeywords::DRSDT::OPTION>().get< std::string >(0);
-            std::fill(maximums.begin(), maximums.end(), max);
-            std::fill(options.begin(), options.end(), option);
-            auto& ovp = this->snapshots.back().oilvap();
-            OilVaporizationProperties::updateDRSDT(ovp, maximums, options);
-        }
-    }
-
-    void Schedule::handleDRSDTCON(HandlerContext& handlerContext) {
-        std::size_t numPvtRegions = this->m_static.m_runspec.tabdims().getNumPVTTables();
-        std::vector<double> maximums(numPvtRegions);
-        std::vector<std::string> options(numPvtRegions);
-        for (const auto& record : handlerContext.keyword) {
-            const auto& max = record.getItem<ParserKeywords::DRSDTCON::DRSDT_MAX>().getSIDouble(0);
-            const auto& option = record.getItem<ParserKeywords::DRSDTCON::OPTION>().get< std::string >(0);
-            std::fill(maximums.begin(), maximums.end(), max);
-            std::fill(options.begin(), options.end(), option);
-            auto& ovp = this->snapshots.back().oilvap();
-            OilVaporizationProperties::updateDRSDTCON(ovp, maximums, options);
-        }
-    }
-
-    void Schedule::handleDRSDTR(HandlerContext& handlerContext) {
-        std::size_t numPvtRegions = this->m_static.m_runspec.tabdims().getNumPVTTables();
-        std::vector<double> maximums(numPvtRegions);
-        std::vector<std::string> options(numPvtRegions);
-        std::size_t pvtRegionIdx = 0;
-        for (const auto& record : handlerContext.keyword) {
-            const auto& max = record.getItem<ParserKeywords::DRSDTR::DRSDT_MAX>().getSIDouble(0);
-            const auto& option = record.getItem<ParserKeywords::DRSDTR::OPTION>().get< std::string >(0);
-            maximums[pvtRegionIdx] = max;
-            options[pvtRegionIdx] = option;
-            pvtRegionIdx++;
-        }
-        auto& ovp = this->snapshots.back().oilvap();
-        OilVaporizationProperties::updateDRSDT(ovp, maximums, options);
-    }
-
-    void Schedule::handleDRVDT(HandlerContext& handlerContext) {
-        std::size_t numPvtRegions = this->m_static.m_runspec.tabdims().getNumPVTTables();
-        std::vector<double> maximums(numPvtRegions);
-        for (const auto& record : handlerContext.keyword) {
-            const auto& max = record.getItem<ParserKeywords::DRVDTR::DRVDT_MAX>().getSIDouble(0);
-            std::fill(maximums.begin(), maximums.end(), max);
-            auto& ovp = this->snapshots.back().oilvap();
-            OilVaporizationProperties::updateDRVDT(ovp, maximums);
-        }
-    }
-
-    void Schedule::handleDRVDTR(HandlerContext& handlerContext) {
-        std::size_t numPvtRegions = this->m_static.m_runspec.tabdims().getNumPVTTables();
-        std::size_t pvtRegionIdx = 0;
-        std::vector<double> maximums(numPvtRegions);
-        for (const auto& record : handlerContext.keyword) {
-            const auto& max = record.getItem<ParserKeywords::DRVDTR::DRVDT_MAX>().getSIDouble(0);
-            maximums[pvtRegionIdx] = max;
-            pvtRegionIdx++;
-        }
-        auto& ovp = this->snapshots.back().oilvap();
-        OilVaporizationProperties::updateDRVDT(ovp, maximums);
     }
 
     void Schedule::handleEXIT(HandlerContext& handlerContext) {
@@ -2814,6 +2819,11 @@ Well{0} entered with 'FIELD' parent group:
             { "BCPROP"  , &handleBCProp    },
             { "BOX"     , &handleGEOKeyword},
             { "BRANPROP", &handleBRANPROP  },
+            { "DRSDT"   , &handleDRSDT     },
+            { "DRSDTCON", &handleDRSDTCON  },
+            { "DRSDTR"  , &handleDRSDTR    },
+            { "DRVDT"   , &handleDRVDT     },
+            { "DRVDTR"  , &handleDRVDTR    },
             { "ENDBOX"  , &handleGEOKeyword},
             { "GUIDERAT", &handleGUIDERAT  },
             { "LIFTOPT" , &handleLIFTOPT   },
@@ -2862,11 +2872,6 @@ Well{0} entered with 'FIELD' parent group:
             { "COMPSEGS", &Schedule::handleCOMPSEGS  },
             { "COMPTRAJ", &Schedule::handleCOMPTRAJ  },
             { "CSKIN",    &Schedule::handleCSKIN     },
-            { "DRSDT"   , &Schedule::handleDRSDT     },
-            { "DRSDTCON", &Schedule::handleDRSDTCON  },
-            { "DRSDTR"  , &Schedule::handleDRSDTR    },
-            { "DRVDT"   , &Schedule::handleDRVDT     },
-            { "DRVDTR"  , &Schedule::handleDRVDTR    },
             { "EXIT",     &Schedule::handleEXIT      },
             { "GCONINJE", &Schedule::handleGCONINJE  },
             { "GCONPROD", &Schedule::handleGCONPROD  },
