@@ -140,55 +140,491 @@ namespace {
         return wgname;
     }
 
+
+void handleAQUCT(HandlerContext& handlerContext)
+{
+    throw OpmInputError("AQUCT is not supported as SCHEDULE keyword",
+                        handlerContext.keyword.location());
 }
-    void Schedule::handleAQUCT(HandlerContext& handlerContext) {
-        throw OpmInputError("AQUCT is not supported as SCHEDULE keyword", handlerContext.keyword.location());
+
+
+void handleAQUFETP(HandlerContext& handlerContext)
+{
+    throw OpmInputError("AQUFETP is not supported as SCHEDULE keyword",
+                        handlerContext.keyword.location());
+}
+
+void handleAQUFLUX(HandlerContext& handlerContext)
+{
+    auto& aqufluxs = handlerContext.state().aqufluxs;
+    for (const auto& record : handlerContext.keyword) {
+        const auto aquifer = SingleAquiferFlux { record };
+        aqufluxs.insert_or_assign(aquifer.id, aquifer);
     }
+}
 
-    void Schedule::handleAQUFETP(HandlerContext& handlerContext) {
-        throw OpmInputError("AQUFETP is not supported as SCHEDULE keyword", handlerContext.keyword.location());
+void handleBCProp(HandlerContext& handlerContext)
+{
+    auto& bcprop = handlerContext.state().bcprop;
+    for (const auto& record : handlerContext.keyword) {
+        bcprop.updateBCProp(record);
     }
+}
 
-    void Schedule::handleAQUFLUX(HandlerContext& handlerContext) {
-        // auto& aqufluxs = this->snapshots.back().aqufluxs;
-        auto& aqufluxs = this->snapshots.back().aqufluxs;
-        for (const auto& record : handlerContext.keyword) {
-            const auto aquifer = SingleAquiferFlux { record };
-            aqufluxs.insert_or_assign(aquifer.id, aquifer);
-        }
-    }
+void handleBRANPROP(HandlerContext& handlerContext)
+{
+    auto ext_network = handlerContext.state().network.get();
 
-    void Schedule::handleBCProp(HandlerContext& handlerContext) {
-        auto& bcprop = this->snapshots.back().bcprop;
-        for (const auto& record : handlerContext.keyword) {
-            bcprop.updateBCProp(record);
-        }
-    }
+    for (const auto& record : handlerContext.keyword) {
+        const auto& downtree_node = record.getItem<ParserKeywords::BRANPROP::DOWNTREE_NODE>().get<std::string>(0);
+        const auto& uptree_node = record.getItem<ParserKeywords::BRANPROP::UPTREE_NODE>().get<std::string>(0);
+        const int vfp_table = record.getItem<ParserKeywords::BRANPROP::VFP_TABLE>().get<int>(0);
 
-    void Schedule::handleBRANPROP(HandlerContext& handlerContext) {
-        auto ext_network = this->snapshots.back().network.get();
+        if (vfp_table == 0) {
+            ext_network.drop_branch(uptree_node, downtree_node);
+        } else {
+            const auto alq_eq = Network::Branch::AlqEqfromString(record.getItem<ParserKeywords::BRANPROP::ALQ_SURFACE_DENSITY>().get<std::string>(0));
 
-        for (const auto& record : handlerContext.keyword) {
-            const auto& downtree_node = record.getItem<ParserKeywords::BRANPROP::DOWNTREE_NODE>().get<std::string>(0);
-            const auto& uptree_node = record.getItem<ParserKeywords::BRANPROP::UPTREE_NODE>().get<std::string>(0);
-            const int vfp_table = record.getItem<ParserKeywords::BRANPROP::VFP_TABLE>().get<int>(0);
-
-            if (vfp_table == 0) {
-                ext_network.drop_branch(uptree_node, downtree_node);
+            if (alq_eq == Network::Branch::AlqEQ::ALQ_INPUT) {
+                double alq_value = record.getItem<ParserKeywords::BRANPROP::ALQ>().get<double>(0);
+                ext_network.add_branch(Network::Branch(downtree_node, uptree_node, vfp_table, alq_value));
             } else {
-                const auto alq_eq = Network::Branch::AlqEqfromString(record.getItem<ParserKeywords::BRANPROP::ALQ_SURFACE_DENSITY>().get<std::string>(0));
-
-                if (alq_eq == Network::Branch::AlqEQ::ALQ_INPUT) {
-                    double alq_value = record.getItem<ParserKeywords::BRANPROP::ALQ>().get<double>(0);
-                    ext_network.add_branch(Network::Branch(downtree_node, uptree_node, vfp_table, alq_value));
-                } else {
-                    ext_network.add_branch(Network::Branch(downtree_node, uptree_node, vfp_table, alq_eq));
-                }
+                ext_network.add_branch(Network::Branch(downtree_node, uptree_node, vfp_table, alq_eq));
             }
         }
-
-        this->snapshots.back().network.update( std::move( ext_network ));
     }
+
+    handlerContext.state().network.update( std::move( ext_network ));
+}
+
+void handleGEOKeyword(HandlerContext& handlerContext)
+{
+    handlerContext.state().geo_keywords().push_back(handlerContext.keyword);
+    handlerContext.state().events().addEvent( ScheduleEvents::GEO_MODIFIER );
+    if (handlerContext.sim_update) {
+        handlerContext.sim_update->tran_update = true;
+    }
+}
+
+void handleGUIDERAT(HandlerContext& handlerContext)
+{
+    const auto& record = handlerContext.keyword.getRecord(0);
+
+    const double min_calc_delay = record.getItem<ParserKeywords::GUIDERAT::MIN_CALC_TIME>().getSIDouble(0);
+    const auto phase = GuideRateModel::TargetFromString(record.getItem<ParserKeywords::GUIDERAT::NOMINATED_PHASE>().getTrimmedString(0));
+    const double A = record.getItem<ParserKeywords::GUIDERAT::A>().get<double>(0);
+    const double B = record.getItem<ParserKeywords::GUIDERAT::B>().get<double>(0);
+    const double C = record.getItem<ParserKeywords::GUIDERAT::C>().get<double>(0);
+    const double D = record.getItem<ParserKeywords::GUIDERAT::D>().get<double>(0);
+    const double E = record.getItem<ParserKeywords::GUIDERAT::E>().get<double>(0);
+    const double F = record.getItem<ParserKeywords::GUIDERAT::F>().get<double>(0);
+    const bool allow_increase = DeckItem::to_bool( record.getItem<ParserKeywords::GUIDERAT::ALLOW_INCREASE>().getTrimmedString(0));
+    const double damping_factor = record.getItem<ParserKeywords::GUIDERAT::DAMPING_FACTOR>().get<double>(0);
+    const bool use_free_gas = DeckItem::to_bool( record.getItem<ParserKeywords::GUIDERAT::USE_FREE_GAS>().getTrimmedString(0));
+
+    const auto new_model = GuideRateModel(min_calc_delay, phase, A, B, C, D, E, F, allow_increase, damping_factor, use_free_gas);
+    auto new_config = handlerContext.state(handlerContext.currentStep).guide_rate();
+    if (new_config.update_model(new_model)) {
+        handlerContext.state(handlerContext.currentStep).guide_rate.update( std::move(new_config) );
+    }
+}
+
+void handleLIFTOPT(HandlerContext& handlerContext)
+{
+    auto glo = handlerContext.state().glo();
+
+    const auto& record = handlerContext.keyword.getRecord(0);
+
+    const double gaslift_increment = record.getItem<ParserKeywords::LIFTOPT::INCREMENT_SIZE>().getSIDouble(0);
+    const double min_eco_gradient = record.getItem<ParserKeywords::LIFTOPT::MIN_ECONOMIC_GRADIENT>().getSIDouble(0);
+    const double min_wait = record.getItem<ParserKeywords::LIFTOPT::MIN_INTERVAL_BETWEEN_GAS_LIFT_OPTIMIZATIONS>().getSIDouble(0);
+    const bool all_newton = DeckItem::to_bool( record.getItem<ParserKeywords::LIFTOPT::OPTIMISE_ALL_ITERATIONS>().get<std::string>(0) );
+
+    glo.gaslift_increment(gaslift_increment);
+    glo.min_eco_gradient(min_eco_gradient);
+    glo.min_wait(min_wait);
+    glo.all_newton(all_newton);
+
+    handlerContext.state().glo.update( std::move(glo) );
+}
+
+void handleLINCOM(HandlerContext& handlerContext)
+{
+    const auto& record = handlerContext.keyword.getRecord(0);
+    const auto alpha = record.getItem<ParserKeywords::LINCOM::ALPHA>().get<UDAValue>(0);
+    const auto beta  = record.getItem<ParserKeywords::LINCOM::BETA>().get<UDAValue>(0);
+    const auto gamma = record.getItem<ParserKeywords::LINCOM::GAMMA>().get<UDAValue>(0);
+
+    auto new_config = handlerContext.state().guide_rate();
+    auto new_model = new_config.model();
+
+    if (new_model.updateLINCOM(alpha, beta, gamma)) {
+        new_config.update_model(new_model);
+        handlerContext.state().guide_rate.update( std::move( new_config) );
+    }
+}
+
+void handleMESSAGES(HandlerContext& handlerContext)
+{
+    handlerContext.state().message_limits().update( handlerContext.keyword );
+}
+
+void handleMXUNSUPP(HandlerContext& handlerContext)
+{
+    std::string msg_fmt = fmt::format("Problem with keyword {{keyword}} at report step {}\n"
+                                      "In {{file}} line {{line}}\n"
+                                      "OPM does not support grid property modifier {} "
+                                      "in the Schedule section",
+                                      handlerContext.currentStep,
+                                      handlerContext.keyword.name());
+    OpmLog::warning(OpmInputError::format(msg_fmt, handlerContext.keyword.location()));
+}
+
+void handleNETBALAN(HandlerContext& handlerContext)
+{
+    handlerContext.state().network_balance
+        .update(Network::Balance{ handlerContext.keyword });
+}
+
+void handleNEXTSTEP(HandlerContext& handlerContext)
+{
+    const auto& record = handlerContext.keyword[0];
+    auto next_tstep = record.getItem<ParserKeywords::NEXTSTEP::MAX_STEP>().getSIDouble(0);
+    auto apply_to_all = DeckItem::to_bool( record.getItem<ParserKeywords::NEXTSTEP::APPLY_TO_ALL>().get<std::string>(0) );
+
+    handlerContext.state().next_tstep = NextStep{next_tstep, apply_to_all};
+    handlerContext.state().events().addEvent(ScheduleEvents::TUNING_CHANGE);
+}
+
+void handleNODEPROP(HandlerContext& handlerContext)
+{
+    auto ext_network = handlerContext.state().network.get();
+
+    for (const auto& record : handlerContext.keyword) {
+        const auto& name = record.getItem<ParserKeywords::NODEPROP::NAME>().get<std::string>(0);
+        const auto& pressure_item = record.getItem<ParserKeywords::NODEPROP::PRESSURE>();
+
+        const bool as_choke = DeckItem::to_bool(record.getItem<ParserKeywords::NODEPROP::AS_CHOKE>().get<std::string>(0));
+        const bool add_gas_lift_gas = DeckItem::to_bool(record.getItem<ParserKeywords::NODEPROP::ADD_GAS_LIFT_GAS>().get<std::string>(0));
+
+        Network::Node node { name };
+
+        if (pressure_item.hasValue(0) && (pressure_item.get<double>(0) > 0)) {
+            node.terminal_pressure(pressure_item.getSIDouble(0));
+        }
+
+        if (as_choke) {
+            std::string target_group = name;
+            const auto& target_item = record.getItem<ParserKeywords::NODEPROP::CHOKE_GROUP>();
+
+            if (target_item.hasValue(0)) {
+                target_group = target_item.get<std::string>(0);
+            }
+
+            if (target_group != name) {
+                if (handlerContext.state().groups.has(name)) {
+                    const auto& group = handlerContext.state(handlerContext.currentStep).groups.get(name);
+                    if (group.numWells() > 0) {
+                        throw std::invalid_argument("A manifold group must respond to its own target");
+                    }
+                }
+            }
+
+            node.as_choke(target_group);
+        }
+
+        node.add_gas_lift_gas(add_gas_lift_gas);
+        ext_network.update_node(node);
+    }
+
+    handlerContext.state().network.update(ext_network);
+}
+
+void handleNUPCOL(HandlerContext& handlerContext)
+{
+    const int nupcol = handlerContext.keyword.getRecord(0).getItem("NUM_ITER").get<int>(0);
+
+    if (handlerContext.keyword.getRecord(0).getItem("NUM_ITER").defaultApplied(0)) {
+        std::string msg = "OPM Flow uses 12 as default NUPCOL value";
+        OpmLog::note(msg);
+    }
+
+    handlerContext.state().update_nupcol(nupcol);
+}
+
+void handleRPTONLY(HandlerContext& handlerContext)
+{
+    handlerContext.state().rptonly(true);
+}
+
+void handleRPTONLYO(HandlerContext& handlerContext)
+{
+    handlerContext.state().rptonly(false);
+}
+
+void handleRPTRST(HandlerContext& handlerContext)
+{
+    auto rst_config = handlerContext.state().rst_config();
+    rst_config.update(handlerContext.keyword, handlerContext.parseContext, handlerContext.errors);
+    handlerContext.state().rst_config.update(std::move(rst_config));
+}
+
+void handleRPTSCHED(HandlerContext& handlerContext)
+{
+    handlerContext.state().rpt_config.update( RPTConfig(handlerContext.keyword ));
+    auto rst_config = handlerContext.state().rst_config();
+    rst_config.update(handlerContext.keyword, handlerContext.parseContext, handlerContext.errors);
+    handlerContext.state().rst_config.update(std::move(rst_config));
+}
+
+/*
+  We do not really handle the SAVE keyword, we just interpret it as: Write a
+  normal restart file at this report step.
+*/
+void handleSAVE(HandlerContext& handlerContext)
+{
+    handlerContext.state(handlerContext.currentStep).updateSAVE(true);
+}
+
+void handleSUMTHIN(HandlerContext& handlerContext)
+{
+    auto value = handlerContext.keyword.getRecord(0).getItem(0).getSIDouble(0);
+    handlerContext.state().update_sumthin( value );
+}
+
+void handleTUNING(HandlerContext& handlerContext)
+{
+    const auto numrecords = handlerContext.keyword.size();
+    auto tuning = handlerContext.state().tuning();
+
+    // local helpers
+    auto nondefault_or_previous_double = [](const Opm::DeckRecord& rec, const std::string& item_name, double previous_value) {
+        const auto& deck_item = rec.getItem(item_name);
+        return deck_item.defaultApplied(0) ? previous_value : rec.getItem(item_name).get< double >(0);
+    };
+
+    auto nondefault_or_previous_int = [](const Opm::DeckRecord& rec, const std::string& item_name, int previous_value) {
+        const auto& deck_item = rec.getItem(item_name);
+        return deck_item.defaultApplied(0) ? previous_value : rec.getItem(item_name).get< int >(0);
+    };
+
+    auto nondefault_or_previous_sidouble = [](const Opm::DeckRecord& rec, const std::string& item_name, double previous_value) {
+        const auto& deck_item = rec.getItem(item_name);
+        return deck_item.defaultApplied(0) ? previous_value : rec.getItem(item_name).getSIDouble(0);
+    };
+
+    // \Note No TSTINIT value should not be used unless explicitly non-defaulted, hence removing value by default
+    // \Note (exception is the first time step, which is handled by the Tuning constructor)
+    tuning.TSINIT = std::nullopt;
+
+    if (numrecords > 0) {
+        const auto& record1 = handlerContext.keyword.getRecord(0);
+
+        // \Note A value indicates TSINIT was set in this record
+        if (const auto& deck_item = record1.getItem("TSINIT"); !deck_item.defaultApplied(0))
+            tuning.TSINIT = std::optional<double>{ record1.getItem("TSINIT").getSIDouble(0) };
+
+        tuning.TSMAXZ = nondefault_or_previous_sidouble(record1, "TSMAXZ", tuning.TSMAXZ);
+        tuning.TSMINZ = nondefault_or_previous_sidouble(record1, "TSMINZ", tuning.TSMINZ);
+        tuning.TSMCHP = nondefault_or_previous_sidouble(record1, "TSMCHP", tuning.TSMCHP);
+        tuning.TSFMAX = nondefault_or_previous_double(record1, "TSFMAX", tuning.TSFMAX);
+        tuning.TSFMIN = nondefault_or_previous_double(record1, "TSFMIN", tuning.TSFMIN);
+        tuning.TSFCNV = nondefault_or_previous_double(record1, "TSFCNV", tuning.TSFCNV);
+        tuning.TFDIFF = nondefault_or_previous_double(record1, "TFDIFF", tuning.TFDIFF);
+        tuning.THRUPT = nondefault_or_previous_double(record1, "THRUPT", tuning.THRUPT);
+
+        const auto& TMAXWCdeckItem = record1.getItem("TMAXWC");
+        if (TMAXWCdeckItem.hasValue(0)) {
+            tuning.TMAXWC_has_value = true;
+            tuning.TMAXWC = nondefault_or_previous_sidouble(record1, "TMAXWC", tuning.TMAXWC);
+        }
+    }
+
+    if (numrecords > 1) {
+        const auto& record2 = handlerContext.keyword.getRecord(1);
+
+        tuning.TRGTTE = nondefault_or_previous_double(record2, "TRGTTE", tuning.TRGTTE);
+        tuning.TRGCNV = nondefault_or_previous_double(record2, "TRGCNV", tuning.TRGCNV);
+        tuning.TRGMBE = nondefault_or_previous_double(record2, "TRGMBE", tuning.TRGMBE);
+        tuning.TRGLCV = nondefault_or_previous_double(record2, "TRGLCV", tuning.TRGLCV);
+        tuning.XXXTTE = nondefault_or_previous_double(record2, "XXXTTE", tuning.XXXTTE);
+        tuning.XXXCNV = nondefault_or_previous_double(record2, "XXXCNV", tuning.XXXCNV);
+
+        tuning.XXXMBE = nondefault_or_previous_double(record2, "XXXMBE", tuning.XXXMBE);
+
+        tuning.XXXLCV = nondefault_or_previous_double(record2, "XXXLCV", tuning.XXXLCV);
+        tuning.XXXWFL = nondefault_or_previous_double(record2, "XXXWFL", tuning.XXXWFL);
+        tuning.TRGFIP = nondefault_or_previous_double(record2, "TRGFIP", tuning.TRGFIP);
+
+        const auto& TRGSFTdeckItem = record2.getItem("TRGSFT");
+        if (TRGSFTdeckItem.hasValue(0)) {
+            tuning.TRGSFT_has_value = true;
+            tuning.TRGSFT = nondefault_or_previous_double(record2, "TRGSFT", tuning.TRGSFT);
+        }
+
+        tuning.THIONX = nondefault_or_previous_double(record2, "THIONX", tuning.THIONX);
+        tuning.TRWGHT = nondefault_or_previous_int(record2, "TRWGHT", tuning.TRWGHT);
+    }
+
+    if (numrecords > 2) {
+        const auto& record3 = handlerContext.keyword.getRecord(2);
+
+        tuning.NEWTMX = nondefault_or_previous_int(record3, "NEWTMX", tuning.NEWTMX);
+        tuning.NEWTMN = nondefault_or_previous_int(record3, "NEWTMN", tuning.NEWTMN);
+        tuning.LITMAX = nondefault_or_previous_int(record3, "LITMAX", tuning.LITMAX);
+        tuning.LITMIN = nondefault_or_previous_int(record3, "LITMIN", tuning.LITMIN);
+        tuning.MXWSIT = nondefault_or_previous_int(record3, "MXWSIT", tuning.MXWSIT);
+        tuning.MXWPIT = nondefault_or_previous_int(record3, "MXWPIT", tuning.MXWPIT);
+        tuning.DDPLIM = nondefault_or_previous_sidouble(record3, "DDPLIM", tuning.DDPLIM);
+        tuning.DDSLIM = nondefault_or_previous_double(record3, "DDSLIM", tuning.DDSLIM);
+        tuning.TRGDPR = nondefault_or_previous_sidouble(record3, "TRGDPR", tuning.TRGDPR);
+
+        const auto& XXXDPRdeckItem = record3.getItem("XXXDPR");
+        if (XXXDPRdeckItem.hasValue(0)) {
+            tuning.XXXDPR_has_value = true;
+            tuning.XXXDPR = nondefault_or_previous_sidouble(record3, "XXXDPR", tuning.XXXDPR);
+        }
+    }
+
+    handlerContext.state().update_tuning( std::move( tuning ));
+    handlerContext.state().events().addEvent(ScheduleEvents::TUNING_CHANGE);
+}
+
+void handleUDQ(HandlerContext& handlerContext)
+{
+    auto new_udq = handlerContext.state().udq();
+
+    auto segment_matcher_factory = [&handlerContext]()
+    {
+        return std::make_unique<SegmentMatcher>(handlerContext.state());
+    };
+
+    for (const auto& record : handlerContext.keyword) {
+        new_udq.add_record(segment_matcher_factory, record,
+                           handlerContext.keyword.location(),
+                           handlerContext.currentStep);
+    }
+
+    handlerContext.state().udq.update(std::move(new_udq));
+}
+
+void handleUDT(HandlerContext& handlerContext)
+{
+    auto new_udq = handlerContext.state().udq();
+
+    using PUDT = ParserKeywords::UDT;
+
+    const auto& header = handlerContext.keyword.getRecord(0);
+    const std::string name = header.getItem<PUDT::TABLE_NAME>().get<std::string>(0);
+
+    const int dim = header.getItem<PUDT::DIMENSIONS>().get<int>(0);
+    if (dim != 1) {
+        throw OpmInputError("Only 1D UDTs are supported",
+                            handlerContext.keyword.location());
+
+    }
+
+    const auto& points = handlerContext.keyword.getRecord(1);
+    const std::string interp_type = points.getItem<PUDT::INTERPOLATION_TYPE>().get<std::string>(0);
+    UDT::InterpolationType type;
+    if (interp_type == "NV") {
+        type = UDT::InterpolationType::NearestNeighbour;
+    } else if (interp_type == "LC") {
+        type = UDT::InterpolationType::LinearClamp;
+    } else if (interp_type == "LL") {
+        type = UDT::InterpolationType::LinearExtrapolate;
+    } else {
+        throw OpmInputError(fmt::format("Unknown UDT interpolation type {}", interp_type),
+                            handlerContext.keyword.location());
+    }
+    const auto x_vals = points.getItem<ParserKeywords::UDT::INTERPOLATION_POINTS>().getData<double>();
+
+    if (!std::is_sorted(x_vals.begin(), x_vals.end())) {
+        throw OpmInputError("UDT: Interpolation points need to be given in ascending order",
+                            handlerContext.keyword.location());
+    }
+
+    if (auto it = std::adjacent_find(x_vals.begin(), x_vals.end()); it != x_vals.end()) {
+        throw OpmInputError(fmt::format("UDT: Interpolation points need to be unique: "
+                                        "found duplicate for {}", *it),
+                            handlerContext.keyword.location());
+    }
+
+    const auto& data = handlerContext.keyword.getRecord(2);
+    const auto y_vals = data.getItem<ParserKeywords::UDT::TABLE_VALUES>().getData<double>();
+
+    if (x_vals.size() != y_vals.size()) {
+        throw OpmInputError(fmt::format("UDT data size mismatch, number of x-values {}",
+                                        ", number of y-values {}",
+                                        x_vals.size(), y_vals.size()),
+                            handlerContext.keyword.location());
+    }
+
+    new_udq.add_table(name, UDT(x_vals, y_vals, type));
+
+    handlerContext.state().udq.update(std::move(new_udq));
+}
+
+void handleVAPPARS(HandlerContext& handlerContext)
+{
+    for (const auto& record : handlerContext.keyword) {
+        double vap1 = record.getItem("OIL_VAP_PROPENSITY").get< double >(0);
+        double vap2 = record.getItem("OIL_DENSITY_PROPENSITY").get< double >(0);
+        auto& ovp = handlerContext.state().oilvap();
+        OilVaporizationProperties::updateVAPPARS(ovp, vap1, vap2);
+    }
+}
+
+void handleWHISTCTL(HandlerContext& handlerContext)
+{
+    const auto& record = handlerContext.keyword.getRecord(0);
+    const std::string& cmodeString = record.getItem("CMODE").getTrimmedString(0);
+    const auto controlMode = WellProducerCModeFromString(cmodeString);
+
+    if (controlMode != Well::ProducerCMode::NONE) {
+        if (!Well::WellProductionProperties::effectiveHistoryProductionControl(controlMode) ) {
+            std::string msg = "The WHISTCTL keyword specifies an un-supported control mode " + cmodeString
+                + ", which makes WHISTCTL keyword not affect the simulation at all";
+            OpmLog::warning(msg);
+        } else {
+            handlerContext.state().update_whistctl( controlMode );
+        }
+    }
+
+    const std::string bhp_terminate = record.getItem("BPH_TERMINATE").getTrimmedString(0);
+    if (bhp_terminate == "YES") {
+        std::string msg_fmt = "Problem with {keyword}\n"
+                              "In {file} line {line}\n"
+                              "Setting item 2 in {keyword} to 'YES' to stop the run is not supported";
+        handlerContext.parseContext.handleError( ParseContext::UNSUPPORTED_TERMINATE_IF_BHP , msg_fmt, handlerContext.keyword.location(), handlerContext.errors );
+    }
+
+    for (const auto& well_ref : handlerContext.state().wells()) {
+        auto well2 = well_ref.get();
+        auto prop = std::make_shared<Well::WellProductionProperties>(well2.getProductionProperties());
+
+        if (prop->whistctl_cmode != controlMode) {
+            prop->whistctl_cmode = controlMode;
+            well2.updateProduction(prop);
+            handlerContext.state().wells.update( std::move(well2) );
+        }
+    }
+}
+
+void handleWSEGITER(HandlerContext& handlerContext)
+{
+    const auto& record = handlerContext.keyword.getRecord(0);
+    auto& tuning = handlerContext.state().tuning();
+
+    tuning.MXWSIT = record.getItem<ParserKeywords::WSEGITER::MAX_WELL_ITERATIONS>().get<int>(0);
+    tuning.WSEG_MAX_RESTART = record.getItem<ParserKeywords::WSEGITER::MAX_TIMES_REDUCED>().get<int>(0);
+    tuning.WSEG_REDUCTION_FACTOR = record.getItem<ParserKeywords::WSEGITER::REDUCTION_FACTOR>().get<double>(0);
+    tuning.WSEG_INCREASE_FACTOR = record.getItem<ParserKeywords::WSEGITER::INCREASING_FACTOR>().get<double>(0);
+
+    handlerContext.state().events().addEvent(ScheduleEvents::TUNING_CHANGE);
+}
+
+}
 
     void Schedule::handleCOMPDAT(HandlerContext& handlerContext)  {
         std::unordered_set<std::string> wells;
@@ -902,360 +1338,6 @@ File {} line {}.)", wname, location.keyword, location.filename, location.lineno)
                 addGroup(parentName, handlerContext.currentStep);
 
             this->addGroupToGroup(parentName, childName);
-        }
-    }
-
-    void Schedule::handleGUIDERAT(HandlerContext& handlerContext) {
-        const auto& record = handlerContext.keyword.getRecord(0);
-
-        const double min_calc_delay = record.getItem<ParserKeywords::GUIDERAT::MIN_CALC_TIME>().getSIDouble(0);
-        const auto phase = GuideRateModel::TargetFromString(record.getItem<ParserKeywords::GUIDERAT::NOMINATED_PHASE>().getTrimmedString(0));
-        const double A = record.getItem<ParserKeywords::GUIDERAT::A>().get<double>(0);
-        const double B = record.getItem<ParserKeywords::GUIDERAT::B>().get<double>(0);
-        const double C = record.getItem<ParserKeywords::GUIDERAT::C>().get<double>(0);
-        const double D = record.getItem<ParserKeywords::GUIDERAT::D>().get<double>(0);
-        const double E = record.getItem<ParserKeywords::GUIDERAT::E>().get<double>(0);
-        const double F = record.getItem<ParserKeywords::GUIDERAT::F>().get<double>(0);
-        const bool allow_increase = DeckItem::to_bool( record.getItem<ParserKeywords::GUIDERAT::ALLOW_INCREASE>().getTrimmedString(0));
-        const double damping_factor = record.getItem<ParserKeywords::GUIDERAT::DAMPING_FACTOR>().get<double>(0);
-        const bool use_free_gas = DeckItem::to_bool( record.getItem<ParserKeywords::GUIDERAT::USE_FREE_GAS>().getTrimmedString(0));
-
-        const auto new_model = GuideRateModel(min_calc_delay, phase, A, B, C, D, E, F, allow_increase, damping_factor, use_free_gas);
-        this->updateGuideRateModel(new_model, handlerContext.currentStep);
-    }
-
-    void Schedule::handleLIFTOPT(HandlerContext& handlerContext) {
-        auto glo = this->snapshots.back().glo();
-
-        const auto& record = handlerContext.keyword.getRecord(0);
-
-        const double gaslift_increment = record.getItem<ParserKeywords::LIFTOPT::INCREMENT_SIZE>().getSIDouble(0);
-        const double min_eco_gradient = record.getItem<ParserKeywords::LIFTOPT::MIN_ECONOMIC_GRADIENT>().getSIDouble(0);
-        const double min_wait = record.getItem<ParserKeywords::LIFTOPT::MIN_INTERVAL_BETWEEN_GAS_LIFT_OPTIMIZATIONS>().getSIDouble(0);
-        const bool all_newton = DeckItem::to_bool( record.getItem<ParserKeywords::LIFTOPT::OPTIMISE_ALL_ITERATIONS>().get<std::string>(0) );
-
-        glo.gaslift_increment(gaslift_increment);
-        glo.min_eco_gradient(min_eco_gradient);
-        glo.min_wait(min_wait);
-        glo.all_newton(all_newton);
-
-        this->snapshots.back().glo.update( std::move(glo) );
-    }
-
-    void Schedule::handleLINCOM(HandlerContext& handlerContext) {
-        const auto& record = handlerContext.keyword.getRecord(0);
-        const auto alpha = record.getItem<ParserKeywords::LINCOM::ALPHA>().get<UDAValue>(0);
-        const auto beta  = record.getItem<ParserKeywords::LINCOM::BETA>().get<UDAValue>(0);
-        const auto gamma = record.getItem<ParserKeywords::LINCOM::GAMMA>().get<UDAValue>(0);
-
-        auto new_config = this->snapshots.back().guide_rate();
-        auto new_model = new_config.model();
-
-        if (new_model.updateLINCOM(alpha, beta, gamma)) {
-            new_config.update_model(new_model);
-            this->snapshots.back().guide_rate.update( std::move( new_config) );
-        }
-    }
-
-    void Schedule::handleMESSAGES(HandlerContext& handlerContext) {
-        this->snapshots.back().message_limits().update( handlerContext.keyword );
-    }
-
-
-    void Schedule::handleGEOKeyword(HandlerContext& handlerContext) {
-        this->snapshots.back().geo_keywords().push_back(handlerContext.keyword);
-        this->snapshots.back().events().addEvent( ScheduleEvents::GEO_MODIFIER );
-        if (handlerContext.sim_update)
-            handlerContext.sim_update->tran_update = true;
-    }
-
-    void Schedule::handleMXUNSUPP(HandlerContext& handlerContext) {
-        std::string msg_fmt = fmt::format("Problem with keyword {{keyword}} at report step {}\n"
-                                          "In {{file}} line {{line}}\n"
-                                          "OPM does not support grid property modifier {} in the Schedule section", handlerContext.currentStep, handlerContext.keyword.name());
-        OpmLog::warning(OpmInputError::format(msg_fmt, handlerContext.keyword.location()));
-    }
-
-    void Schedule::handleNETBALAN(HandlerContext& handlerContext) {
-        this->snapshots.back().network_balance
-            .update(Network::Balance{ handlerContext.keyword });
-    }
-
-    void Schedule::handleNEXTSTEP(HandlerContext& handlerContext) {
-        const auto& record = handlerContext.keyword[0];
-        auto next_tstep = record.getItem<ParserKeywords::NEXTSTEP::MAX_STEP>().getSIDouble(0);
-        auto apply_to_all = DeckItem::to_bool( record.getItem<ParserKeywords::NEXTSTEP::APPLY_TO_ALL>().get<std::string>(0) );
-
-        this->snapshots.back().next_tstep = NextStep{next_tstep, apply_to_all};
-        this->snapshots.back().events().addEvent(ScheduleEvents::TUNING_CHANGE);
-    }
-
-
-    void Schedule::handleNODEPROP(HandlerContext& handlerContext) {
-        auto ext_network = this->snapshots.back().network.get();
-
-        for (const auto& record : handlerContext.keyword) {
-            const auto& name = record.getItem<ParserKeywords::NODEPROP::NAME>().get<std::string>(0);
-            const auto& pressure_item = record.getItem<ParserKeywords::NODEPROP::PRESSURE>();
-
-            const bool as_choke = DeckItem::to_bool(record.getItem<ParserKeywords::NODEPROP::AS_CHOKE>().get<std::string>(0));
-            const bool add_gas_lift_gas = DeckItem::to_bool(record.getItem<ParserKeywords::NODEPROP::ADD_GAS_LIFT_GAS>().get<std::string>(0));
-
-            Network::Node node { name };
-
-            if (pressure_item.hasValue(0) && (pressure_item.get<double>(0) > 0))
-                node.terminal_pressure(pressure_item.getSIDouble(0));
-
-            if (as_choke) {
-                std::string target_group = name;
-                const auto& target_item = record.getItem<ParserKeywords::NODEPROP::CHOKE_GROUP>();
-
-                if (target_item.hasValue(0))
-                    target_group = target_item.get<std::string>(0);
-
-                if (target_group != name) {
-                    if (this->snapshots.back().groups.has(name)) {
-                        const auto& group = this->getGroup(name, handlerContext.currentStep);
-                        if (group.numWells() > 0)
-                            throw std::invalid_argument("A manifold group must respond to its own target");
-                    }
-                }
-
-                node.as_choke(target_group);
-            }
-
-            node.add_gas_lift_gas(add_gas_lift_gas);
-            ext_network.update_node(node);
-        }
-
-        this->snapshots.back().network.update( ext_network );
-    }
-
-    void Schedule::handleNUPCOL(HandlerContext& handlerContext) {
-        const int nupcol = handlerContext.keyword.getRecord(0).getItem("NUM_ITER").get<int>(0);
-
-        if (handlerContext.keyword.getRecord(0).getItem("NUM_ITER").defaultApplied(0)) {
-            std::string msg = "OPM Flow uses 12 as default NUPCOL value";
-            OpmLog::note(msg);
-        }
-
-        this->snapshots.back().update_nupcol(nupcol);
-    }
-
-    void Schedule::handleRPTONLY(HandlerContext&) {
-        this->snapshots.back().rptonly(true);
-    }
-
-    void Schedule::handleRPTONLYO(HandlerContext&) {
-        this->snapshots.back().rptonly(false);
-    }
-
-    void Schedule::handleRPTSCHED(HandlerContext& handlerContext) {
-        this->snapshots.back().rpt_config.update( RPTConfig(handlerContext.keyword ));
-        auto rst_config = this->snapshots.back().rst_config();
-        rst_config.update(handlerContext.keyword, handlerContext.parseContext, handlerContext.errors);
-        this->snapshots.back().rst_config.update(std::move(rst_config));
-    }
-
-    void Schedule::handleRPTRST(HandlerContext& handlerContext) {
-        auto rst_config = this->snapshots.back().rst_config();
-        rst_config.update(handlerContext.keyword, handlerContext.parseContext, handlerContext.errors);
-        this->snapshots.back().rst_config.update(std::move(rst_config));
-    }
-
-    /*
-      We do not really handle the SAVE keyword, we just interpret it as: Write a
-      normal restart file at this report step.
-    */
-    void Schedule::handleSAVE(HandlerContext& handlerContext) {
-        this->snapshots[handlerContext.currentStep].updateSAVE(true);
-    }
-
-
-    void Schedule::handleSUMTHIN(HandlerContext& handlerContext) {
-        auto value = handlerContext.keyword.getRecord(0).getItem(0).getSIDouble(0);
-        this->snapshots.back().update_sumthin( value );
-    }
-
-
-    void Schedule::handleTUNING(HandlerContext& handlerContext) {
-        const auto numrecords = handlerContext.keyword.size();
-        auto tuning = this->snapshots.back().tuning();
-
-        // local helpers
-        auto nondefault_or_previous_double = [](const Opm::DeckRecord& rec, const std::string& item_name, double previous_value) {
-            const auto& deck_item = rec.getItem(item_name);
-            return deck_item.defaultApplied(0) ? previous_value : rec.getItem(item_name).get< double >(0);
-        };
-
-        auto nondefault_or_previous_int = [](const Opm::DeckRecord& rec, const std::string& item_name, int previous_value) {
-            const auto& deck_item = rec.getItem(item_name);
-            return deck_item.defaultApplied(0) ? previous_value : rec.getItem(item_name).get< int >(0);
-        };
-        
-        auto nondefault_or_previous_sidouble = [](const Opm::DeckRecord& rec, const std::string& item_name, double previous_value) {
-            const auto& deck_item = rec.getItem(item_name);
-            return deck_item.defaultApplied(0) ? previous_value : rec.getItem(item_name).getSIDouble(0);
-        };
-
-        // \Note No TSTINIT value should not be used unless explicitly non-defaulted, hence removing value by default
-        // \Note (exception is the first time step, which is handled by the Tuning constructor)
-        tuning.TSINIT = std::nullopt;
-        
-        if (numrecords > 0) {
-            const auto& record1 = handlerContext.keyword.getRecord(0);
-
-            // \Note A value indicates TSINIT was set in this record
-            if (const auto& deck_item = record1.getItem("TSINIT"); !deck_item.defaultApplied(0)) 
-                tuning.TSINIT = std::optional<double>{ record1.getItem("TSINIT").getSIDouble(0) };
-
-            tuning.TSMAXZ = nondefault_or_previous_sidouble(record1, "TSMAXZ", tuning.TSMAXZ);
-            tuning.TSMINZ = nondefault_or_previous_sidouble(record1, "TSMINZ", tuning.TSMINZ);
-            tuning.TSMCHP = nondefault_or_previous_sidouble(record1, "TSMCHP", tuning.TSMCHP);
-            tuning.TSFMAX = nondefault_or_previous_double(record1, "TSFMAX", tuning.TSFMAX);
-            tuning.TSFMIN = nondefault_or_previous_double(record1, "TSFMIN", tuning.TSFMIN);
-            tuning.TSFCNV = nondefault_or_previous_double(record1, "TSFCNV", tuning.TSFCNV);
-            tuning.TFDIFF = nondefault_or_previous_double(record1, "TFDIFF", tuning.TFDIFF);
-            tuning.THRUPT = nondefault_or_previous_double(record1, "THRUPT", tuning.THRUPT);
-            
-            const auto& TMAXWCdeckItem = record1.getItem("TMAXWC");
-            if (TMAXWCdeckItem.hasValue(0)) {
-                tuning.TMAXWC_has_value = true;
-                tuning.TMAXWC = nondefault_or_previous_sidouble(record1, "TMAXWC", tuning.TMAXWC);
-            }
-        }
-
-        if (numrecords > 1) {
-            const auto& record2 = handlerContext.keyword.getRecord(1);
-
-            tuning.TRGTTE = nondefault_or_previous_double(record2, "TRGTTE", tuning.TRGTTE);
-            tuning.TRGCNV = nondefault_or_previous_double(record2, "TRGCNV", tuning.TRGCNV);
-            tuning.TRGMBE = nondefault_or_previous_double(record2, "TRGMBE", tuning.TRGMBE);
-            tuning.TRGLCV = nondefault_or_previous_double(record2, "TRGLCV", tuning.TRGLCV);
-            tuning.XXXTTE = nondefault_or_previous_double(record2, "XXXTTE", tuning.XXXTTE);
-            tuning.XXXCNV = nondefault_or_previous_double(record2, "XXXCNV", tuning.XXXCNV);
-
-            tuning.XXXMBE = nondefault_or_previous_double(record2, "XXXMBE", tuning.XXXMBE);
-            
-            tuning.XXXLCV = nondefault_or_previous_double(record2, "XXXLCV", tuning.XXXLCV);
-            tuning.XXXWFL = nondefault_or_previous_double(record2, "XXXWFL", tuning.XXXWFL);
-            tuning.TRGFIP = nondefault_or_previous_double(record2, "TRGFIP", tuning.TRGFIP);
-
-            const auto& TRGSFTdeckItem = record2.getItem("TRGSFT");
-            if (TRGSFTdeckItem.hasValue(0)) {
-                tuning.TRGSFT_has_value = true;
-                tuning.TRGSFT = nondefault_or_previous_double(record2, "TRGSFT", tuning.TRGSFT);
-            }
-
-            tuning.THIONX = nondefault_or_previous_double(record2, "THIONX", tuning.THIONX);
-            tuning.TRWGHT = nondefault_or_previous_int(record2, "TRWGHT", tuning.TRWGHT);
-        }
-
-        if (numrecords > 2) {
-            const auto& record3 = handlerContext.keyword.getRecord(2);
-
-            tuning.NEWTMX = nondefault_or_previous_int(record3, "NEWTMX", tuning.NEWTMX);
-            tuning.NEWTMN = nondefault_or_previous_int(record3, "NEWTMN", tuning.NEWTMN);
-            tuning.LITMAX = nondefault_or_previous_int(record3, "LITMAX", tuning.LITMAX);
-            tuning.LITMIN = nondefault_or_previous_int(record3, "LITMIN", tuning.LITMIN);
-            tuning.MXWSIT = nondefault_or_previous_int(record3, "MXWSIT", tuning.MXWSIT);
-            tuning.MXWPIT = nondefault_or_previous_int(record3, "MXWPIT", tuning.MXWPIT);
-            tuning.DDPLIM = nondefault_or_previous_sidouble(record3, "DDPLIM", tuning.DDPLIM);
-            tuning.DDSLIM = nondefault_or_previous_double(record3, "DDSLIM", tuning.DDSLIM);
-            tuning.TRGDPR = nondefault_or_previous_sidouble(record3, "TRGDPR", tuning.TRGDPR);
-
-            const auto& XXXDPRdeckItem = record3.getItem("XXXDPR");
-            if (XXXDPRdeckItem.hasValue(0)) {
-                tuning.XXXDPR_has_value = true;
-                tuning.XXXDPR = nondefault_or_previous_sidouble(record3, "XXXDPR", tuning.XXXDPR);
-            }
-        } 
-
-        this->snapshots.back().update_tuning( std::move( tuning ));
-        this->snapshots.back().events().addEvent(ScheduleEvents::TUNING_CHANGE);
-    }
-
-    void Schedule::handleUDQ(HandlerContext& handlerContext)
-    {
-        auto new_udq = this->snapshots.back().udq();
-
-        auto segment_matcher_factory = [this]()
-        {
-            return std::make_unique<SegmentMatcher>(this->snapshots.back());
-        };
-
-        for (const auto& record : handlerContext.keyword) {
-            new_udq.add_record(segment_matcher_factory, record,
-                               handlerContext.keyword.location(),
-                               handlerContext.currentStep);
-        }
-
-        this->snapshots.back().udq.update(std::move(new_udq));
-    }
-
-    void Schedule::handleUDT(HandlerContext& handlerContext)
-    {
-        auto new_udq = this->snapshots.back().udq();
-
-        using PUDT = ParserKeywords::UDT;
-
-        const auto& header = handlerContext.keyword.getRecord(0);
-        const std::string name = header.getItem<PUDT::TABLE_NAME>().get<std::string>(0);
-
-        const int dim = header.getItem<PUDT::DIMENSIONS>().get<int>(0);
-        if (dim != 1) {
-            throw OpmInputError("Only 1D UDTs are supported",
-                                handlerContext.keyword.location());
-
-        }
-
-        const auto& points = handlerContext.keyword.getRecord(1);
-        const std::string interp_type = points.getItem<PUDT::INTERPOLATION_TYPE>().get<std::string>(0);
-        UDT::InterpolationType type;
-        if (interp_type == "NV") {
-            type = UDT::InterpolationType::NearestNeighbour;
-        } else if (interp_type == "LC") {
-            type = UDT::InterpolationType::LinearClamp;
-        } else if (interp_type == "LL") {
-            type = UDT::InterpolationType::LinearExtrapolate;
-        } else {
-            throw OpmInputError(fmt::format("Unknown UDT interpolation type {}", interp_type),
-                                handlerContext.keyword.location());
-        }
-        const auto x_vals = points.getItem<ParserKeywords::UDT::INTERPOLATION_POINTS>().getData<double>();
-
-        if (!std::is_sorted(x_vals.begin(), x_vals.end())) {
-            throw OpmInputError("UDT: Interpolation points need to be given in ascending order",
-                                handlerContext.keyword.location());
-        }
-
-        if (auto it = std::adjacent_find(x_vals.begin(), x_vals.end()); it != x_vals.end()) {
-            throw OpmInputError(fmt::format("UDT: Interpolation points need to be unique: "
-                                            "found duplicate for {}", *it),
-                                handlerContext.keyword.location());
-        }
-
-        const auto& data = handlerContext.keyword.getRecord(2);
-        const auto y_vals = data.getItem<ParserKeywords::UDT::TABLE_VALUES>().getData<double>();
-
-        if (x_vals.size() != y_vals.size()) {
-            throw OpmInputError(fmt::format("UDT data size mismatch, number of x-values {}",
-                                            ", number of y-values {}",
-                                            x_vals.size(), y_vals.size()),
-                                handlerContext.keyword.location());
-        }
-
-        new_udq.add_table(name, UDT(x_vals, y_vals, type));
-
-        this->snapshots.back().udq.update(std::move(new_udq));
-    }
-
-    void Schedule::handleVAPPARS(HandlerContext& handlerContext) {
-        for (const auto& record : handlerContext.keyword) {
-            double vap1 = record.getItem("OIL_VAP_PROPENSITY").get< double >(0);
-            double vap2 = record.getItem("OIL_DENSITY_PROPENSITY").get< double >(0);
-            auto& ovp = this->snapshots.back().oilvap();
-            OilVaporizationProperties::updateVAPPARS(ovp, vap1, vap2);
         }
     }
 
@@ -2009,40 +2091,6 @@ Well{0} entered with 'FIELD' parent group:
         }
     }
 
-    void Schedule::handleWHISTCTL(HandlerContext& handlerContext) {
-        const auto& record = handlerContext.keyword.getRecord(0);
-        const std::string& cmodeString = record.getItem("CMODE").getTrimmedString(0);
-        const auto controlMode = WellProducerCModeFromString(cmodeString);
-
-        if (controlMode != Well::ProducerCMode::NONE) {
-            if (!Well::WellProductionProperties::effectiveHistoryProductionControl(controlMode) ) {
-                std::string msg = "The WHISTCTL keyword specifies an un-supported control mode " + cmodeString
-                    + ", which makes WHISTCTL keyword not affect the simulation at all";
-                OpmLog::warning(msg);
-            } else
-                this->snapshots.back().update_whistctl( controlMode );
-        }
-
-        const std::string bhp_terminate = record.getItem("BPH_TERMINATE").getTrimmedString(0);
-        if (bhp_terminate == "YES") {
-            std::string msg_fmt = "Problem with {keyword}\n"
-                                  "In {file} line {line}\n"
-                                  "Setting item 2 in {keyword} to 'YES' to stop the run is not supported";
-            handlerContext.parseContext.handleError( ParseContext::UNSUPPORTED_TERMINATE_IF_BHP , msg_fmt, handlerContext.keyword.location(), handlerContext.errors );
-        }
-
-        for (const auto& well_ref : this->snapshots.back().wells()) {
-            auto well2 = well_ref.get();
-            auto prop = std::make_shared<Well::WellProductionProperties>(well2.getProductionProperties());
-
-            if (prop->whistctl_cmode != controlMode) {
-                prop->whistctl_cmode = controlMode;
-                well2.updateProduction(prop);
-                this->snapshots.back().wells.update( std::move(well2) );
-            }
-        }
-    }
-
     void Schedule::handleWINJMULT(HandlerContext& handlerContext) {
         for (const auto& record : handlerContext.keyword) {
             const std::string& wellNamePattern = record.getItem("WELL_NAME").getTrimmedString(0);
@@ -2312,18 +2360,6 @@ Well{0} entered with 'FIELD' parent group:
                     this->snapshots.back().wells.update( std::move(well2) );
             }
         }
-    }
-
-    void Schedule::handleWSEGITER(HandlerContext& handlerContext) {
-        const auto& record = handlerContext.keyword.getRecord(0);
-        auto& tuning = this->snapshots.back().tuning();
-
-        tuning.MXWSIT = record.getItem<ParserKeywords::WSEGITER::MAX_WELL_ITERATIONS>().get<int>(0);
-        tuning.WSEG_MAX_RESTART = record.getItem<ParserKeywords::WSEGITER::MAX_TIMES_REDUCED>().get<int>(0);
-        tuning.WSEG_REDUCTION_FACTOR = record.getItem<ParserKeywords::WSEGITER::REDUCTION_FACTOR>().get<double>(0);
-        tuning.WSEG_INCREASE_FACTOR = record.getItem<ParserKeywords::WSEGITER::INCREASING_FACTOR>().get<double>(0);
-
-        this->snapshots.back().events().addEvent(ScheduleEvents::TUNING_CHANGE);
     }
 
     void Schedule::handleWSEGSICD(HandlerContext& handlerContext) {
@@ -2767,15 +2803,59 @@ Well{0} entered with 'FIELD' parent group:
     }
 
 
-    bool Schedule::handleNormalKeyword(HandlerContext& handlerContext) {
+    bool Schedule::handleNormalKeyword(HandlerContext& handlerContext)
+    {
+        // handlers that do not need access to schedule members
+        using priv_handler_function = std::function<void(HandlerContext&)>;
+        static const std::unordered_map<std::string, priv_handler_function> priv_handler_functions = {
+            { "AQUCT"   , &handleAQUCT     },
+            { "AQUFETP" , &handleAQUFETP   },
+            { "AQUFLUX" , &handleAQUFLUX   },
+            { "BCPROP"  , &handleBCProp    },
+            { "BOX"     , &handleGEOKeyword},
+            { "BRANPROP", &handleBRANPROP  },
+            { "ENDBOX"  , &handleGEOKeyword},
+            { "GUIDERAT", &handleGUIDERAT  },
+            { "LIFTOPT" , &handleLIFTOPT   },
+            { "LINCOM"  , &handleLINCOM    },
+            { "MESSAGES", &handleMESSAGES  },
+            { "MULTFLT" , &handleGEOKeyword},
+            { "MULTPV"  , &handleMXUNSUPP  },
+            { "MULTR"   , &handleMXUNSUPP  },
+            { "MULTR-"  , &handleMXUNSUPP  },
+            { "MULTREGT", &handleMXUNSUPP  },
+            { "MULTSIG" , &handleMXUNSUPP  },
+            { "MULTSIGV", &handleMXUNSUPP  },
+            { "MULTTHT" , &handleMXUNSUPP  },
+            { "MULTTHT-", &handleMXUNSUPP  },
+            { "MULTX"   , &handleGEOKeyword},
+            { "MULTX-"  , &handleGEOKeyword},
+            { "MULTY"   , &handleGEOKeyword},
+            { "MULTY-"  , &handleGEOKeyword},
+            { "MULTZ"   , &handleGEOKeyword},
+            { "MULTZ-"  , &handleGEOKeyword},
+            { "NETBALAN", &handleNETBALAN  },
+            { "NEXT",     &handleNEXTSTEP  },
+            { "NEXTSTEP", &handleNEXTSTEP  },
+            { "NODEPROP", &handleNODEPROP  },
+            { "NUPCOL"  , &handleNUPCOL    },
+            { "RPTONLY" , &handleRPTONLY   },
+            { "RPTONLYO", &handleRPTONLYO  },
+            { "RPTRST"  , &handleRPTRST    },
+            { "RPTSCHED", &handleRPTSCHED  },
+            { "SAVE"    , &handleSAVE      },
+            { "SUMTHIN" , &handleSUMTHIN   },
+            { "TUNING"  , &handleTUNING    },
+            { "UDQ"     , &handleUDQ       },
+            { "UDT"     , &handleUDT       },
+            { "VAPPARS" , &handleVAPPARS   },
+            { "WHISTCTL", &handleWHISTCTL  },
+            { "WSEGITER", &handleWSEGITER  },
+        };
+
+        // handlers that need access to schedule members
         using handler_function = void (Schedule::*) (HandlerContext&);
         static const std::unordered_map<std::string,handler_function> handler_functions = {
-            { "AQUCT",    &Schedule::handleAQUCT     },
-            { "AQUFETP",  &Schedule::handleAQUFETP   },
-            { "AQUFLUX",  &Schedule::handleAQUFLUX   },
-            { "BCPROP",   &Schedule::handleBCProp    },
-            { "BOX",      &Schedule::handleGEOKeyword},
-            { "BRANPROP", &Schedule::handleBRANPROP  },
             { "COMPDAT" , &Schedule::handleCOMPDAT   },
             { "COMPLUMP", &Schedule::handleCOMPLUMP  },
             { "COMPORD" , &Schedule::handleCOMPORD   },
@@ -2787,7 +2867,6 @@ Well{0} entered with 'FIELD' parent group:
             { "DRSDTR"  , &Schedule::handleDRSDTR    },
             { "DRVDT"   , &Schedule::handleDRVDT     },
             { "DRVDTR"  , &Schedule::handleDRVDTR    },
-            { "ENDBOX"  , &Schedule::handleGEOKeyword},
             { "EXIT",     &Schedule::handleEXIT      },
             { "GCONINJE", &Schedule::handleGCONINJE  },
             { "GCONPROD", &Schedule::handleGCONPROD  },
@@ -2799,40 +2878,6 @@ Well{0} entered with 'FIELD' parent group:
             { "GPMAINT" , &Schedule::handleGPMAINT   },
             { "GRUPNET" , &Schedule::handleGRUPNET   },
             { "GRUPTREE", &Schedule::handleGRUPTREE  },
-            { "GUIDERAT", &Schedule::handleGUIDERAT  },
-            { "LIFTOPT" , &Schedule::handleLIFTOPT   },
-            { "LINCOM"  , &Schedule::handleLINCOM    },
-            { "MESSAGES", &Schedule::handleMESSAGES  },
-            { "MULTFLT" , &Schedule::handleGEOKeyword},
-            { "MULTPV"  , &Schedule::handleMXUNSUPP  },
-            { "MULTR"   , &Schedule::handleMXUNSUPP  },
-            { "MULTR-"  , &Schedule::handleMXUNSUPP  },
-            { "MULTREGT", &Schedule::handleMXUNSUPP  },
-            { "MULTSIG" , &Schedule::handleMXUNSUPP  },
-            { "MULTSIGV", &Schedule::handleMXUNSUPP  },
-            { "MULTTHT" , &Schedule::handleMXUNSUPP  },
-            { "MULTTHT-", &Schedule::handleMXUNSUPP  },
-            { "MULTX"   , &Schedule::handleGEOKeyword},
-            { "MULTX-"  , &Schedule::handleGEOKeyword},
-            { "MULTY"   , &Schedule::handleGEOKeyword},
-            { "MULTY-"  , &Schedule::handleGEOKeyword},
-            { "MULTZ"   , &Schedule::handleGEOKeyword},
-            { "MULTZ-"  , &Schedule::handleGEOKeyword},
-            { "NETBALAN", &Schedule::handleNETBALAN  },
-            { "NEXT",     &Schedule::handleNEXTSTEP  },
-            { "NEXTSTEP", &Schedule::handleNEXTSTEP  },
-            { "NODEPROP", &Schedule::handleNODEPROP  },
-            { "NUPCOL"  , &Schedule::handleNUPCOL    },
-            { "RPTONLY" , &Schedule::handleRPTONLY   },
-            { "RPTONLYO", &Schedule::handleRPTONLYO  },
-            { "RPTRST"  , &Schedule::handleRPTRST    },
-            { "RPTSCHED", &Schedule::handleRPTSCHED  },
-            { "SAVE"    , &Schedule::handleSAVE      },
-            { "SUMTHIN" , &Schedule::handleSUMTHIN   },
-            { "TUNING"  , &Schedule::handleTUNING    },
-            { "UDQ"     , &Schedule::handleUDQ       },
-            { "UDT"     , &Schedule::handleUDT       },
-            { "VAPPARS" , &Schedule::handleVAPPARS   },
             { "VFPINJ"  , &Schedule::handleVFPINJ    },
             { "VFPPROD" , &Schedule::handleVFPPROD   },
             { "WCONHIST", &Schedule::handleWCONHIST  },
@@ -2851,7 +2896,6 @@ Well{0} entered with 'FIELD' parent group:
             { "WELTRAJ" , &Schedule::handleWELTRAJ   },
             { "WFOAM"   , &Schedule::handleWFOAM     },
             { "WGRUPCON", &Schedule::handleWGRUPCON  },
-            { "WHISTCTL", &Schedule::handleWHISTCTL  },
             { "WINJMULT", &Schedule::handleWINJMULT  },
             { "WINJTEMP", &Schedule::handleWINJTEMP  },
             { "WLIFTOPT", &Schedule::handleWLIFTOPT  },
@@ -2871,7 +2915,6 @@ Well{0} entered with 'FIELD' parent group:
             { "WRFT"    , &Schedule::handleWRFT      },
             { "WRFTPLT" , &Schedule::handleWRFTPLT   },
             { "WSALT"   , &Schedule::handleWSALT     },
-            { "WSEGITER", &Schedule::handleWSEGITER  },
             { "WSEGSICD", &Schedule::handleWSEGSICD  },
             { "WSEGAICD", &Schedule::handleWSEGAICD  },
             { "WSEGVALV", &Schedule::handleWSEGVALV  },
@@ -2884,12 +2927,18 @@ Well{0} entered with 'FIELD' parent group:
         };
 
         auto function_iterator = handler_functions.find(handlerContext.keyword.name());
-        if (function_iterator == handler_functions.end()) {
+        auto priv_function_iterator = priv_handler_functions.find(handlerContext.keyword.name());
+        if (function_iterator == handler_functions.end() &&
+            priv_function_iterator == priv_handler_functions.end()) {
             return false;
         }
 
         try {
-            std::invoke(function_iterator->second, this, handlerContext);
+            if (function_iterator != handler_functions.end()) {
+                std::invoke(function_iterator->second, this, handlerContext);
+            } else {
+                (priv_function_iterator->second)(handlerContext);
+            }
         } catch (const OpmInputError&) {
             throw;
         } catch (const std::logic_error& e) {

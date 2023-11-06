@@ -646,11 +646,6 @@ namespace Opm
 
         // Normal keyword handlers -- in KeywordHandlers.cpp
 
-        void handleAQUCT     (HandlerContext&);
-        void handleAQUFETP   (HandlerContext&);
-        void handleAQUFLUX   (HandlerContext&);
-        void handleBCProp    (HandlerContext&);
-        void handleBRANPROP  (HandlerContext&);
         void handleCOMPDAT   (HandlerContext&);
         void handleCOMPLUMP  (HandlerContext&);
         void handleCOMPORD   (HandlerContext&);
@@ -669,30 +664,10 @@ namespace Opm
         void handleGCONSUMP  (HandlerContext&);
         void handleGECON     (HandlerContext&);
         void handleGEFAC     (HandlerContext&);
-        void handleGEOKeyword(HandlerContext&);
         void handleGLIFTOPT  (HandlerContext&);
         void handleGPMAINT   (HandlerContext&);
         void handleGRUPNET   (HandlerContext&);
         void handleGRUPTREE  (HandlerContext&);
-        void handleGUIDERAT  (HandlerContext&);
-        void handleLIFTOPT   (HandlerContext&);
-        void handleLINCOM    (HandlerContext&);
-        void handleMESSAGES  (HandlerContext&);
-        void handleMXUNSUPP  (HandlerContext&);
-        void handleNETBALAN  (HandlerContext&);
-        void handleNEXTSTEP  (HandlerContext&);
-        void handleNODEPROP  (HandlerContext&);
-        void handleNUPCOL    (HandlerContext&);
-        void handleRPTONLY   (HandlerContext&);
-        void handleRPTONLYO  (HandlerContext&);
-        void handleRPTRST    (HandlerContext&);
-        void handleRPTSCHED  (HandlerContext&);
-        void handleTUNING    (HandlerContext&);
-        void handleSAVE      (HandlerContext&);
-        void handleSUMTHIN   (HandlerContext&);
-        void handleUDQ       (HandlerContext&);
-        void handleUDT       (HandlerContext&);
-        void handleVAPPARS   (HandlerContext&);
         void handleVFPINJ    (HandlerContext&);
         void handleVFPPROD   (HandlerContext&);
         void handleWCONHIST  (HandlerContext&);
@@ -711,7 +686,6 @@ namespace Opm
         void handleWELTRAJ   (HandlerContext&);
         void handleWFOAM     (HandlerContext&);
         void handleWGRUPCON  (HandlerContext&);
-        void handleWHISTCTL  (HandlerContext&);
         void handleWINJTEMP  (HandlerContext&);
         void handleWLIFTOPT  (HandlerContext&);
         void handleWLIST     (HandlerContext&);
@@ -731,7 +705,6 @@ namespace Opm
         void handleWRFT      (HandlerContext&);
         void handleWRFTPLT   (HandlerContext&);
         void handleWSALT     (HandlerContext&);
-        void handleWSEGITER  (HandlerContext&);
         void handleWSEGSICD  (HandlerContext&);
         void handleWSEGAICD  (HandlerContext&);
         void handleWSEGVALV  (HandlerContext&);
