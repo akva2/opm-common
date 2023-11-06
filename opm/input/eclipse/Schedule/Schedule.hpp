@@ -547,6 +547,18 @@ namespace Opm
                 return schedule_.groupNames(pattern);
             }
 
+            std::vector<std::string>
+            wellNames(const std::string& pattern, bool allowEmpty) const override
+            {
+                return schedule_.wellNames(pattern, *this, allowEmpty);
+            }
+
+        protected:
+            bool isWList(const std::string& pattern) const override
+            {
+                return schedule_.isWList(currentStep, pattern);
+            }
+
         private:
             Schedule& schedule_;
         };
@@ -667,60 +679,17 @@ namespace Opm
 
         // Keyword Handlers
         void handlePYACTION(const DeckKeyword&);
-        void handleWELPIRuntime(HandlerContext&);
 
         // Normal keyword handlers -- in KeywordHandlers.cpp
 
-        void handleCOMPDAT   (HandlerContext&);
-        void handleCOMPLUMP  (HandlerContext&);
-        void handleCOMPTRAJ  (HandlerContext&);
-        void handleCSKIN     (HandlerContext&);
         void handleEXIT      (HandlerContext&);
         void handleGRUPTREE  (HandlerContext&);
         void handleWCONHIST  (HandlerContext&);
         void handleWCONINJE  (HandlerContext&);
         void handleWCONINJH  (HandlerContext&);
         void handleWCONPROD  (HandlerContext&);
-        void handleWECON     (HandlerContext&);
-        void handleWDFACCOR  (HandlerContext&);
-        void handleWDFAC     (HandlerContext&);
-        void handleWEFAC     (HandlerContext&);
         void handleWELOPEN   (HandlerContext&);
-        void handleWELPI     (HandlerContext&);
-        void handleWELSEGS   (HandlerContext&);
         void handleWELSPECS  (HandlerContext&);
-        void handleWELTARG   (HandlerContext&);
-        void handleWELTRAJ   (HandlerContext&);
-        void handleWFOAM     (HandlerContext&);
-        void handleWGRUPCON  (HandlerContext&);
-        void handleWINJTEMP  (HandlerContext&);
-        void handleWLIFTOPT  (HandlerContext&);
-        void handleWLIST     (HandlerContext&);
-        void handleWMICP     (HandlerContext&);
-        void handleWPAVE     (HandlerContext&);
-        void handleWPAVEDEP  (HandlerContext&);
-        void handleWVFPDP    (HandlerContext&);
-        void handleWVFPEXP   (HandlerContext&);
-        void handleWWPAVE    (HandlerContext&);
-        void handleWPIMULT   (HandlerContext&);
-        void handleWINJCLN   (HandlerContext&);
-        void handleWINJDAM   (HandlerContext&);
-        void handleWINJFCNC  (HandlerContext&);
-        void handleWINJMULT  (HandlerContext&);
-        void handleWPMITAB   (HandlerContext&);
-        void handleWPOLYMER  (HandlerContext&);
-        void handleWRFT      (HandlerContext&);
-        void handleWRFTPLT   (HandlerContext&);
-        void handleWSALT     (HandlerContext&);
-        void handleWSEGSICD  (HandlerContext&);
-        void handleWSEGAICD  (HandlerContext&);
-        void handleWSEGVALV  (HandlerContext&);
-        void handleWSKPTAB   (HandlerContext&);
-        void handleWSOLVENT  (HandlerContext&);
-        void handleWTEMP     (HandlerContext&);
-        void handleWTEST     (HandlerContext&);
-        void handleWTMULT    (HandlerContext&);
-        void handleWTRACER   (HandlerContext&);
     };
 }
 

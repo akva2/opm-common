@@ -137,6 +137,21 @@ struct HandlerContext {
     //! \brief Returns group names matching a pattern.
     virtual std::vector<std::string>
     groupNames(const std::string& pattern) const = 0;
+
+    //! \brief Returns well names matching a pattern.
+    virtual std::vector<std::string>
+    wellNames(const std::string& pattern, bool allowEmpty) const = 0;
+
+    std::vector<std::string>
+    wellNames(const std::string& pattern) const
+    {
+      bool allowEmpty = this->isWList(pattern);
+      return this->wellNames(pattern, allowEmpty);
+    }
+
+protected:
+    //! \brief Checks if pattern is a WList.
+    virtual bool isWList(const std::string& pattern) const = 0;
 };
 
 }
