@@ -541,6 +541,12 @@ namespace Opm
                 return schedule_.m_static.gaslift_opt_active;
             }
 
+            std::vector<std::string>
+            groupNames(const std::string& pattern) const override
+            {
+                return schedule_.groupNames(pattern);
+            }
+
         private:
             Schedule& schedule_;
         };
@@ -670,13 +676,6 @@ namespace Opm
         void handleCOMPTRAJ  (HandlerContext&);
         void handleCSKIN     (HandlerContext&);
         void handleEXIT      (HandlerContext&);
-        void handleGCONINJE  (HandlerContext&);
-        void handleGCONPROD  (HandlerContext&);
-        void handleGECON     (HandlerContext&);
-        void handleGEFAC     (HandlerContext&);
-        void handleGLIFTOPT  (HandlerContext&);
-        void handleGPMAINT   (HandlerContext&);
-        void handleGRUPNET   (HandlerContext&);
         void handleGRUPTREE  (HandlerContext&);
         void handleWCONHIST  (HandlerContext&);
         void handleWCONINJE  (HandlerContext&);

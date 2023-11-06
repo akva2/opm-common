@@ -133,6 +133,10 @@ struct HandlerContext {
 
     //! \brief Returns whether gas lift opt is active.
     virtual bool gasLiftOptActive() const = 0;
+
+    //! \brief Returns group names matching a pattern.
+    virtual std::vector<std::string>
+    groupNames(const std::string& pattern) const = 0;
 };
 
 }

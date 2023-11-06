@@ -315,12 +315,239 @@ void handleDRVDTR(HandlerContext& handlerContext)
     OilVaporizationProperties::updateDRVDT(ovp, maximums);
 }
 
-void handleGEOKeyword(HandlerContext& handlerContext)
+void handleGCONINJE(HandlerContext& handlerContext)
 {
-    handlerContext.state().geo_keywords().push_back(handlerContext.keyword);
-    handlerContext.state().events().addEvent( ScheduleEvents::GEO_MODIFIER );
-    if (handlerContext.sim_update) {
-        handlerContext.sim_update->tran_update = true;
+    using GI = ParserKeywords::GCONINJE;
+    auto current_step = handlerContext.currentStep;
+    const auto& keyword = handlerContext.keyword;
+    for (const auto& record : keyword) {
+        const std::string& groupNamePattern = record.getItem<GI::GROUP>().getTrimmedString(0);
+        const auto group_names = handlerContext.groupNames(groupNamePattern);
+        if (group_names.empty())
+            handlerContext.invalidNamePattern(groupNamePattern);
+
+        const Group::InjectionCMode controlMode = Group::InjectionCModeFromString(record.getItem<GI::CONTROL_MODE>().getTrimmedString(0));
+        const Phase phase = get_phase( record.getItem<GI::PHASE>().getTrimmedString(0));
+        const auto surfaceInjectionRate = record.getItem<GI::SURFACE_TARGET>().get<UDAValue>(0);
+        const auto reservoirInjectionRate = record.getItem<GI::RESV_TARGET>().get<UDAValue>(0);
+        const auto reinj_target = record.getItem<GI::REINJ_TARGET>().get<UDAValue>(0);
+        const auto voidage_target = record.getItem<GI::VOIDAGE_TARGET>().get<UDAValue>(0);
+        const bool is_free = DeckItem::to_bool(record.getItem<GI::RESPOND_TO_PARENT>().getTrimmedString(0));
+
+        std::optional<std::string> guide_rate_str;
+        {
+            const auto& item = record.getItem("GUIDE_RATE_DEF");
+            if (item.hasValue(0)) {
+                const auto& string_value = record.getItem("GUIDE_RATE_DEF").getTrimmedString(0);
+                if (string_value.size() > 0)
+                    guide_rate_str = string_value;
+            }
+
+        }
+
+        for (const auto& group_name : group_names) {
+            const bool is_field { group_name == "FIELD" } ;
+
+            auto guide_rate_def = Group::GuideRateInjTarget::NO_GUIDE_RATE;
+            double guide_rate = 0;
+            if (!is_field) {
+                if (guide_rate_str) {
+                    guide_rate_def = Group::GuideRateInjTargetFromString(guide_rate_str.value());
+                    guide_rate = record.getItem("GUIDE_RATE").get<double>(0);
+                }
+            }
+
+            {
+                // FLD overrides item 8 (is_free i.e if FLD the group is available for higher up groups)
+                const bool availableForGroupControl = (is_free || controlMode == Group::InjectionCMode::FLD)&& !is_field;
+                auto new_group = handlerContext.state().groups.get(group_name);
+                Group::GroupInjectionProperties injection{group_name};
+                injection.phase = phase;
+                injection.cmode = controlMode;
+                injection.surface_max_rate = surfaceInjectionRate;
+                injection.resv_max_rate = reservoirInjectionRate;
+                injection.target_reinj_fraction = reinj_target;
+                injection.target_void_fraction = voidage_target;
+                injection.injection_controls = 0;
+                injection.guide_rate = guide_rate;
+                injection.guide_rate_def = guide_rate_def;
+                injection.available_group_control = availableForGroupControl;
+
+                if (!record.getItem("SURFACE_TARGET").defaultApplied(0))
+                    injection.injection_controls += static_cast<int>(Group::InjectionCMode::RATE);
+
+                if (!record.getItem("RESV_TARGET").defaultApplied(0))
+                    injection.injection_controls += static_cast<int>(Group::InjectionCMode::RESV);
+
+                if (!record.getItem("REINJ_TARGET").defaultApplied(0))
+                    injection.injection_controls += static_cast<int>(Group::InjectionCMode::REIN);
+
+                if (!record.getItem("VOIDAGE_TARGET").defaultApplied(0))
+                    injection.injection_controls += static_cast<int>(Group::InjectionCMode::VREP);
+
+                if (record.getItem("REINJECT_GROUP").hasValue(0))
+                    injection.reinj_group = record.getItem("REINJECT_GROUP").getTrimmedString(0);
+
+                if (record.getItem("VOIDAGE_GROUP").hasValue(0))
+                    injection.voidage_group = record.getItem("VOIDAGE_GROUP").getTrimmedString(0);
+
+                if (new_group.updateInjection(injection)) {
+                    auto new_config = handlerContext.state().guide_rate();
+                    new_config.update_injection_group(group_name, injection);
+                    handlerContext.state().guide_rate.update( std::move(new_config));
+
+                    handlerContext.state().groups.update( std::move(new_group));
+                    handlerContext.state().events().addEvent( ScheduleEvents::GROUP_INJECTION_UPDATE );
+                    handlerContext.state().wellgroup_events().addEvent( group_name, ScheduleEvents::GROUP_INJECTION_UPDATE);
+
+                    auto udq_active = handlerContext.state().udq_active.get();
+                    auto& udq = handlerContext.state(current_step).udq.get();
+                    if (injection.updateUDQActive(udq, udq_active))
+                        handlerContext.state().udq_active.update( std::move(udq_active));
+                }
+            }
+        }
+    }
+}
+
+void handleGCONPROD(HandlerContext& handlerContext)
+{
+    auto current_step = handlerContext.currentStep;
+    const auto& keyword = handlerContext.keyword;
+    for (const auto& record : keyword) {
+        const std::string& groupNamePattern = record.getItem("GROUP").getTrimmedString(0);
+        const auto group_names = handlerContext.groupNames(groupNamePattern);
+        if (group_names.empty()) {
+            handlerContext.invalidNamePattern(groupNamePattern);
+        }
+
+        const Group::ProductionCMode controlMode = Group::ProductionCModeFromString(record.getItem("CONTROL_MODE").getTrimmedString(0));
+        Group::GroupLimitAction groupLimitAction;
+        groupLimitAction.allRates = Group::ExceedActionFromString(record.getItem("EXCEED_PROC").getTrimmedString(0));
+        groupLimitAction.water = Group::ExceedActionFromString(record.getItem("WATER_EXCEED_PROCEDURE").getTrimmedString(0));
+        groupLimitAction.gas = Group::ExceedActionFromString(record.getItem("GAS_EXCEED_PROCEDURE").getTrimmedString(0));
+        groupLimitAction.liquid = Group::ExceedActionFromString(record.getItem("LIQUID_EXCEED_PROCEDURE").getTrimmedString(0));
+
+        const bool respond_to_parent = DeckItem::to_bool(record.getItem("RESPOND_TO_PARENT").getTrimmedString(0));
+
+        const auto oil_target = record.getItem("OIL_TARGET").get<UDAValue>(0);
+        const auto gas_target = record.getItem("GAS_TARGET").get<UDAValue>(0);
+        const auto water_target = record.getItem("WATER_TARGET").get<UDAValue>(0);
+        const auto liquid_target = record.getItem("LIQUID_TARGET").get<UDAValue>(0);
+        const auto resv_target = record.getItem("RESERVOIR_FLUID_TARGET").getSIDouble(0);
+
+        const bool apply_default_oil_target = record.getItem("OIL_TARGET").defaultApplied(0);
+        const bool apply_default_gas_target = record.getItem("GAS_TARGET").defaultApplied(0);
+        const bool apply_default_water_target = record.getItem("WATER_TARGET").defaultApplied(0);
+        const bool apply_default_liquid_target = record.getItem("LIQUID_TARGET").defaultApplied(0);
+        const bool apply_default_resv_target = record.getItem("RESERVOIR_FLUID_TARGET").defaultApplied(0);
+
+        std::optional<std::string> guide_rate_str;
+        {
+            const auto& item = record.getItem("GUIDE_RATE_DEF");
+            if (item.hasValue(0)) {
+                const auto& string_value = record.getItem("GUIDE_RATE_DEF").getTrimmedString(0);
+                if (string_value.size() > 0) {
+                    guide_rate_str = string_value;
+                }
+            }
+
+        }
+
+        for (const auto& group_name : group_names) {
+            const bool is_field { group_name == "FIELD" } ;
+
+            auto guide_rate_def = Group::GuideRateProdTarget::NO_GUIDE_RATE;
+            double guide_rate = 0;
+            if (!is_field) {
+                if (guide_rate_str) {
+                    guide_rate_def = Group::GuideRateProdTargetFromString(guide_rate_str.value());
+
+                    if ((guide_rate_def == Group::GuideRateProdTarget::INJV ||
+                         guide_rate_def == Group::GuideRateProdTarget::POTN ||
+                         guide_rate_def == Group::GuideRateProdTarget::FORM)) {
+                        std::string msg_fmt = "Problem with {keyword}\n"
+                            "In {file} line {line}\n"
+                            "The supplied guide rate will be ignored";
+                        const auto& parseContext = handlerContext.parseContext;
+                        auto& errors = handlerContext.errors;
+                        parseContext.handleError(ParseContext::SCHEDULE_IGNORED_GUIDE_RATE, msg_fmt, keyword.location(), errors);
+                    } else {
+                        guide_rate = record.getItem("GUIDE_RATE").get<double>(0);
+                        if (guide_rate == 0) {
+                            guide_rate_def = Group::GuideRateProdTarget::POTN;
+                        }
+                    }
+                }
+            }
+
+            {
+                // FLD overrides item 8 (respond_to_parent i.e if FLD the group is available for higher up groups)
+                const bool availableForGroupControl { (respond_to_parent || controlMode == Group::ProductionCMode::FLD) && !is_field } ;
+                auto new_group = handlerContext.state().groups.get(group_name);
+                Group::GroupProductionProperties production(handlerContext.unitSystem(), group_name);
+                production.cmode = controlMode;
+                production.oil_target = oil_target;
+                production.gas_target = gas_target;
+                production.water_target = water_target;
+                production.liquid_target = liquid_target;
+                production.guide_rate = guide_rate;
+                production.guide_rate_def = guide_rate_def;
+                production.resv_target = resv_target;
+                production.available_group_control = availableForGroupControl;
+                production.group_limit_action = groupLimitAction;
+
+                production.production_controls = 0;
+                // GCONPROD
+                // 'G1' 'ORAT' 1000 100 200 300 NONE =>  constraints 100,200,300 should be ignored
+                //
+                // GCONPROD
+                // 'G1' 'ORAT' 1000 100 200 300 RATE =>  constraints 100,200,300 should be honored
+                if (production.cmode == Group::ProductionCMode::ORAT ||
+                    (groupLimitAction.allRates == Group::ExceedAction::RATE &&
+                    !apply_default_oil_target)) {
+                    production.production_controls |= static_cast<int>(Group::ProductionCMode::ORAT);
+                }
+                if (production.cmode == Group::ProductionCMode::WRAT ||
+                    ((groupLimitAction.allRates == Group::ExceedAction::RATE ||
+                    groupLimitAction.water == Group::ExceedAction::RATE) &&
+                    !apply_default_water_target)) {
+                    production.production_controls |= static_cast<int>(Group::ProductionCMode::WRAT);
+                }
+                if (production.cmode == Group::ProductionCMode::GRAT ||
+                    ((groupLimitAction.allRates  == Group::ExceedAction::RATE ||
+                    groupLimitAction.gas == Group::ExceedAction::RATE) &&
+                    !apply_default_gas_target)) {
+                    production.production_controls |= static_cast<int>(Group::ProductionCMode::GRAT);
+                }
+                if (production.cmode == Group::ProductionCMode::LRAT ||
+                    ((groupLimitAction.allRates == Group::ExceedAction::RATE ||
+                    groupLimitAction.liquid == Group::ExceedAction::RATE) &&
+                    !apply_default_liquid_target)) {
+                    production.production_controls |= static_cast<int>(Group::ProductionCMode::LRAT);
+                }
+
+                if (!apply_default_resv_target) {
+                    production.production_controls |= static_cast<int>(Group::ProductionCMode::RESV);
+                }
+
+                if (new_group.updateProduction(production)) {
+                    auto new_config = handlerContext.state().guide_rate();
+                    new_config.update_production_group(new_group);
+                    handlerContext.state().guide_rate.update( std::move(new_config));
+
+                    handlerContext.state().groups.update( std::move(new_group));
+                    handlerContext.state().events().addEvent(ScheduleEvents::GROUP_PRODUCTION_UPDATE);
+                    handlerContext.state().wellgroup_events().addEvent( group_name, ScheduleEvents::GROUP_PRODUCTION_UPDATE);
+
+                    auto udq_active = handlerContext.state().udq_active.get();
+                    auto& udq = handlerContext.state(current_step).udq.get();
+                    if (production.updateUDQActive(udq, udq_active)) {
+                        handlerContext.state().udq_active.update( std::move(udq_active));
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -391,6 +618,182 @@ void handleGCONSUMP(HandlerContext& handlerContext)
                          network_node_name, udqconfig, handlerContext.unitSystem());
     }
     handlerContext.state().gconsump.update( std::move(new_gconsump) );
+}
+
+
+void handleGECON(HandlerContext& handlerContext)
+{
+    auto gecon = handlerContext.state().gecon();
+    const auto& keyword = handlerContext.keyword;
+    auto report_step = handlerContext.currentStep;
+    for (const auto& record : keyword) {
+        const std::string& groupNamePattern
+            = record.getItem<ParserKeywords::GECON::GROUP>().getTrimmedString(0);
+        const auto group_names = handlerContext.groupNames(groupNamePattern);
+        if (group_names.empty())
+            handlerContext.invalidNamePattern(groupNamePattern);
+        for (const auto& gname : group_names) {
+            gecon.add_group(report_step, gname, record);
+        }
+    }
+    handlerContext.state().gecon.update(std::move(gecon));
+}
+
+void handleGEFAC(HandlerContext& handlerContext)
+{
+    for (const auto& record : handlerContext.keyword) {
+        const std::string& groupNamePattern = record.getItem("GROUP").getTrimmedString(0);
+        const auto group_names = handlerContext.groupNames(groupNamePattern);
+        if (group_names.empty())
+            handlerContext.invalidNamePattern(groupNamePattern);
+
+        const bool transfer = DeckItem::to_bool(record.getItem("TRANSFER_EXT_NET").getTrimmedString(0));
+        const auto gefac = record.getItem("EFFICIENCY_FACTOR").get<double>(0);
+
+        for (const auto& group_name : group_names) {
+            auto new_group = handlerContext.state().groups.get(group_name);
+            if (new_group.update_gefac(gefac, transfer)) {
+                handlerContext.state().wellgroup_events().addEvent( group_name, ScheduleEvents::WELLGROUP_EFFICIENCY_UPDATE);
+                handlerContext.state().events().addEvent( ScheduleEvents::WELLGROUP_EFFICIENCY_UPDATE );
+                handlerContext.state().groups.update(std::move(new_group));
+            }
+        }
+    }
+}
+
+void handleGEOKeyword(HandlerContext& handlerContext)
+{
+    handlerContext.state().geo_keywords().push_back(handlerContext.keyword);
+    handlerContext.state().events().addEvent( ScheduleEvents::GEO_MODIFIER );
+    if (handlerContext.sim_update) {
+        handlerContext.sim_update->tran_update = true;
+    }
+}
+
+void handleGLIFTOPT(HandlerContext& handlerContext)
+{
+    auto glo = handlerContext.state().glo();
+    const auto& keyword = handlerContext.keyword;
+
+    for (const auto& record : keyword) {
+        const std::string& groupNamePattern = record.getItem<ParserKeywords::GLIFTOPT::GROUP_NAME>().getTrimmedString(0);
+        const auto group_names = handlerContext.groupNames(groupNamePattern);
+        if (group_names.empty()) {
+            handlerContext.invalidNamePattern(groupNamePattern);
+        }
+
+        const auto& max_gas_item = record.getItem<ParserKeywords::GLIFTOPT::MAX_LIFT_GAS_SUPPLY>();
+        const double max_lift_gas_value = max_gas_item.hasValue(0)
+            ? max_gas_item.getSIDouble(0)
+            : -1;
+
+        const auto& max_total_item = record.getItem<ParserKeywords::GLIFTOPT::MAX_TOTAL_GAS_RATE>();
+        const double max_total_gas_value = max_total_item.hasValue(0)
+            ? max_total_item.getSIDouble(0)
+            : -1;
+
+        for (const auto& gname : group_names) {
+            auto group = GasLiftGroup(gname);
+            group.max_lift_gas(max_lift_gas_value);
+            group.max_total_gas(max_total_gas_value);
+
+            glo.add_group(group);
+        }
+    }
+
+    handlerContext.state().glo.update( std::move(glo) );
+}
+
+void handleGPMAINT(HandlerContext& handlerContext)
+{
+    for (const auto& record : handlerContext.keyword) {
+        const std::string& groupNamePattern = record.getItem("GROUP").getTrimmedString(0);
+        const auto group_names = handlerContext.groupNames(groupNamePattern);
+        if (group_names.empty()) {
+            handlerContext.invalidNamePattern(groupNamePattern);
+        }
+
+        const auto& target_string = record.getItem<ParserKeywords::GPMAINT::FLOW_TARGET>().get<std::string>(0);
+
+        for (const auto& group_name : group_names) {
+            auto new_group = handlerContext.state().groups.get(group_name);
+            if (target_string == "NONE") {
+                new_group.set_gpmaint();
+            } else {
+                GPMaint gpmaint(handlerContext.currentStep, record);
+                new_group.set_gpmaint(std::move(gpmaint));
+            }
+            handlerContext.state().groups.update( std::move(new_group) );
+        }
+    }
+}
+
+void handleGRUPNET(HandlerContext& handlerContext)
+{
+    auto network = handlerContext.state().network.get();
+    std::vector<Network::Node> nodes;
+    for (const auto& record : handlerContext.keyword) {
+         const std::string& groupNamePattern = record.getItem<ParserKeywords::GRUPNET::NAME>().getTrimmedString(0);
+         const auto group_names = handlerContext.groupNames(groupNamePattern);
+         if (group_names.empty()) {
+             handlerContext.invalidNamePattern(groupNamePattern);
+         }
+         const auto& pressure_item = record.getItem<ParserKeywords::GRUPNET::TERMINAL_PRESSURE>();
+         const int vfp_table = record.getItem<ParserKeywords::GRUPNET::VFP_TABLE>().get<int>(0);
+         // It is assumed here that item 6 (ADD_GAS_LIFT_GAS) has the two options NO and FLO. THe option ALQ is not supported.
+         // For standard networks the summation of ALQ values are weighted with efficiency factors.
+         // Note that, currently, extended networks uses always efficiency factors (this is the default set by WEFAC item 3 (YES), the value NO is not supported.)
+         const std::string& add_gas_lift_gas_string = record.getItem<ParserKeywords::GRUPNET::ADD_GAS_LIFT_GAS>().get<std::string>(0);
+         bool add_gas_lift_gas = false;
+         if (add_gas_lift_gas_string == "FLO")
+             add_gas_lift_gas = true;
+
+         for (const auto& group_name : group_names) {
+              const auto& group = handlerContext.state().groups.get(group_name);
+              const std::string& downtree_node = group_name;
+              const std::string& uptree_node = group.parent();
+              Network::Node node { group_name };
+              node.add_gas_lift_gas(add_gas_lift_gas);
+              // A terminal node is a node with a fixed pressure
+              const bool is_terminal_node = pressure_item.hasValue(0) && (pressure_item.get<double>(0) >= 0);
+              if (is_terminal_node) {
+                  if (vfp_table > 0) {
+                      std::string msg = fmt::format("The group {} is a terminal node of the network and should not have a vfp table assigned to it.", group_name);
+                      throw OpmInputError(msg, handlerContext.keyword.location());
+                  }
+                  node.terminal_pressure(pressure_item.getSIDouble(0));
+                  nodes.push_back(node);
+                  // Remove the  branch upstream if it was part of the network
+                  if (network.has_node(downtree_node) && network.has_node(uptree_node))
+                      network.drop_branch(uptree_node, downtree_node);
+              } else {
+                   if (vfp_table <= 0) {
+                       // If vfp table is defaulted (or set to <=0) then the group is not part of the network.
+                       // If the branch was part of the network then drop it
+                       if (network.has_node(downtree_node) && network.has_node(uptree_node))
+                           network.drop_branch(uptree_node, downtree_node);
+                   } else {
+                        if (!uptree_node.empty()) {
+                            const auto alq_eq = Network::Branch::AlqEqfromString(record.getItem<ParserKeywords::GRUPNET::ALQ_SURFACE_DENSITY>().get<std::string>(0));
+                            if (alq_eq == Network::Branch::AlqEQ::ALQ_INPUT) {
+                                const double alq_value = record.getItem<ParserKeywords::GRUPNET::ALQ>().get<double>(0);
+                                network.add_branch(Network::Branch(downtree_node, uptree_node, vfp_table, alq_value));
+                            } else {
+                                 network.add_branch(Network::Branch(downtree_node, uptree_node, vfp_table, alq_eq));
+                            }
+                        }
+                        nodes.push_back(node);
+                   }
+              }
+         }
+    }
+
+    // To use update_node the node should be associated to a branch via add_branch()
+    // so the update of nodes is postponed after creation of branches
+    for (const auto& node : nodes) {
+        network.update_node(node);
+    }
+    handlerContext.state().network.update(std::move(network));
 }
 
 void handleLIFTOPT(HandlerContext& handlerContext)
@@ -967,391 +1370,6 @@ void handleWSEGITER(HandlerContext& handlerContext)
     void Schedule::handleEXIT(HandlerContext& handlerContext) {
         if (handlerContext.actionx_mode)
             this->applyEXIT(handlerContext.keyword, handlerContext.currentStep);
-    }
-
-    void Schedule::handleGCONINJE(HandlerContext& handlerContext) {
-        using GI = ParserKeywords::GCONINJE;
-        auto current_step = handlerContext.currentStep;
-        const auto& keyword = handlerContext.keyword;
-        for (const auto& record : keyword) {
-            const std::string& groupNamePattern = record.getItem<GI::GROUP>().getTrimmedString(0);
-            const auto group_names = this->groupNames(groupNamePattern);
-            if (group_names.empty())
-                handlerContext.invalidNamePattern(groupNamePattern);
-
-            const Group::InjectionCMode controlMode = Group::InjectionCModeFromString(record.getItem<GI::CONTROL_MODE>().getTrimmedString(0));
-            const Phase phase = get_phase( record.getItem<GI::PHASE>().getTrimmedString(0));
-            const auto surfaceInjectionRate = record.getItem<GI::SURFACE_TARGET>().get<UDAValue>(0);
-            const auto reservoirInjectionRate = record.getItem<GI::RESV_TARGET>().get<UDAValue>(0);
-            const auto reinj_target = record.getItem<GI::REINJ_TARGET>().get<UDAValue>(0);
-            const auto voidage_target = record.getItem<GI::VOIDAGE_TARGET>().get<UDAValue>(0);
-            const bool is_free = DeckItem::to_bool(record.getItem<GI::RESPOND_TO_PARENT>().getTrimmedString(0));
-
-            std::optional<std::string> guide_rate_str;
-            {
-                const auto& item = record.getItem("GUIDE_RATE_DEF");
-                if (item.hasValue(0)) {
-                    const auto& string_value = record.getItem("GUIDE_RATE_DEF").getTrimmedString(0);
-                    if (string_value.size() > 0)
-                        guide_rate_str = string_value;
-                }
-
-            }
-
-            for (const auto& group_name : group_names) {
-                const bool is_field { group_name == "FIELD" } ;
-
-                auto guide_rate_def = Group::GuideRateInjTarget::NO_GUIDE_RATE;
-                double guide_rate = 0;
-                if (!is_field) {
-                    if (guide_rate_str) {
-                        guide_rate_def = Group::GuideRateInjTargetFromString(guide_rate_str.value());
-                        guide_rate = record.getItem("GUIDE_RATE").get<double>(0);
-                    }
-                }
-
-                {
-                    // FLD overrides item 8 (is_free i.e if FLD the group is available for higher up groups)
-                    const bool availableForGroupControl = (is_free || controlMode == Group::InjectionCMode::FLD)&& !is_field;
-                    auto new_group = this->snapshots.back().groups.get(group_name);
-                    Group::GroupInjectionProperties injection{group_name};
-                    injection.phase = phase;
-                    injection.cmode = controlMode;
-                    injection.surface_max_rate = surfaceInjectionRate;
-                    injection.resv_max_rate = reservoirInjectionRate;
-                    injection.target_reinj_fraction = reinj_target;
-                    injection.target_void_fraction = voidage_target;
-                    injection.injection_controls = 0;
-                    injection.guide_rate = guide_rate;
-                    injection.guide_rate_def = guide_rate_def;
-                    injection.available_group_control = availableForGroupControl;
-
-                    if (!record.getItem("SURFACE_TARGET").defaultApplied(0))
-                        injection.injection_controls += static_cast<int>(Group::InjectionCMode::RATE);
-
-                    if (!record.getItem("RESV_TARGET").defaultApplied(0))
-                        injection.injection_controls += static_cast<int>(Group::InjectionCMode::RESV);
-
-                    if (!record.getItem("REINJ_TARGET").defaultApplied(0))
-                        injection.injection_controls += static_cast<int>(Group::InjectionCMode::REIN);
-
-                    if (!record.getItem("VOIDAGE_TARGET").defaultApplied(0))
-                        injection.injection_controls += static_cast<int>(Group::InjectionCMode::VREP);
-
-                    if (record.getItem("REINJECT_GROUP").hasValue(0))
-                        injection.reinj_group = record.getItem("REINJECT_GROUP").getTrimmedString(0);
-
-                    if (record.getItem("VOIDAGE_GROUP").hasValue(0))
-                        injection.voidage_group = record.getItem("VOIDAGE_GROUP").getTrimmedString(0);
-
-                    if (new_group.updateInjection(injection)) {
-                        auto new_config = this->snapshots.back().guide_rate();
-                        new_config.update_injection_group(group_name, injection);
-                        this->snapshots.back().guide_rate.update( std::move(new_config));
-
-                        this->snapshots.back().groups.update( std::move(new_group));
-                        this->snapshots.back().events().addEvent( ScheduleEvents::GROUP_INJECTION_UPDATE );
-                        this->snapshots.back().wellgroup_events().addEvent( group_name, ScheduleEvents::GROUP_INJECTION_UPDATE);
-
-                        auto udq_active = this->snapshots.back().udq_active.get();
-                        if (injection.updateUDQActive(this->getUDQConfig(current_step), udq_active))
-                            this->snapshots.back().udq_active.update( std::move(udq_active));
-                    }
-                }
-            }
-        }
-    }
-
-    void Schedule::handleGCONPROD(HandlerContext& handlerContext) {
-        auto current_step = handlerContext.currentStep;
-        const auto& keyword = handlerContext.keyword;
-        for (const auto& record : keyword) {
-            const std::string& groupNamePattern = record.getItem("GROUP").getTrimmedString(0);
-            const auto group_names = this->groupNames(groupNamePattern);
-            if (group_names.empty())
-                handlerContext.invalidNamePattern(groupNamePattern);
-
-            const Group::ProductionCMode controlMode = Group::ProductionCModeFromString(record.getItem("CONTROL_MODE").getTrimmedString(0));
-            Group::GroupLimitAction groupLimitAction;
-            groupLimitAction.allRates = Group::ExceedActionFromString(record.getItem("EXCEED_PROC").getTrimmedString(0));
-            groupLimitAction.water = Group::ExceedActionFromString(record.getItem("WATER_EXCEED_PROCEDURE").getTrimmedString(0));
-            groupLimitAction.gas = Group::ExceedActionFromString(record.getItem("GAS_EXCEED_PROCEDURE").getTrimmedString(0));
-            groupLimitAction.liquid = Group::ExceedActionFromString(record.getItem("LIQUID_EXCEED_PROCEDURE").getTrimmedString(0));
-
-            const bool respond_to_parent = DeckItem::to_bool(record.getItem("RESPOND_TO_PARENT").getTrimmedString(0));
-
-            const auto oil_target = record.getItem("OIL_TARGET").get<UDAValue>(0);
-            const auto gas_target = record.getItem("GAS_TARGET").get<UDAValue>(0);
-            const auto water_target = record.getItem("WATER_TARGET").get<UDAValue>(0);
-            const auto liquid_target = record.getItem("LIQUID_TARGET").get<UDAValue>(0);
-            const auto resv_target = record.getItem("RESERVOIR_FLUID_TARGET").getSIDouble(0);
-
-            const bool apply_default_oil_target = record.getItem("OIL_TARGET").defaultApplied(0);
-            const bool apply_default_gas_target = record.getItem("GAS_TARGET").defaultApplied(0);
-            const bool apply_default_water_target = record.getItem("WATER_TARGET").defaultApplied(0);
-            const bool apply_default_liquid_target = record.getItem("LIQUID_TARGET").defaultApplied(0);
-            const bool apply_default_resv_target = record.getItem("RESERVOIR_FLUID_TARGET").defaultApplied(0);
-
-            std::optional<std::string> guide_rate_str;
-            {
-                const auto& item = record.getItem("GUIDE_RATE_DEF");
-                if (item.hasValue(0)) {
-                    const auto& string_value = record.getItem("GUIDE_RATE_DEF").getTrimmedString(0);
-                    if (string_value.size() > 0)
-                        guide_rate_str = string_value;
-                }
-
-            }
-
-            for (const auto& group_name : group_names) {
-                const bool is_field { group_name == "FIELD" } ;
-
-                auto guide_rate_def = Group::GuideRateProdTarget::NO_GUIDE_RATE;
-                double guide_rate = 0;
-                if (!is_field) {
-                    if (guide_rate_str) {
-                        guide_rate_def = Group::GuideRateProdTargetFromString(guide_rate_str.value());
-
-                        if ((guide_rate_def == Group::GuideRateProdTarget::INJV ||
-                             guide_rate_def == Group::GuideRateProdTarget::POTN ||
-                             guide_rate_def == Group::GuideRateProdTarget::FORM)) {
-                            std::string msg_fmt = "Problem with {keyword}\n"
-                                "In {file} line {line}\n"
-                                "The supplied guide rate will be ignored";
-                            const auto& parseContext = handlerContext.parseContext;
-                            auto& errors = handlerContext.errors;
-                            parseContext.handleError(ParseContext::SCHEDULE_IGNORED_GUIDE_RATE, msg_fmt, keyword.location(), errors);
-                        } else {
-                            guide_rate = record.getItem("GUIDE_RATE").get<double>(0);
-                            if (guide_rate == 0)
-                                guide_rate_def = Group::GuideRateProdTarget::POTN;
-                        }
-                    }
-                }
-
-                {
-                    // FLD overrides item 8 (respond_to_parent i.e if FLD the group is available for higher up groups)
-                    const bool availableForGroupControl { (respond_to_parent || controlMode == Group::ProductionCMode::FLD) && !is_field } ;
-                    auto new_group = this->snapshots.back().groups.get(group_name);
-                    Group::GroupProductionProperties production(this->m_static.m_unit_system, group_name);
-                    production.cmode = controlMode;
-                    production.oil_target = oil_target;
-                    production.gas_target = gas_target;
-                    production.water_target = water_target;
-                    production.liquid_target = liquid_target;
-                    production.guide_rate = guide_rate;
-                    production.guide_rate_def = guide_rate_def;
-                    production.resv_target = resv_target;
-                    production.available_group_control = availableForGroupControl;
-                    production.group_limit_action = groupLimitAction;
-
-                    production.production_controls = 0;
-                    // GCONPROD
-                    // 'G1' 'ORAT' 1000 100 200 300 NONE =>  constraints 100,200,300 should be ignored
-                    //
-                    // GCONPROD
-                    // 'G1' 'ORAT' 1000 100 200 300 RATE =>  constraints 100,200,300 should be honored
-                    if (production.cmode == Group::ProductionCMode::ORAT ||
-                        (groupLimitAction.allRates == Group::ExceedAction::RATE &&
-                        !apply_default_oil_target)) {
-                        production.production_controls |= static_cast<int>(Group::ProductionCMode::ORAT);
-                    }
-                    if (production.cmode == Group::ProductionCMode::WRAT ||
-                        ((groupLimitAction.allRates == Group::ExceedAction::RATE ||
-                        groupLimitAction.water == Group::ExceedAction::RATE) &&
-                        !apply_default_water_target)) {
-                        production.production_controls |= static_cast<int>(Group::ProductionCMode::WRAT);
-                    }
-                    if (production.cmode == Group::ProductionCMode::GRAT ||
-                        ((groupLimitAction.allRates  == Group::ExceedAction::RATE ||
-                        groupLimitAction.gas == Group::ExceedAction::RATE) &&
-                        !apply_default_gas_target)) {
-                        production.production_controls |= static_cast<int>(Group::ProductionCMode::GRAT);
-                    }
-                    if (production.cmode == Group::ProductionCMode::LRAT ||
-                        ((groupLimitAction.allRates == Group::ExceedAction::RATE ||
-                        groupLimitAction.liquid == Group::ExceedAction::RATE) &&
-                        !apply_default_liquid_target)) {
-                        production.production_controls |= static_cast<int>(Group::ProductionCMode::LRAT);
-                    }
-
-                    if (!apply_default_resv_target)
-                        production.production_controls |= static_cast<int>(Group::ProductionCMode::RESV);
-
-                    if (new_group.updateProduction(production)) {
-                        auto new_config = this->snapshots.back().guide_rate();
-                        new_config.update_production_group(new_group);
-                        this->snapshots.back().guide_rate.update( std::move(new_config));
-
-                        this->snapshots.back().groups.update( std::move(new_group));
-                        this->snapshots.back().events().addEvent(ScheduleEvents::GROUP_PRODUCTION_UPDATE);
-                        this->snapshots.back().wellgroup_events().addEvent( group_name, ScheduleEvents::GROUP_PRODUCTION_UPDATE);
-
-                        auto udq_active = this->snapshots.back().udq_active.get();
-                        if (production.updateUDQActive(this->getUDQConfig(current_step), udq_active))
-                            this->snapshots.back().udq_active.update( std::move(udq_active));
-                    }
-                }
-            }
-        }
-    }
-
-    void
-    Schedule::handleGECON(HandlerContext& handlerContext)
-    {
-        auto gecon = this->snapshots.back().gecon();
-        const auto& keyword = handlerContext.keyword;
-        auto report_step = handlerContext.currentStep;
-        for (const auto& record : keyword) {
-            const std::string& groupNamePattern
-                = record.getItem<ParserKeywords::GECON::GROUP>().getTrimmedString(0);
-            const auto group_names = this->groupNames(groupNamePattern);
-            if (group_names.empty())
-                handlerContext.invalidNamePattern(groupNamePattern);
-            for (const auto& gname : group_names) {
-                gecon.add_group(report_step, gname, record);
-            }
-        }
-        this->snapshots.back().gecon.update(std::move(gecon));
-    }
-
-    void Schedule::handleGEFAC(HandlerContext& handlerContext) {
-        for (const auto& record : handlerContext.keyword) {
-            const std::string& groupNamePattern = record.getItem("GROUP").getTrimmedString(0);
-            const auto group_names = this->groupNames(groupNamePattern);
-            if (group_names.empty())
-                handlerContext.invalidNamePattern(groupNamePattern);
-
-            const bool transfer = DeckItem::to_bool(record.getItem("TRANSFER_EXT_NET").getTrimmedString(0));
-            const auto gefac = record.getItem("EFFICIENCY_FACTOR").get<double>(0);
-
-            for (const auto& group_name : group_names) {
-                auto new_group = this->snapshots.back().groups.get(group_name);
-                if (new_group.update_gefac(gefac, transfer)) {
-                    this->snapshots.back().wellgroup_events().addEvent( group_name, ScheduleEvents::WELLGROUP_EFFICIENCY_UPDATE);
-                    this->snapshots.back().events().addEvent( ScheduleEvents::WELLGROUP_EFFICIENCY_UPDATE );
-                    this->snapshots.back().groups.update(std::move(new_group));
-                }
-            }
-        }
-    }
-
-    void Schedule::handleGLIFTOPT(HandlerContext& handlerContext) {
-        auto glo = this->snapshots.back().glo();
-        const auto& keyword = handlerContext.keyword;
-
-        for (const auto& record : keyword) {
-            const std::string& groupNamePattern = record.getItem<ParserKeywords::GLIFTOPT::GROUP_NAME>().getTrimmedString(0);
-            const auto group_names = this->groupNames(groupNamePattern);
-            if (group_names.empty())
-                handlerContext.invalidNamePattern(groupNamePattern);
-
-            const auto& max_gas_item = record.getItem<ParserKeywords::GLIFTOPT::MAX_LIFT_GAS_SUPPLY>();
-            const double max_lift_gas_value = max_gas_item.hasValue(0)
-                ? max_gas_item.getSIDouble(0)
-                : -1;
-
-            const auto& max_total_item = record.getItem<ParserKeywords::GLIFTOPT::MAX_TOTAL_GAS_RATE>();
-            const double max_total_gas_value = max_total_item.hasValue(0)
-                ? max_total_item.getSIDouble(0)
-                : -1;
-
-            for (const auto& gname : group_names) {
-                auto group = GasLiftGroup(gname);
-                group.max_lift_gas(max_lift_gas_value);
-                group.max_total_gas(max_total_gas_value);
-
-                glo.add_group(group);
-            }
-        }
-
-        this->snapshots.back().glo.update( std::move(glo) );
-    }
-
-    void Schedule::handleGPMAINT(HandlerContext& handlerContext) {
-        for (const auto& record : handlerContext.keyword) {
-            const std::string& groupNamePattern = record.getItem("GROUP").getTrimmedString(0);
-            const auto group_names = this->groupNames(groupNamePattern);
-            if (group_names.empty())
-                handlerContext.invalidNamePattern(groupNamePattern);
-
-            const auto& target_string = record.getItem<ParserKeywords::GPMAINT::FLOW_TARGET>().get<std::string>(0);
-
-            for (const auto& group_name : group_names) {
-                auto new_group = this->snapshots.back().groups.get(group_name);
-                if (target_string == "NONE") {
-                    new_group.set_gpmaint();
-                } else {
-                    GPMaint gpmaint(handlerContext.currentStep, record);
-                    new_group.set_gpmaint(std::move(gpmaint));
-                }
-                this->snapshots.back().groups.update( std::move(new_group) );
-            }
-        }
-    }
-
-    void Schedule::handleGRUPNET(HandlerContext& handlerContext) {
-        auto network = this->snapshots.back().network.get();
-        std::vector<Network::Node> nodes;
-        for (const auto& record : handlerContext.keyword) {
-             const std::string& groupNamePattern = record.getItem<ParserKeywords::GRUPNET::NAME>().getTrimmedString(0);
-             const auto group_names = this->groupNames(groupNamePattern);
-             if (group_names.empty())
-                 handlerContext.invalidNamePattern(groupNamePattern);
-             const auto& pressure_item = record.getItem<ParserKeywords::GRUPNET::TERMINAL_PRESSURE>();
-             const int vfp_table = record.getItem<ParserKeywords::GRUPNET::VFP_TABLE>().get<int>(0);
-             // It is assumed here that item 6 (ADD_GAS_LIFT_GAS) has the two options NO and FLO. THe option ALQ is not supported.
-             // For standard networks the summation of ALQ values are weighted with efficiency factors. 
-             // Note that, currently, extended networks uses always efficiency factors (this is the default set by WEFAC item 3 (YES), the value NO is not supported.) 
-             const std::string& add_gas_lift_gas_string = record.getItem<ParserKeywords::GRUPNET::ADD_GAS_LIFT_GAS>().get<std::string>(0);
-             bool add_gas_lift_gas = false;
-             if (add_gas_lift_gas_string == "FLO") 
-                 add_gas_lift_gas = true;
-
-             for (const auto& group_name : group_names) {
-                  const auto& group = this->snapshots.back().groups.get(group_name);
-                  const std::string& downtree_node = group_name;
-                  const std::string& uptree_node = group.parent();
-                  Network::Node node { group_name };
-                  node.add_gas_lift_gas(add_gas_lift_gas);
-                  // A terminal node is a node with a fixed pressure
-                  const bool is_terminal_node = pressure_item.hasValue(0) && (pressure_item.get<double>(0) >= 0);
-                  if (is_terminal_node) {
-                      if (vfp_table > 0) {
-                          std::string msg = fmt::format("The group {} is a terminal node of the network and should not have a vfp table assigned to it.", group_name);
-                          throw OpmInputError(msg, handlerContext.keyword.location());
-                      }
-                      node.terminal_pressure(pressure_item.getSIDouble(0));
-                      nodes.push_back(node);
-                      // Remove the  branch upstream if it was part of the network
-                      if (network.has_node(downtree_node) && network.has_node(uptree_node))
-                          network.drop_branch(uptree_node, downtree_node);
-                  } else {
-                       if (vfp_table <= 0) {
-                           // If vfp table is defaulted (or set to <=0) then the group is not part of the network.
-                           // If the branch was part of the network then drop it
-                           if (network.has_node(downtree_node) && network.has_node(uptree_node))
-                               network.drop_branch(uptree_node, downtree_node);
-                       } else {
-                            if (!uptree_node.empty()) {
-                                const auto alq_eq = Network::Branch::AlqEqfromString(record.getItem<ParserKeywords::GRUPNET::ALQ_SURFACE_DENSITY>().get<std::string>(0));
-                                if (alq_eq == Network::Branch::AlqEQ::ALQ_INPUT) {
-                                    const double alq_value = record.getItem<ParserKeywords::GRUPNET::ALQ>().get<double>(0);
-                                    network.add_branch(Network::Branch(downtree_node, uptree_node, vfp_table, alq_value));
-                                } else {
-                                     network.add_branch(Network::Branch(downtree_node, uptree_node, vfp_table, alq_eq));
-                                }
-                            }
-                            nodes.push_back(node);
-                       }
-                  }
-             }
-        }
-        // To use update_node the node should be associated to a branch via add_branch()
-        // so the update of nodes is postponed after creation of branches
-        for(const auto& node: nodes)
-              network.update_node(node);
-        this->snapshots.back().network.update( std::move(network));
     }
 
     void Schedule::handleGRUPTREE(HandlerContext& handlerContext) {
@@ -2838,8 +2856,15 @@ Well{0} entered with 'FIELD' parent group:
             { "DRVDT"   , &handleDRVDT     },
             { "DRVDTR"  , &handleDRVDTR    },
             { "ENDBOX"  , &handleGEOKeyword},
+            { "GCONINJE", &handleGCONINJE  },
+            { "GCONPROD", &handleGCONPROD  },
             { "GCONSALE", &handleGCONSALE  },
             { "GCONSUMP", &handleGCONSUMP  },
+            { "GECON",    &handleGECON     },
+            { "GEFAC"   , &handleGEFAC     },
+            { "GLIFTOPT", &handleGLIFTOPT  },
+            { "GPMAINT" , &handleGPMAINT   },
+            { "GRUPNET" , &handleGRUPNET   },
             { "GUIDERAT", &handleGUIDERAT  },
             { "LIFTOPT" , &handleLIFTOPT   },
             { "LINCOM"  , &handleLINCOM    },
@@ -2888,13 +2913,6 @@ Well{0} entered with 'FIELD' parent group:
             { "COMPTRAJ", &Schedule::handleCOMPTRAJ  },
             { "CSKIN",    &Schedule::handleCSKIN     },
             { "EXIT",     &Schedule::handleEXIT      },
-            { "GCONINJE", &Schedule::handleGCONINJE  },
-            { "GCONPROD", &Schedule::handleGCONPROD  },
-            { "GECON",    &Schedule::handleGECON     },
-            { "GEFAC"   , &Schedule::handleGEFAC     },
-            { "GLIFTOPT", &Schedule::handleGLIFTOPT  },
-            { "GPMAINT" , &Schedule::handleGPMAINT   },
-            { "GRUPNET" , &Schedule::handleGRUPNET   },
             { "GRUPTREE", &Schedule::handleGRUPTREE  },
             { "WCONHIST", &Schedule::handleWCONHIST  },
             { "WCONINJE", &Schedule::handleWCONINJE  },
