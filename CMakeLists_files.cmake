@@ -176,6 +176,7 @@ if(ENABLE_ECL_INPUT)
     src/opm/input/eclipse/Schedule/Group/GConSump.cpp
     src/opm/input/eclipse/Schedule/Group/GroupEconProductionLimits.cpp
     src/opm/input/eclipse/Schedule/Group/GTNode.cpp
+    src/opm/input/eclipse/Schedule/Group/KeywordHandlers.cpp
     src/opm/input/eclipse/Schedule/HandlerContext.cpp
     src/opm/input/eclipse/Schedule/KeywordHandlers.cpp
     src/opm/input/eclipse/Schedule/MessageLimits.cpp
