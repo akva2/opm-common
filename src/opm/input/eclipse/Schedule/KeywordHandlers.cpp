@@ -17,87 +17,29 @@
   along with OPM.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <opm/input/eclipse/Schedule/Schedule.hpp>
-
 #include <opm/common/OpmLog/OpmLog.hpp>
-#include <opm/common/OpmLog/LogUtil.hpp>
 #include <opm/common/utility/OpmInputError.hpp>
-#include <opm/common/utility/numeric/cmp.hpp>
-#include <opm/common/utility/String.hpp>
 
-#include <opm/input/eclipse/Python/Python.hpp>
+#include <opm/input/eclipse/Deck/DeckItem.hpp>
+#include <opm/input/eclipse/Deck/DeckRecord.hpp>
 
-#include <opm/input/eclipse/EclipseState/Phase.hpp>
 #include <opm/input/eclipse/EclipseState/Aquifer/AquiferFlux.hpp>
 
-#include <opm/input/eclipse/Schedule/Action/ActionResult.hpp>
-#include <opm/input/eclipse/Schedule/Action/ActionX.hpp>
+#include <opm/input/eclipse/Parser/ParserKeywords/D.hpp>
+#include <opm/input/eclipse/Parser/ParserKeywords/E.hpp>
+#include <opm/input/eclipse/Parser/ParserKeywords/L.hpp>
+#include <opm/input/eclipse/Parser/ParserKeywords/N.hpp>
+
+
 #include <opm/input/eclipse/Schedule/Action/SimulatorUpdate.hpp>
 #include <opm/input/eclipse/Schedule/Events.hpp>
 #include <opm/input/eclipse/Schedule/GasLiftOpt.hpp>
-#include <opm/input/eclipse/Schedule/Group/GConSale.hpp>
-#include <opm/input/eclipse/Schedule/Group/GConSump.hpp>
-#include <opm/input/eclipse/Schedule/Group/GroupEconProductionLimits.hpp>
-#include <opm/input/eclipse/Schedule/Group/GuideRateConfig.hpp>
-#include <opm/input/eclipse/Schedule/MSW/SICD.hpp>
-#include <opm/input/eclipse/Schedule/MSW/SegmentMatcher.hpp>
-#include <opm/input/eclipse/Schedule/MSW/Valve.hpp>
-#include <opm/input/eclipse/Schedule/MSW/WellSegments.hpp>
-#include <opm/input/eclipse/Schedule/Network/Balance.hpp>
-#include <opm/input/eclipse/Schedule/Network/ExtNetwork.hpp>
+#include <opm/input/eclipse/Schedule/HandlerContext.hpp>
 #include <opm/input/eclipse/Schedule/OilVaporizationProperties.hpp>
-#include <opm/input/eclipse/Schedule/RFTConfig.hpp>
 #include <opm/input/eclipse/Schedule/RPTConfig.hpp>
-#include <opm/input/eclipse/Schedule/SummaryState.hpp>
+#include <opm/input/eclipse/Schedule/Schedule.hpp>
+#include <opm/input/eclipse/Schedule/ScheduleState.hpp>
 #include <opm/input/eclipse/Schedule/Tuning.hpp>
-#include <opm/input/eclipse/Schedule/UDQ/UDQActive.hpp>
-#include <opm/input/eclipse/Schedule/UDQ/UDQConfig.hpp>
-#include <opm/input/eclipse/Schedule/Well/NameOrder.hpp>
-#include <opm/input/eclipse/Schedule/Well/WDFAC.hpp>
-#include <opm/input/eclipse/Schedule/Well/WList.hpp>
-#include <opm/input/eclipse/Schedule/Well/WListManager.hpp>
-#include <opm/input/eclipse/Schedule/Well/WVFPDP.hpp>
-#include <opm/input/eclipse/Schedule/Well/WVFPEXP.hpp>
-#include <opm/input/eclipse/Schedule/Well/Well.hpp>
-#include <opm/input/eclipse/Schedule/Well/WellBrineProperties.hpp>
-#include <opm/input/eclipse/Schedule/Well/WellConnections.hpp>
-#include <opm/input/eclipse/Schedule/Well/WellEconProductionLimits.hpp>
-#include <opm/input/eclipse/Schedule/Well/WellFoamProperties.hpp>
-#include <opm/input/eclipse/Schedule/Well/WellMICPProperties.hpp>
-#include <opm/input/eclipse/Schedule/Well/WellPolymerProperties.hpp>
-#include <opm/input/eclipse/Schedule/Well/WellTestConfig.hpp>
-#include <opm/input/eclipse/Schedule/Well/WellTracerProperties.hpp>
-
-#include <opm/input/eclipse/Schedule/Well/WVFPDP.hpp>
-
-#include <opm/input/eclipse/Schedule/Well/WVFPEXP.hpp>
-#include <opm/input/eclipse/Schedule/SummaryState.hpp>
-#include <opm/input/eclipse/Units/Dimension.hpp>
-#include <opm/input/eclipse/Units/UnitSystem.hpp>
-#include <opm/input/eclipse/Units/Units.hpp>
-
-#include <opm/input/eclipse/Deck/DeckItem.hpp>
-#include <opm/input/eclipse/Deck/DeckKeyword.hpp>
-#include <opm/input/eclipse/Deck/DeckRecord.hpp>
-#include <opm/input/eclipse/Deck/DeckSection.hpp>
-
-#include <opm/input/eclipse/Parser/ErrorGuard.hpp>
-#include <opm/input/eclipse/Parser/ParseContext.hpp>
-
-#include <opm/input/eclipse/Parser/ParserKeywords/B.hpp>
-#include <opm/input/eclipse/Parser/ParserKeywords/C.hpp>
-#include <opm/input/eclipse/Parser/ParserKeywords/D.hpp>
-#include <opm/input/eclipse/Parser/ParserKeywords/E.hpp>
-#include <opm/input/eclipse/Parser/ParserKeywords/G.hpp>
-#include <opm/input/eclipse/Parser/ParserKeywords/L.hpp>
-#include <opm/input/eclipse/Parser/ParserKeywords/N.hpp>
-#include <opm/input/eclipse/Parser/ParserKeywords/P.hpp>
-#include <opm/input/eclipse/Parser/ParserKeywords/T.hpp>
-#include <opm/input/eclipse/Parser/ParserKeywords/U.hpp>
-#include <opm/input/eclipse/Parser/ParserKeywords/V.hpp>
-#include <opm/input/eclipse/Parser/ParserKeywords/W.hpp>
-
-#include "Well/injection.hpp"
 
 #include <algorithm>
 #include <exception>
@@ -106,13 +48,10 @@
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
-#include <unordered_set>
 #include <utility>
 #include <vector>
 
 #include <fmt/format.h>
-
-#include <external/resinsight/LibGeometry/cvfBoundingBoxTree.h>
 
 namespace Opm {
 
@@ -489,9 +428,8 @@ bool Schedule::handleNormalKeyword(HandlerContext& handlerContext)
         return true;
     }
 
-    // handlers that do not need access to schedule members
-    using priv_handler_function = std::function<void(HandlerContext&)>;
-    static const std::unordered_map<std::string, priv_handler_function> priv_handler_functions = {
+    using handler_function = std::function<void(HandlerContext&)>;
+    static const std::unordered_map<std::string, handler_function> handler_functions = {
         { "AQUCT"   , &handleAQUCT     },
         { "AQUFETP" , &handleAQUFETP   },
         { "AQUFLUX" , &handleAQUFLUX   },
@@ -536,24 +474,13 @@ bool Schedule::handleNormalKeyword(HandlerContext& handlerContext)
         { "VFPPROD" , &handleVFPPROD   },
     };
 
-    // handlers that need access to schedule members
-    using handler_function = void (Schedule::*) (HandlerContext&);
-    static const std::unordered_map<std::string,handler_function> handler_functions = {
-    };
-
     auto function_iterator = handler_functions.find(handlerContext.keyword.name());
-    auto priv_function_iterator = priv_handler_functions.find(handlerContext.keyword.name());
-    if (function_iterator == handler_functions.end() &&
-        priv_function_iterator == priv_handler_functions.end()) {
+    if (function_iterator == handler_functions.end()) {
         return false;
     }
 
     try {
-        if (function_iterator != handler_functions.end()) {
-            std::invoke(function_iterator->second, this, handlerContext);
-        } else {
-            (priv_function_iterator->second)(handlerContext);
-        }
+        function_iterator->second(handlerContext);
     } catch (const OpmInputError&) {
         throw;
     } catch (const std::logic_error& e) {
