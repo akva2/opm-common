@@ -19,9 +19,16 @@
 
 #include <opm/input/eclipse/Schedule/HandlerContext.hpp>
 
+#include <opm/common/OpmLog/OpmLog.hpp>
+#include <opm/common/utility/OpmInputError.hpp>
+
 #include <opm/input/eclipse/Deck/DeckKeyword.hpp>
 
+#include <opm/input/eclipse/Parser/ParseContext.hpp>
+
 #include <opm/input/eclipse/Schedule/Action/SimulatorUpdate.hpp>
+
+#include <fmt/format.h>
 
 namespace Opm {
 
@@ -48,6 +55,24 @@ void HandlerContext::compsegs_handled(const std::string& well_name)
 {
     if (compsegs_wells)
         compsegs_wells->insert(well_name);
+}
+
+void HandlerContext::invalidNamePattern(const std::string& namePattern) const
+{
+    std::string msg_fmt = fmt::format("No wells/groups match the pattern: \'{}\'", namePattern);
+    if (namePattern == "?") {
+        /*
+          In particular when an ACTIONX keyword is called via PYACTION
+          coming in here with an empty list of matching wells is not
+          entirely unheard of. It is probably not what the user wanted and
+          we give a warning, but the simulation continues.
+        */
+        auto msg = OpmInputError::format("No matching wells for ACTIONX {keyword}"
+                                         "in {file} line {line}.", keyword.location());
+        OpmLog::warning(msg);
+    } else
+        parseContext.handleError(ParseContext::SCHEDULE_INVALID_NAME,
+                                 msg_fmt, keyword.location(), errors);
 }
 
 }

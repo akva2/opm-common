@@ -116,6 +116,9 @@ struct HandlerContext {
     /// \brief Mark that the well occured in a  COMPSEGS keyword
     void compsegs_handled(const std::string& well_name);
 
+    //! \brief Adds parse error for an invalid name pattern.
+    void invalidNamePattern(const std::string& namePattern) const;
+
     //! \brief Obtain a reference to a state variable.
     virtual ScheduleState& state(int idx = -1) = 0;
 
