@@ -209,6 +209,7 @@ if(ENABLE_ECL_INPUT)
     src/opm/input/eclipse/Schedule/Well/Connection.cpp
     src/opm/input/eclipse/Schedule/Well/FilterCake.cpp
     src/opm/input/eclipse/Schedule/Well/injection.cpp
+    src/opm/input/eclipse/Schedule/Well/KeywordHandlers.cpp
     src/opm/input/eclipse/Schedule/Well/NameOrder.cpp
     src/opm/input/eclipse/Schedule/Well/PAvg.cpp
     src/opm/input/eclipse/Schedule/Well/PAvgCalculator.cpp
