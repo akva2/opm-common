@@ -118,6 +118,7 @@ namespace Opm {
 
 bool handleGroupKeyword(HandlerContext& handlerContext);
 bool handleMSWKeyword(HandlerContext& handlerContext);
+bool handleNetworkKeyword(HandlerContext& handlerContext);
 bool handleUDQKeyword(HandlerContext& handlerContext);
 
 namespace {
@@ -175,32 +176,6 @@ void handleBCProp(HandlerContext& handlerContext)
     for (const auto& record : handlerContext.keyword) {
         bcprop.updateBCProp(record);
     }
-}
-
-void handleBRANPROP(HandlerContext& handlerContext)
-{
-    auto ext_network = handlerContext.state().network.get();
-
-    for (const auto& record : handlerContext.keyword) {
-        const auto& downtree_node = record.getItem<ParserKeywords::BRANPROP::DOWNTREE_NODE>().get<std::string>(0);
-        const auto& uptree_node = record.getItem<ParserKeywords::BRANPROP::UPTREE_NODE>().get<std::string>(0);
-        const int vfp_table = record.getItem<ParserKeywords::BRANPROP::VFP_TABLE>().get<int>(0);
-
-        if (vfp_table == 0) {
-            ext_network.drop_branch(uptree_node, downtree_node);
-        } else {
-            const auto alq_eq = Network::Branch::AlqEqfromString(record.getItem<ParserKeywords::BRANPROP::ALQ_SURFACE_DENSITY>().get<std::string>(0));
-
-            if (alq_eq == Network::Branch::AlqEQ::ALQ_INPUT) {
-                double alq_value = record.getItem<ParserKeywords::BRANPROP::ALQ>().get<double>(0);
-                ext_network.add_branch(Network::Branch(downtree_node, uptree_node, vfp_table, alq_value));
-            } else {
-                ext_network.add_branch(Network::Branch(downtree_node, uptree_node, vfp_table, alq_eq));
-            }
-        }
-    }
-
-    handlerContext.state().network.update( std::move( ext_network ));
 }
 
 void handleCOMPDAT(HandlerContext& handlerContext)
@@ -440,74 +415,6 @@ void handleGEOKeyword(HandlerContext& handlerContext)
     }
 }
 
-void handleGRUPNET(HandlerContext& handlerContext)
-{
-    auto network = handlerContext.state().network.get();
-    std::vector<Network::Node> nodes;
-    for (const auto& record : handlerContext.keyword) {
-         const std::string& groupNamePattern = record.getItem<ParserKeywords::GRUPNET::NAME>().getTrimmedString(0);
-         const auto group_names = handlerContext.groupNames(groupNamePattern);
-         if (group_names.empty()) {
-             handlerContext.invalidNamePattern(groupNamePattern);
-         }
-         const auto& pressure_item = record.getItem<ParserKeywords::GRUPNET::TERMINAL_PRESSURE>();
-         const int vfp_table = record.getItem<ParserKeywords::GRUPNET::VFP_TABLE>().get<int>(0);
-         // It is assumed here that item 6 (ADD_GAS_LIFT_GAS) has the two options NO and FLO. THe option ALQ is not supported.
-         // For standard networks the summation of ALQ values are weighted with efficiency factors.
-         // Note that, currently, extended networks uses always efficiency factors (this is the default set by WEFAC item 3 (YES), the value NO is not supported.)
-         const std::string& add_gas_lift_gas_string = record.getItem<ParserKeywords::GRUPNET::ADD_GAS_LIFT_GAS>().get<std::string>(0);
-         bool add_gas_lift_gas = false;
-         if (add_gas_lift_gas_string == "FLO")
-             add_gas_lift_gas = true;
-
-         for (const auto& group_name : group_names) {
-              const auto& group = handlerContext.state().groups.get(group_name);
-              const std::string& downtree_node = group_name;
-              const std::string& uptree_node = group.parent();
-              Network::Node node { group_name };
-              node.add_gas_lift_gas(add_gas_lift_gas);
-              // A terminal node is a node with a fixed pressure
-              const bool is_terminal_node = pressure_item.hasValue(0) && (pressure_item.get<double>(0) >= 0);
-              if (is_terminal_node) {
-                  if (vfp_table > 0) {
-                      std::string msg = fmt::format("The group {} is a terminal node of the network and should not have a vfp table assigned to it.", group_name);
-                      throw OpmInputError(msg, handlerContext.keyword.location());
-                  }
-                  node.terminal_pressure(pressure_item.getSIDouble(0));
-                  nodes.push_back(node);
-                  // Remove the  branch upstream if it was part of the network
-                  if (network.has_node(downtree_node) && network.has_node(uptree_node))
-                      network.drop_branch(uptree_node, downtree_node);
-              } else {
-                   if (vfp_table <= 0) {
-                       // If vfp table is defaulted (or set to <=0) then the group is not part of the network.
-                       // If the branch was part of the network then drop it
-                       if (network.has_node(downtree_node) && network.has_node(uptree_node))
-                           network.drop_branch(uptree_node, downtree_node);
-                   } else {
-                        if (!uptree_node.empty()) {
-                            const auto alq_eq = Network::Branch::AlqEqfromString(record.getItem<ParserKeywords::GRUPNET::ALQ_SURFACE_DENSITY>().get<std::string>(0));
-                            if (alq_eq == Network::Branch::AlqEQ::ALQ_INPUT) {
-                                const double alq_value = record.getItem<ParserKeywords::GRUPNET::ALQ>().get<double>(0);
-                                network.add_branch(Network::Branch(downtree_node, uptree_node, vfp_table, alq_value));
-                            } else {
-                                 network.add_branch(Network::Branch(downtree_node, uptree_node, vfp_table, alq_eq));
-                            }
-                        }
-                        nodes.push_back(node);
-                   }
-              }
-         }
-    }
-
-    // To use update_node the node should be associated to a branch via add_branch()
-    // so the update of nodes is postponed after creation of branches
-    for (const auto& node : nodes) {
-        network.update_node(node);
-    }
-    handlerContext.state().network.update(std::move(network));
-}
-
 void handleLIFTOPT(HandlerContext& handlerContext)
 {
     auto glo = handlerContext.state().glo();
@@ -543,12 +450,6 @@ void handleMXUNSUPP(HandlerContext& handlerContext)
     OpmLog::warning(OpmInputError::format(msg_fmt, handlerContext.keyword.location()));
 }
 
-void handleNETBALAN(HandlerContext& handlerContext)
-{
-    handlerContext.state().network_balance
-        .update(Network::Balance{ handlerContext.keyword });
-}
-
 void handleNEXTSTEP(HandlerContext& handlerContext)
 {
     const auto& record = handlerContext.keyword[0];
@@ -557,50 +458,6 @@ void handleNEXTSTEP(HandlerContext& handlerContext)
 
     handlerContext.state().next_tstep = NextStep{next_tstep, apply_to_all};
     handlerContext.state().events().addEvent(ScheduleEvents::TUNING_CHANGE);
-}
-
-void handleNODEPROP(HandlerContext& handlerContext)
-{
-    auto ext_network = handlerContext.state().network.get();
-
-    for (const auto& record : handlerContext.keyword) {
-        const auto& name = record.getItem<ParserKeywords::NODEPROP::NAME>().get<std::string>(0);
-        const auto& pressure_item = record.getItem<ParserKeywords::NODEPROP::PRESSURE>();
-
-        const bool as_choke = DeckItem::to_bool(record.getItem<ParserKeywords::NODEPROP::AS_CHOKE>().get<std::string>(0));
-        const bool add_gas_lift_gas = DeckItem::to_bool(record.getItem<ParserKeywords::NODEPROP::ADD_GAS_LIFT_GAS>().get<std::string>(0));
-
-        Network::Node node { name };
-
-        if (pressure_item.hasValue(0) && (pressure_item.get<double>(0) > 0)) {
-            node.terminal_pressure(pressure_item.getSIDouble(0));
-        }
-
-        if (as_choke) {
-            std::string target_group = name;
-            const auto& target_item = record.getItem<ParserKeywords::NODEPROP::CHOKE_GROUP>();
-
-            if (target_item.hasValue(0)) {
-                target_group = target_item.get<std::string>(0);
-            }
-
-            if (target_group != name) {
-                if (handlerContext.state().groups.has(name)) {
-                    const auto& group = handlerContext.state(handlerContext.currentStep).groups.get(name);
-                    if (group.numWells() > 0) {
-                        throw std::invalid_argument("A manifold group must respond to its own target");
-                    }
-                }
-            }
-
-            node.as_choke(target_group);
-        }
-
-        node.add_gas_lift_gas(add_gas_lift_gas);
-        ext_network.update_node(node);
-    }
-
-    handlerContext.state().network.update(ext_network);
 }
 
 void handleNUPCOL(HandlerContext& handlerContext)
@@ -2329,6 +2186,9 @@ bool Schedule::handleNormalKeyword(HandlerContext& handlerContext)
     if (handleMSWKeyword(handlerContext)) {
         return true;
     }
+    if (handleNetworkKeyword(handlerContext)) {
+        return true;
+    }
     if (handleUDQKeyword(handlerContext)) {
         return true;
     }
@@ -2341,7 +2201,6 @@ bool Schedule::handleNormalKeyword(HandlerContext& handlerContext)
         { "AQUFLUX" , &handleAQUFLUX   },
         { "BCPROP"  , &handleBCProp    },
         { "BOX"     , &handleGEOKeyword},
-        { "BRANPROP", &handleBRANPROP  },
         { "COMPDAT" , &handleCOMPDAT   },
         { "COMPLUMP", &handleCOMPLUMP  },
         { "COMPORD" , &handleCOMPORD   },
@@ -2354,7 +2213,6 @@ bool Schedule::handleNormalKeyword(HandlerContext& handlerContext)
         { "DRVDTR"  , &handleDRVDTR    },
         { "ENDBOX"  , &handleGEOKeyword},
         { "EXIT",     &handleEXIT      },
-        { "GRUPNET" , &handleGRUPNET   },
         { "LIFTOPT" , &handleLIFTOPT   },
         { "MESSAGES", &handleMESSAGES  },
         { "MULTFLT" , &handleGEOKeyword},
@@ -2372,10 +2230,8 @@ bool Schedule::handleNormalKeyword(HandlerContext& handlerContext)
         { "MULTY-"  , &handleGEOKeyword},
         { "MULTZ"   , &handleGEOKeyword},
         { "MULTZ-"  , &handleGEOKeyword},
-        { "NETBALAN", &handleNETBALAN  },
         { "NEXT"    , &handleNEXTSTEP  },
         { "NEXTSTEP", &handleNEXTSTEP  },
-        { "NODEPROP", &handleNODEPROP  },
         { "NUPCOL"  , &handleNUPCOL    },
         { "RPTONLY" , &handleRPTONLY   },
         { "RPTONLYO", &handleRPTONLYO  },
