@@ -117,6 +117,7 @@
 namespace Opm {
 
 bool handleGroupKeyword(HandlerContext& handlerContext);
+bool handleMSWKeyword(HandlerContext& handlerContext);
 
 namespace {
 
@@ -271,43 +272,6 @@ void handleCOMPLUMP(HandlerContext& handlerContext)
 */
 void handleCOMPORD(HandlerContext&)
 {
-}
-
-void handleCOMPSEGS(HandlerContext& handlerContext)
-{
-    const auto& record1 = handlerContext.keyword.getRecord(0);
-    const std::string& wname = record1.getItem("WELL").getTrimmedString(0);
-
-    if (!handlerContext.state(handlerContext.currentStep).wells.has(wname)) {
-        const auto& location = handlerContext.keyword.location();
-        if (handlerContext.wgnames().has_well(wname)) {
-            std::string msg = fmt::format(R"(Well: {} not yet defined for keyword {}.
-Expecting well to be defined with WELSPECS in ACTIONX before actual use.
-File {} line {}.)", wname, location.keyword, location.filename, location.lineno);
-            OpmLog::warning(msg);
-        } else
-            throw OpmInputError(fmt::format("No such well: ", wname), location);
-        return;
-    }
-
-    auto well = handlerContext.state().wells.get( wname );
-
-    if (well.getConnections().empty()) {
-        const auto& location = handlerContext.keyword.location();
-        auto msg = fmt::format("Problem with COMPSEGS/{0}\n"
-                               "In {1} line {2}\n"
-                               "Well {0} is not connected to grid - COMPSEGS will be ignored", wname, location.filename, location.lineno);
-        OpmLog::warning(msg);
-        return;
-    }
-
-    if (well.handleCOMPSEGS(handlerContext.keyword, handlerContext.grid, handlerContext.parseContext, handlerContext.errors))
-    {
-        handlerContext.state().wells.update( std::move(well) );
-        handlerContext.record_well_structure_change();
-    }
-
-    handlerContext.compsegs_handled(wname);
 }
 
 void handleCOMPTRAJ(HandlerContext& handlerContext)
@@ -2048,91 +2012,6 @@ void handleWSALT(HandlerContext& handlerContext)
     }
 }
 
-void handleWSEGAICD(HandlerContext& handlerContext)
-{
-    auto auto_icds = AutoICD::fromWSEGAICD(handlerContext.keyword);
-
-    for (auto& [well_name_pattern, aicd_pairs] : auto_icds) {
-        const auto well_names = handlerContext.wellNames(well_name_pattern, false);
-
-        for (const auto& well_name : well_names) {
-            auto well = handlerContext.state().wells( well_name );
-
-            const auto& connections = well.getConnections();
-            const auto& segments = well.getSegments();
-            for (auto& [segment_nr, aicd] : aicd_pairs) {
-                const auto& outlet_segment_length = segments.segmentLength( segments.getFromSegmentNumber(segment_nr).outletSegment() );
-                aicd.updateScalingFactor(outlet_segment_length, connections.segment_perf_length(segment_nr));
-            }
-
-            if (well.updateWSEGAICD(aicd_pairs, handlerContext.keyword.location())) {
-                handlerContext.state().wells.update(std::move(well));
-            }
-        }
-    }
-}
-
-void handleWSEGITER(HandlerContext& handlerContext)
-{
-    const auto& record = handlerContext.keyword.getRecord(0);
-    auto& tuning = handlerContext.state().tuning();
-
-    tuning.MXWSIT = record.getItem<ParserKeywords::WSEGITER::MAX_WELL_ITERATIONS>().get<int>(0);
-    tuning.WSEG_MAX_RESTART = record.getItem<ParserKeywords::WSEGITER::MAX_TIMES_REDUCED>().get<int>(0);
-    tuning.WSEG_REDUCTION_FACTOR = record.getItem<ParserKeywords::WSEGITER::REDUCTION_FACTOR>().get<double>(0);
-    tuning.WSEG_INCREASE_FACTOR = record.getItem<ParserKeywords::WSEGITER::INCREASING_FACTOR>().get<double>(0);
-
-    handlerContext.state().events().addEvent(ScheduleEvents::TUNING_CHANGE);
-}
-
-void handleWSEGSICD(HandlerContext& handlerContext)
-{
-    auto spiral_icds = SICD::fromWSEGSICD(handlerContext.keyword);
-
-    for (auto& map_elem : spiral_icds) {
-        const std::string& well_name_pattern = map_elem.first;
-        const auto well_names = handlerContext.wellNames(well_name_pattern, false);
-
-        std::vector<std::pair<int, SICD> >& sicd_pairs = map_elem.second;
-
-        for (const auto& well_name : well_names) {
-            auto well = handlerContext.state().wells( well_name );
-
-            const auto& connections = well.getConnections();
-            const auto& segments = well.getSegments();
-            for (auto& [segment_nr, sicd] : sicd_pairs) {
-                const auto& outlet_segment_length = segments.segmentLength( segments.getFromSegmentNumber(segment_nr).outletSegment() );
-                sicd.updateScalingFactor(outlet_segment_length, connections.segment_perf_length(segment_nr));
-            }
-
-            if (well.updateWSEGSICD(sicd_pairs)) {
-                handlerContext.state().wells.update(std::move(well));
-            }
-        }
-    }
-}
-
-void handleWSEGVALV(HandlerContext& handlerContext)
-{
-    const auto& udq = handlerContext.state(handlerContext.currentStep).udq.get();
-    const double udq_default = udq.params().undefinedValue();
-    const auto valves = Valve::fromWSEGVALV(handlerContext.keyword, udq_default);
-
-    for (const auto& map_elem : valves) {
-        const std::string& well_name_pattern = map_elem.first;
-        const auto well_names = handlerContext.wellNames(well_name_pattern);
-
-        const std::vector<std::pair<int, Valve> >& valve_pairs = map_elem.second;
-
-        for (const auto& well_name : well_names) {
-            auto well = handlerContext.state().wells( well_name );
-            if (well.updateWSEGVALV(valve_pairs)) {
-                handlerContext.state().wells.update( std::move(well) );
-            }
-        }
-    }
-}
-
 void handleWSKPTAB(HandlerContext& handlerContext)
 {
     for (const auto& record : handlerContext.keyword) {
@@ -2521,6 +2400,9 @@ bool Schedule::handleNormalKeyword(HandlerContext& handlerContext)
     if (handleGroupKeyword(handlerContext)) {
         return true;
     }
+    if (handleMSWKeyword(handlerContext)) {
+        return true;
+    }
 
     // handlers that do not need access to schedule members
     using priv_handler_function = std::function<void(HandlerContext&)>;
@@ -2534,7 +2416,6 @@ bool Schedule::handleNormalKeyword(HandlerContext& handlerContext)
         { "COMPDAT" , &handleCOMPDAT   },
         { "COMPLUMP", &handleCOMPLUMP  },
         { "COMPORD" , &handleCOMPORD   },
-        { "COMPSEGS", &handleCOMPSEGS  },
         { "COMPTRAJ", &handleCOMPTRAJ  },
         { "CSKIN"   , &handleCSKIN     },
         { "DRSDT"   , &handleDRSDT     },
@@ -2612,10 +2493,6 @@ bool Schedule::handleNormalKeyword(HandlerContext& handlerContext)
         { "WRFT"    , &handleWRFT      },
         { "WRFTPLT" , &handleWRFTPLT   },
         { "WSALT"   , &handleWSALT     },
-        { "WSEGAICD", &handleWSEGAICD  },
-        { "WSEGITER", &handleWSEGITER  },
-        { "WSEGSICD", &handleWSEGSICD  },
-        { "WSEGVALV", &handleWSEGVALV  },
         { "WSKPTAB" , &handleWSKPTAB   },
         { "WSOLVENT", &handleWSOLVENT  },
         { "WTEMP"   , &handleWTEMP     },
