@@ -146,6 +146,11 @@ namespace {
         return std::log(r0 / std::min(rw, r0)) + skin_factor;
     }
 
+    double peacemanDenominator(const Opm::Connection::CTFProperties& ctf_props)
+    {
+        return peacemanDenominator(ctf_props.r0, ctf_props.rw, ctf_props.skin_factor);
+    }
+
     // Calculate permeability thickness Kh for line segment in a cell for x,y,z directions
     std::array<double, 3>
     permThickness(const external::cvf::Vec3d& effective_connection,
@@ -291,61 +296,40 @@ namespace Opm {
     }
 
     void WellConnections::addConnection(const int i, const int j, const int k,
-                                        const std::size_t global_index,
-                                        const int complnum,
-                                        const double depth,
-                                        const Connection::State state,
-                                        const double CF,
-                                        const double Kh,
-                                        const double rw,
-                                        const double r0,
-                                        const double re,
-                                        const double connection_length,
-                                        const double skin_factor,
-                                        const double d_factor,
-                                        const double Ke,
-                                        const int satTableId,
-                                        const Connection::Direction direction,
-                                        const Connection::CTFKind ctf_kind,
-                                        const std::size_t seqIndex,
-                                        const bool defaultSatTabId)
+                                        const std::size_t                global_index,
+                                        const int                        complnum,
+                                        const Connection::State          state,
+                                        const double                     depth,
+                                        const Connection::CTFProperties& ctf_props,
+                                        const int                        satTableId,
+                                        const Connection::Direction      direction,
+                                        const Connection::CTFKind        ctf_kind,
+                                        const std::size_t                seqIndex,
+                                        const bool                       defaultSatTabId)
     {
         const int conn_i = (i < 0) ? this->headI : i;
         const int conn_j = (j < 0) ? this->headJ : j;
 
-        Connection conn(conn_i, conn_j, k,
-                        global_index, complnum,
-                        depth, state, CF, Kh, rw, r0, re, connection_length,
-                        skin_factor, d_factor, Ke, satTableId, direction, ctf_kind,
-                        seqIndex, defaultSatTabId);
-
-        this->add(conn);
+        this->m_connections.emplace_back(conn_i, conn_j, k, global_index, complnum,
+                                         state, direction, ctf_kind, satTableId,
+                                         depth, ctf_props, seqIndex, defaultSatTabId);
     }
 
     void WellConnections::addConnection(const int i, const int j, const int k,
-                                        const std::size_t global_index,
-                                        const double depth,
-                                        const Connection::State state,
-                                        const double CF,
-                                        const double Kh,
-                                        const double rw,
-                                        const double r0,
-                                        const double re,
-                                        const double connection_length,
-                                        const double skin_factor,
-                                        const double d_factor,
-                                        const double Ke,
-                                        const int satTableId,
-                                        const Connection::Direction direction,
-                                        const Connection::CTFKind ctf_kind,
-                                        const std::size_t seqIndex,
-                                        const bool defaultSatTabId)
+                                        const std::size_t                global_index,
+                                        const Connection::State          state,
+                                        const double                     depth,
+                                        const Connection::CTFProperties& ctf_props,
+                                        const int                        satTableId,
+                                        const Connection::Direction      direction,
+                                        const Connection::CTFKind        ctf_kind,
+                                        const std::size_t                seqIndex,
+                                        const bool                       defaultSatTabId)
     {
-        const int complnum = (this->m_connections.size() + 1);
+        const auto complnum = static_cast<int>(this->m_connections.size()) + 1;
 
-        this->addConnection(i, j, k, global_index, complnum,
-                            depth, state, CF, Kh, rw, r0, re,
-                            connection_length, skin_factor, d_factor, Ke,
+        this->addConnection(i, j, k, global_index, complnum, state,
+                            depth, ctf_props,
                             satTableId, direction, ctf_kind,
                             seqIndex, defaultSatTabId);
     }
@@ -355,177 +339,185 @@ namespace Opm {
                                       const std::string&     wname,
                                       const KeywordLocation& location)
     {
+        const auto& itemI = record.getItem("I");
+        const auto defaulted_I = itemI.defaultApplied(0) || (itemI.get<int>(0) == 0);
+        const auto I = !defaulted_I ? itemI.get<int>(0) - 1 : this->headI;
 
-        const auto& itemI = record.getItem( "I" );
-        const auto defaulted_I = itemI.defaultApplied( 0 ) || itemI.get< int >( 0 ) == 0;
-        const int I = !defaulted_I ? itemI.get< int >( 0 ) - 1 : this->headI;
+        const auto& itemJ = record.getItem("J");
+        const auto defaulted_J = itemJ.defaultApplied(0) || (itemJ.get<int>(0) == 0);
+        const auto J = !defaulted_J ? itemJ.get<int>(0) - 1 : this->headJ;
 
-        const auto& itemJ = record.getItem( "J" );
-        const auto defaulted_J = itemJ.defaultApplied( 0 ) || itemJ.get< int >( 0 ) == 0;
-        const int J = !defaulted_J ? itemJ.get< int >( 0 ) - 1 : this->headJ;
+        const auto K1 = record.getItem("K1").get<int>(0) - 1;
+        const auto K2 = record.getItem("K2").get<int>(0) - 1;
+        const auto state = Connection::StateFromString(record.getItem("STATE").getTrimmedString(0));
 
-        int K1 = record.getItem("K1").get< int >(0) - 1;
-        int K2 = record.getItem("K2").get< int >(0) - 1;
-        Connection::State state = Connection::StateFromString( record.getItem("STATE").getTrimmedString(0) );
-
-        int satTableId = -1;
-        bool defaultSatTable = true;
         const auto& r0Item = record.getItem("PR");
         const auto& CFItem = record.getItem("CONNECTION_TRANSMISSIBILITY_FACTOR");
         const auto& diameterItem = record.getItem("DIAMETER");
         const auto& KhItem = record.getItem("Kh");
         const auto& satTableIdItem = record.getItem("SAT_TABLE");
         const auto direction = Connection::DirectionFromString(record.getItem("DIR").getTrimmedString(0));
-        double skin_factor = record.getItem("SKIN").getSIDouble(0);
-        
-        double d_factor = record.getItem("D_FACTOR").getSIDouble(0);
 
-        double rw;
+        const auto skin_factor = record.getItem("SKIN").getSIDouble(0);
+        const auto d_factor = record.getItem("D_FACTOR").getSIDouble(0);
 
-        if (satTableIdItem.hasValue(0) && satTableIdItem.get < int > (0) > 0)
-        {
-            satTableId = satTableIdItem.get< int >(0);
+        int satTableId = -1;
+        bool defaultSatTable = true;
+        if (satTableIdItem.hasValue(0) && (satTableIdItem.get<int>(0) > 0)) {
+            satTableId = satTableIdItem.get<int>(0);
             defaultSatTable = false;
         }
 
-        if (diameterItem.hasValue(0))
-            rw = 0.50 * diameterItem.getSIDouble(0);
-        else
+        double rw{};
+        if (diameterItem.hasValue(0)) {
+            rw = diameterItem.getSIDouble(0) / 2;
+        }
+        else {
             // The Eclipse100 manual does not specify a default value for the wellbore
             // diameter, but the Opm codebase has traditionally implemented a default
             // value of one foot. The same default value is used by Eclipse300.
             rw = 0.5*unit::feet;
+        }
 
-        for (int k = K1; k <= K2; k++) {
-            const CompletedCells::Cell& cell = grid.get_cell(I, J, k);
+        // Angle of completion exposed to flow.  We assume centre
+        // placement so there's complete exposure (= 2\pi).
+        const auto angle = 6.2831853071795864769252867665590057683943387987502116419498;
+
+        for (int k = K1; k <= K2; ++k) {
+            const auto& cell = grid.get_cell(I, J, k);
             if (!cell.is_active()) {
-                auto msg = fmt::format("Problem with COMPDAT keyword\n"
-                                       "In {} line {}\n"
-                                       "The cell ({},{},{}) in well {} is not active and the connection will be ignored", location.filename, location.lineno, I,J,k, wname);
+                auto msg = fmt::format(R"(Problem with COMPDAT keyword
+In {} line {}
+The cell ({},{},{}) in well {} is not active and the connection will be ignored)",
+                                       location.filename, location.lineno,
+                                       I + 1, J + 1, k + 1, wname);
+
                 OpmLog::warning(msg);
                 continue;
             }
+
             const auto& props = cell.props;
-            double CF = -1;
-            double Kh = -1;
-            double r0 = -1;
-            auto ctf_kind = ::Opm::Connection::CTFKind::DeckValue;
 
-            if (defaultSatTable)
+            auto ctf_props = ::Opm::Connection::CTFProperties{};
+            ctf_props.rw = rw;
+            ctf_props.skin_factor = skin_factor;
+            ctf_props.d_factor = d_factor;
+
+            if (defaultSatTable) {
                 satTableId = props->satnum;
+            }
 
-            auto same_ijk = [&]( const Connection& c ) {
-                return c.sameCoordinate( I,J,k );
-            };
+            ctf_props.r0 = -1.0;
+            if (r0Item.hasValue(0)) {
+                ctf_props.r0 = r0Item.getSIDouble(0);
+            }
 
-            if (r0Item.hasValue(0))
-                r0 = r0Item.getSIDouble(0);
+            ctf_props.Kh = -1.0;
+            if (KhItem.hasValue(0) && (KhItem.getSIDouble(0) > 0.0)) {
+                ctf_props.Kh = KhItem.getSIDouble(0);
+            }
 
-            if (KhItem.hasValue(0) && KhItem.getSIDouble(0) > 0.0)
-                Kh = KhItem.getSIDouble(0);
+            ctf_props.CF = -1.0;
+            if (CFItem.hasValue(0) && (CFItem.getSIDouble(0) > 0.0)) {
+                ctf_props.CF = CFItem.getSIDouble(0);
+            }
 
-            if (CFItem.hasValue(0) && CFItem.getSIDouble(0) > 0.0)
-                CF = CFItem.getSIDouble(0);
+            const auto D = effectiveExtent(direction, props->ntg, cell.dimensions);
+            const auto K = permComponents(direction, { props->permx, props->permy, props->permz });
+            ctf_props.Ke = std::sqrt(K[0] * K[1]);
 
-            // Angle of completion exposed to flow.  We assume centre
-            // placement so there's complete exposure (= 2\pi).
-            const double angle = 6.2831853071795864769252867665590057683943387987502116419498;
-            std::array<double,3> cell_size = cell.dimensions;
-            const auto& D = effectiveExtent(direction, props->ntg, cell_size);
+            const auto ctf_kind = (ctf_props.CF < 0.0)
+                ? ::Opm::Connection::CTFKind::Defaulted
+                : ::Opm::Connection::CTFKind::DeckValue;
 
-            std::array<double,3> cell_perm = {{ props->permx,
-                                                props->permy,
-                                                props->permz}};
-            const auto& K = permComponents(direction, cell_perm);
-            double Ke = std::sqrt(K[0] * K[1]);
-
-            /* We start with the absolute happy path; both CF and Kh are explicitly given in the deck. */
-            if (CF > 0 && Kh > 0)
+            // We start with the absolute happy path; both CF and Kh are
+            // explicitly given in the deck.
+            if ((ctf_props.CF > 0.0) && (ctf_props.Kh > 0.0)) {
+                ctf_props.peaceman_denom = angle * ctf_props.Kh / ctf_props.CF;
                 goto CF_done;
+            }
 
-            /* We must calculate CF and Kh from the items in the COMPDAT record and cell properties. */
+            // We must calculate CF and Kh from the items in the COMPDAT
+            // record and cell properties.
+            if (ctf_props.r0 < 0.0) {
+                ctf_props.r0 = effectiveRadius(K, D);
+            }
+
+            if (const auto peaceman_denom = peacemanDenominator(ctf_props);
+                ctf_props.Kh > 0.0)
             {
-                if (r0 < 0)
-                    r0 = effectiveRadius(K,D);
-                if (CF < 0) {
-                    if (Kh < 0)
-                        Kh = Ke * D[2];
-                    CF = angle * Kh / (std::log(r0 / std::min(rw, r0)) + skin_factor);
-                    ctf_kind = ::Opm::Connection::CTFKind::Defaulted;
-                } else {
-                    if (KhItem.defaultApplied(0) || KhItem.getSIDouble(0) < 0) {
-                        Kh = CF * (std::log(r0 / std::min(r0, rw)) + skin_factor) / angle;
-                    } else {
-                        if (Kh < 0) {
-                            Kh = Ke * D[2];
-
-                            // Compute r0 to be consistent with other parameters
-                            r0 = RestartIO::RstConnection::inverse_peaceman(CF, Kh, rw, skin_factor);
-                        }
-                    }
+                // CF < 0
+                ctf_props.CF = angle * ctf_props.Kh / peaceman_denom;
+                ctf_props.peaceman_denom = peaceman_denom;
+            }
+            else if (ctf_props.CF > 0.0) { // Kh < 0
+                if (KhItem.defaultApplied(0) || (KhItem.get<double>(0) < 0.0)) {
+                    // Kh explicitly defaulted.  Derive compatible Kh value
+                    // from specified CTF, r0, rw, and skin factor.
+                    ctf_props.Kh = ctf_props.CF * peaceman_denom / angle;
                 }
+                else {
+                    // Kh = 0 entered in item 10 of COMPDAT.  Compute Kh
+                    // from permeability and length of perforation interval
+                    // and request a compatible pressure equivalent radius
+                    // (r0) be calculated.
+                    ctf_props.Kh = ctf_props.Ke * D[2];
+
+                    // Defer r0 calculation to CF_done: r0 < 0 case.
+                    ctf_props.r0 = -1.0;
+                }
+
+                ctf_props.peaceman_denom = angle * ctf_props.Kh / ctf_props.CF;
+            }
+            else {              // (CF < 0) && (Kh < 0)
+                ctf_props.Kh = ctf_props.Ke * D[2];
+                ctf_props.CF = angle * ctf_props.Kh / peaceman_denom;
+                ctf_props.peaceman_denom = peaceman_denom;
             }
 
         CF_done:
-            if (r0 < 0)
-                r0 = RestartIO::RstConnection::inverse_peaceman(CF, Kh, rw, skin_factor);
+            if (ctf_props.r0 < 0.0) {
+                ctf_props.r0 = RestartIO::RstConnection::
+                    inverse_peaceman(ctf_props.CF, ctf_props.Kh,
+                                     ctf_props.rw,
+                                     ctf_props.skin_factor);
+            }
 
-            // used by the PolymerMW module
-            double re = std::sqrt(D[0] * D[1] / angle * 2); // area equivalent radius of the grid block
-            double connection_length = D[2];            // the length of the well perforation
+            // Length of the well perforation interval.
+            ctf_props.connection_length = ctf_props.Kh / ctf_props.Ke;
 
-            auto prev = std::find_if( this->m_connections.begin(),
-                                      this->m_connections.end(),
-                                      same_ijk );
+            // Area equivalent radius of the grid block.  Used by the
+            // PolymerMW module.
+            ctf_props.re = std::sqrt(D[0] * D[1] / angle * 2);
+
+            auto prev = std::find_if(this->m_connections.begin(),
+                                     this->m_connections.end(),
+                                     [I, J, k](const Connection& c)
+                                     {
+                                         return c.sameCoordinate(I, J, k);
+                                     });
+
             if (prev == this->m_connections.end()) {
-                std::size_t noConn = this->m_connections.size();
-                this->addConnection(I,J,k,
-                                    cell.global_index,
-                                    cell.depth,
-                                    state,
-                                    CF,
-                                    Kh,
-                                    rw,
-                                    r0,
-                                    re,
-                                    connection_length,
-                                    skin_factor,
-                                    d_factor,
-                                    Ke,
-                                    satTableId,
-                                    direction,
-                                    ctf_kind,
-                                    noConn,
-                                    defaultSatTable);
-            } else {
-                std::size_t css_ind = prev->sort_value();
-                int conSegNo = prev->segment();
-                const auto& perf_range = prev->perf_range();
-                double depth = cell.depth;
-                *prev = Connection(I,J,k,
-                                   cell.global_index,
-                                   prev->complnum(),
-                                   depth,
-                                   state,
-                                   CF,
-                                   Kh,
-                                   rw,
-                                   r0,
-                                   re,
-                                   connection_length,
-                                   skin_factor,
-                                   d_factor,
-                                   Ke,
-                                   satTableId,
-                                   direction,
-                                   ctf_kind,
-                                   prev->sort_value(),
-                                   defaultSatTable);
+                const std::size_t noConn = this->m_connections.size();
+                this->addConnection(I, J, k, cell.global_index, state,
+                                    cell.depth, ctf_props, satTableId,
+                                    direction, ctf_kind,
+                                    noConn, defaultSatTable);
+            }
+            else {
+                const auto compl_num = prev->complnum();
+                const auto css_ind = prev->sort_value();
+                const auto conSegNo = prev->segment();
+                const auto perf_range = prev->perf_range();
 
-                prev->updateSegment(conSegNo,
-                                    depth,
-                                    css_ind,
-                                    *perf_range);
+                *prev = Connection {
+                    I, J, k, cell.global_index, compl_num,
+                    state, direction, ctf_kind, satTableId,
+                    cell.depth, ctf_props,
+                    css_ind, defaultSatTable
+                };
+
+                prev->updateSegment(conSegNo, cell.depth, css_ind, *perf_range);
             }
         }
     }
@@ -536,212 +528,194 @@ namespace Opm {
                                        const KeywordLocation& location,
                                        external::cvf::ref<external::cvf::BoundingBoxTree>& cellSearchTree)
     {
-
-        // const std::string& completionNamePattern = record.getItem("BRANCH_NUMBER").getTrimmedString(0);
         const auto& perf_top = record.getItem("PERF_TOP");
         const auto& perf_bot = record.getItem("PERF_BOT");
 
         const auto& CFItem = record.getItem("CONNECTION_TRANSMISSIBILITY_FACTOR");
         const auto& diameterItem = record.getItem("DIAMETER");
         const auto& KhItem = record.getItem("Kh");
-        double skin_factor = record.getItem("SKIN").getSIDouble(0);
-        double d_factor = record.getItem("D_FACTOR").getSIDouble(0);
+        const auto skin_factor = record.getItem("SKIN").getSIDouble(0);
+        const auto d_factor = record.getItem("D_FACTOR").getSIDouble(0);
         const auto& satTableIdItem = record.getItem("SAT_TABLE");
-        Connection::State state = Connection::StateFromString(record.getItem("STATE").getTrimmedString(0));
+        const auto state = Connection::StateFromString(record.getItem("STATE").getTrimmedString(0));
 
         int satTableId = -1;
         bool defaultSatTable = true;
-        if (satTableIdItem.hasValue(0) && satTableIdItem.get < int > (0) > 0)
-        {
-            satTableId = satTableIdItem.get< int >(0);
+        if (satTableIdItem.hasValue(0) && (satTableIdItem.get<int>(0) > 0)) {
+            satTableId = satTableIdItem.get<int>(0);
             defaultSatTable = false;
         }
 
-        double rw;
-        if (diameterItem.hasValue(0))
-            rw = 0.50 * diameterItem.getSIDouble(0);
-        else
+        double rw{};
+        if (diameterItem.hasValue(0)) {
+            rw = diameterItem.getSIDouble(0) / 2;
+        }
+        else {
             // The Eclipse100 manual does not specify a default value for the wellbore
             // diameter, but the Opm codebase has traditionally implemented a default
             // value of one foot. The same default value is used by Eclipse300.
             rw = 0.5*unit::feet;
+        }
 
-        // Get the grid 
-        auto ecl_grid = grid.get_grid();
+        // Get the grid
+        const auto& ecl_grid = grid.get_grid();
 
         // Calulate the x,y,z coordinates of the begin and end of a perforation
         external::cvf::Vec3d p_top;
         external::cvf::Vec3d p_bot;
         for (std::size_t i = 0; i < 3 ; ++i) {
-             p_top[i] =  Opm::linearInterpolation(this->md, this->coord[i], perf_top.getSIDouble(0));
-             p_bot[i] =  Opm::linearInterpolation(this->md, this->coord[i], perf_bot.getSIDouble(0));
+            p_top[i] = linearInterpolation(this->md, this->coord[i], perf_top.getSIDouble(0));
+            p_bot[i] = linearInterpolation(this->md, this->coord[i], perf_bot.getSIDouble(0));
         }
 
         std::vector<external::cvf::Vec3d> points{p_top, p_bot};
         std::vector<double> md_interval{perf_top.getSIDouble(0), perf_bot.getSIDouble(0)};
-        
-        external::cvf::ref<external::RigWellPath> wellPathGeometry = new external::RigWellPath;
+
+        external::cvf::ref<external::RigWellPath> wellPathGeometry { new external::RigWellPath };
         wellPathGeometry->setWellPathPoints(points);
         wellPathGeometry->setMeasuredDepths(md_interval);
-        external::cvf::ref<external::RigEclipseWellLogExtractor> e = new external::RigEclipseWellLogExtractor(wellPathGeometry.p(), *ecl_grid, cellSearchTree);
-        
-        // Keep the AABB search tree of the grid  to avoid redoing an expensive calulation 
+
+        external::cvf::ref<external::RigEclipseWellLogExtractor> e {
+            new external::RigEclipseWellLogExtractor {
+                wellPathGeometry.p(), *ecl_grid, cellSearchTree
+            }
+        };
+
+        // Keep the AABB search tree of the grid to avoid redoing an
+        // expensive calulation.
         cellSearchTree = e->getCellSearchTree();
 
-        // This gives the intersected grid cells IJK, cell face entrance & exit cell face point and connection length 
+        // This gives the intersected grid cells IJK, cell face entrance &
+        // exit cell face point and connection length.
         auto intersections = e->cellIntersectionInfosAlongWellPath();
 
-        int I{0};
-        int J{0};
-        int k{0};
-        for (std::size_t is = 0; is < intersections.size(); ++is){
-            auto ijk = std::array<int, 3>{};
-            ijk = ecl_grid->getIJK(intersections[is].globCellIndex);
-            I = ijk[0];
-            J = ijk[1];
-            k = ijk[2];
+        for (std::size_t is = 0; is < intersections.size(); ++is) {
+            const auto ijk = ecl_grid->getIJK(intersections[is].globCellIndex);
 
-            // When using WELTRAJ & COMPTRAJ one may use default settings in WELSPECS for headI/J and let the 
-            // headI/J be calculated by the trajectory data.
-            // If these defaults are used the headI/J are set to the first intersection.
+            // When using WELTRAJ & COMPTRAJ one may use default settings in
+            // WELSPECS for headI/J and let the headI/J be calculated by the
+            // trajectory data.
+            //
+            // If these defaults are used the headI/J are set to the first
+            // intersection.
             if (is == 0) {
-                if (this->headI == -1)
-                    this->headI = I;
-                if (this->headJ == -1)
-                    this->headJ = J;
+                if (this->headI < 0) { this->headI = ijk[0]; }
+                if (this->headJ < 0) { this->headJ = ijk[1]; }
             }
 
-            external::cvf::Vec3d connection_vector = intersections[is].intersectionLengthsInCellCS;
+            const auto& cell = grid.get_cell(ijk[0], ijk[1], ijk[2]);
 
-            const CompletedCells::Cell& cell = grid.get_cell(I, J, k);
-
-           if (!cell.is_active()) {
-                auto msg = fmt::format("Problem with COMPTRAJ keyword\n"
-                                       "In {} line {}\n"
-                                       "The cell ({},{},{}) in well {} is not active and the connection will be ignored", location.filename, location.lineno, I,J,k, wname);
+            if (!cell.is_active()) {
+                const auto msg = fmt::format(R"(Problem with COMPTRAJ keyword
+In {} line {}
+The cell ({},{},{}) in well {} is not active and the connection will be ignored)",
+                                             location.filename,
+                                             location.lineno,
+                                             ijk[0] + 1,
+                                             ijk[1] + 1,
+                                             ijk[2] + 1, wname);
                 OpmLog::warning(msg);
+
                 continue;
             }
+
             const auto& props = cell.props;
-            double CF = -1;
-            double Kh = -1;
-            double r0 = -1;
-            auto ctf_kind = ::Opm::Connection::CTFKind::DeckValue;
 
-            if (defaultSatTable)
-                satTableId = props->satnum;
+            auto ctf_props = Connection::CTFProperties{};
+            ctf_props.rw = rw;
+            ctf_props.skin_factor = skin_factor;
+            ctf_props.d_factor = d_factor;
 
-            auto same_ijk = [I, J, k]( const Connection& c ) {
-                return c.sameCoordinate( I,J,k );
+            ctf_props.r0 = -1.0;
+            ctf_props.Kh = -1.0;
+            if (KhItem.hasValue(0) && (KhItem.getSIDouble(0) > 0.0)) {
+                ctf_props.Kh = KhItem.getSIDouble(0);
+            }
+
+            ctf_props.CF = -1.0;
+            if (CFItem.hasValue(0) && (CFItem.getSIDouble(0) > 0.0)) {
+                ctf_props.CF = CFItem.getSIDouble(0);
+            }
+
+            const auto cell_perm = std::array {
+                props->permx, props->permy, props->permz
             };
 
-            if (KhItem.hasValue(0) && KhItem.getSIDouble(0) > 0.0)
-                Kh = KhItem.getSIDouble(0);
-
-            if (CFItem.hasValue(0) && CFItem.getSIDouble(0) > 0.0)
-                CF = CFItem.getSIDouble(0);
-
-            std::array<double,3> cell_size = cell.dimensions;
-
-            std::array<double,3> cell_perm = {{ props->permx,
-                                                props->permy,
-                                                props->permz}};
-
-            if (CF < 0 && Kh < 0) {
-                /* We must calculate CF and Kh from the items in the COMPTRAJ record and cell properties. */
+            auto ctf_kind = ::Opm::Connection::CTFKind::DeckValue;
+            if ((ctf_props.CF < 0.0) && (ctf_props.Kh < 0.0)) {
+                // We must calculate CF and Kh from the items in the
+                // COMPTRAJ record and cell properties.
                 ctf_kind = ::Opm::Connection::CTFKind::Defaulted;
 
+                const auto& connection_vector =
+                    intersections[is].intersectionLengthsInCellCS;
 
-                const auto& perm_thickness =  permThickness(connection_vector,
-                                                            cell_perm,
-                                                            props->ntg);
+                const auto perm_thickness =
+                    permThickness(connection_vector, cell_perm, props->ntg);
 
-                const auto& connection_factor = connectionFactor(cell_perm,
-                                                                 cell_size,
-                                                                 props->ntg,
-                                                                 perm_thickness,
-                                                                 rw,
-                                                                 skin_factor);
+                const auto connection_factor =
+                    connectionFactor(cell_perm, cell.dimensions, props->ntg,
+                                     perm_thickness, rw, skin_factor);
 
-                CF = std::sqrt(std::pow(connection_factor[0],2)+ std::pow(connection_factor[1],2)+std::pow(connection_factor[2],2));
-                // std::cout<<"CF: " << CF << "; CFx: " << connection_factor[0] << " CFy: " << connection_factor[1] <<  " CFz: " << connection_factor[2] << "\n" <<std::endl;
-                
-                Kh = std::sqrt(std::pow(perm_thickness[0],2)+ std::pow(perm_thickness[1],2)+std::pow(perm_thickness[2],2));
-                // std::cout<<"Kh: " << Kh << ";  Khx: " << perm_thickness[0] << " Khy: " << perm_thickness[1] <<  " Khz: " << perm_thickness[2] << "\n" <<std::endl;
+                ctf_props.connection_length = connection_vector.length();
+
+                ctf_props.CF = std::hypot(connection_factor[0],
+                                          connection_factor[1],
+                                          connection_factor[2]);
+
+                ctf_props.Kh = std::hypot(perm_thickness[0],
+                                          perm_thickness[1],
+                                          perm_thickness[2]);
+            }
+            else if (! ((ctf_props.CF > 0.0) && (ctf_props.Kh > 0.0))) {
+                auto msg = fmt::format(R"(Problem with COMPTRAJ keyword
+In {} line {}
+CF and Kh items for well {} must both be specified or both defaulted/negative)",
+                                       location.filename, location.lineno, wname);
+
+                throw std::logic_error(msg);
+            }
+
+            // Todo: check what needs to be done for polymerMW module, see
+            // loadCOMPDAT used by the PolymerMW module
+
+            const auto direction = ::Opm::Connection::Direction::Z;
+
+            ctf_props.re = -1;
+
+            {
+                const auto K = permComponents(direction, cell_perm);
+                ctf_props.Ke = std::sqrt(K[0] * K[1]);
+            }
+
+            auto prev = std::find_if(this->m_connections.begin(),
+                                     this->m_connections.end(),
+                                     [&ijk](const Connection& c)
+                                     { return c.sameCoordinate(ijk[0], ijk[1], ijk[2]); });
+
+            if (prev == this->m_connections.end()) {
+                const std::size_t noConn = this->m_connections.size();
+                this->addConnection(ijk[0], ijk[1], ijk[2],
+                                    cell.global_index, state,
+                                    cell.depth, ctf_props, satTableId,
+                                    direction, ctf_kind,
+                                    noConn, defaultSatTable);
             }
             else {
-                    if (! (CF > 0 && Kh > 0) ){
-                    auto msg = fmt::format("Problem with COMPTRAJ keyword\n"
-                                    "In {} line {}\n"
-                                    "CF and Kh items for well {} must both be specified or both defaulted/negative",
-                                    location.filename, location.lineno, wname);
-                    throw std::logic_error(msg);
-                    }
-            }
+                const auto compl_num = prev->complnum();
+                const auto css_ind = prev->sort_value();
+                const auto conSegNo = prev->segment();
+                const auto perf_range = prev->perf_range();
 
-            // Todo: check what needs to be done for polymerMW module, see loadCOMPDAT
-            // used by the PolymerMW module
-            // double re = std::sqrt(D[0] * D[1] / angle * 2); // area equivalent radius of the grid block
-            // double connection_length = D[2];                // the length of the well perforation
-            
-            const auto direction = Connection::DirectionFromString("Z");
-            double re = -1;
-            double connection_length = connection_vector.length(); 
-            const auto& K = permComponents(direction, cell_perm);
-            double Ke = std::sqrt(K[0] * K[1]);
+                *prev = Connection {
+                    ijk[0], ijk[1], ijk[2],
+                    cell.global_index, compl_num,
+                    state, direction, ctf_kind, satTableId,
+                    cell.depth, ctf_props,
+                    css_ind, defaultSatTable
+                };
 
-            auto prev = std::find_if( this->m_connections.begin(),
-                                      this->m_connections.end(),
-                                      same_ijk );
-            if (prev == this->m_connections.end()) {
-                std::size_t noConn = this->m_connections.size();
-                this->addConnection(I,J,k,
-                                    cell.global_index,
-                                    cell.depth,
-                                    state,
-                                    CF,
-                                    Kh,
-                                    rw,
-                                    r0,
-                                    re,
-                                    connection_length,
-                                    skin_factor,
-                                    d_factor,
-                                    Ke,
-                                    satTableId,
-                                    direction,
-                                    ctf_kind,
-                                    noConn,
-                                    defaultSatTable);
-            } else {
-                std::size_t css_ind = prev->sort_value();
-                int conSegNo = prev->segment();
-                const auto& perf_range = prev->perf_range();
-                double depth = cell.depth;
-                *prev = Connection(I,J,k,
-                                   cell.global_index,
-                                   prev->complnum(),
-                                   depth,
-                                   state,
-                                   CF,
-                                   Kh,
-                                   rw,
-                                   r0,
-                                   re,
-                                   connection_length,
-                                   skin_factor,
-                                   d_factor,
-                                   Ke,
-                                   satTableId,
-                                   direction,
-                                   ctf_kind,
-                                   prev->sort_value(),
-                                   defaultSatTable);
-
-                prev->updateSegment(conSegNo,
-                                    depth,
-                                    css_ind,
-                                    *perf_range);
+                prev->updateSegment(conSegNo, cell.depth, css_ind, *perf_range);
             }
         }
     }

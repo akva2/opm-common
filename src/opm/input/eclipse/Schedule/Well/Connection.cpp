@@ -36,6 +36,24 @@
 
 namespace {
     constexpr bool restartDefaultSatTabId = true;
+
+    Opm::Connection::CTFProperties
+    collectCTFProps(const Opm::RestartIO::RstConnection& rst_conn)
+    {
+        auto props = Opm::Connection::CTFProperties{};
+
+        props.CF = rst_conn.cf;
+        props.Kh = rst_conn.kh;
+        props.Ke = 0.0;
+        props.rw = rst_conn.diameter / 2;
+        props.r0 = rst_conn.r0;
+        props.re = 0.0;
+        props.connection_length = 0.0;
+        props.skin_factor = rst_conn.skin_factor;
+        props.d_factor = 0.0;
+
+        return props;
+    }
 }
 
 namespace Opm {
@@ -79,20 +97,12 @@ namespace Opm {
     Connection::Connection(const int i, const int j, const int k,
                            const std::size_t    global_index,
                            const int            complnum,
-                           const double         depth,
                            const State          stateArg,
-                           const double         CF,
-                           const double         Kh,
-                           const double         rw,
-                           const double         r0,
-                           const double         re,
-                           const double         connection_length,
-                           const double         skin_factor,
-                           const double         d_factor,
-                           const double         Ke,
-                           const int            satTableId,
                            const Direction      directionArg,
                            const CTFKind        ctf_kind,
+                           const int            satTableId,
+                           const double         depth,
+                           const CTFProperties& ctf_props,
                            const std::size_t    sort_value,
                            const bool           defaultSatTabId)
         : direction        (directionArg)
@@ -100,15 +110,7 @@ namespace Opm {
         , open_state       (stateArg)
         , sat_tableId      (satTableId)
         , m_complnum       (complnum)
-        , m_CF             (CF)
-        , m_Kh             (Kh)
-        , m_rw             (rw)
-        , m_r0             (r0)
-        , m_re             (re)
-        , m_connection_length(connection_length)
-        , m_skin_factor    (skin_factor)
-        , m_d_factor       (d_factor)
-        , m_Ke             (Ke)
+        , ctf_properties_  { ctf_props }
         , ijk              { i, j, k }
         , m_ctfkind        (ctf_kind)
         , m_global_index   (global_index)
@@ -124,15 +126,7 @@ namespace Opm {
         , open_state       (rst_connection.state)
         , sat_tableId      (rst_connection.drain_sat_table)
         , m_complnum       (rst_connection.completion)
-        , m_CF             (rst_connection.cf)
-        , m_Kh             (rst_connection.kh)
-        , m_rw             (rst_connection.diameter / 2)
-        , m_r0             (rst_connection.r0)
-        , m_re             (0.0)
-        , m_connection_length(0.0)
-        , m_skin_factor    (rst_connection.skin_factor)
-        , m_d_factor       (0.0)
-        , m_Ke             (0.0)
+        , ctf_properties_  (collectCTFProps(rst_connection))
         , ijk              (rst_connection.ijk)
         , m_ctfkind        (rst_connection.cf_kind)
         , m_global_index   (grid.get_cell(this->ijk[0], this->ijk[1], this->ijk[2]).global_index)
@@ -159,20 +153,15 @@ namespace Opm {
     Connection Connection::serializationTestObject()
     {
         Connection result;
+
         result.direction = Direction::Y;
         result.center_depth = 1.0;
         result.open_state = State::OPEN;
         result.sat_tableId = 2;
         result.m_complnum = 3;
-        result.m_CF = 4.0;
-        result.m_Kh = 5.0;
-        result.m_rw = 6.0;
-        result.m_r0 = 7.0;
-        result.m_re = 7.1;
-        result.m_connection_length = 7.2;
-        result.m_skin_factor = 8.0;
-        result.m_d_factor = 8.5;
-        result.m_Ke = 8.9;
+
+        result.ctf_properties_ = CTFProperties::serializationTestObject();
+
         result.ijk = {9, 10, 11};
         result.m_ctfkind = CTFKind::Defaulted;
         result.m_global_index = 12;
@@ -270,72 +259,74 @@ namespace Opm {
 
     void Connection::setSkinFactor(double skin_factor)
     {
-        this->m_skin_factor = skin_factor;
+        auto& ctf_p = this->ctf_properties_;
+
+        const auto peaceman_denom = ctf_p.peaceman_denom
+            - ctf_p.skin_factor + skin_factor;
+
+        ctf_p.skin_factor    = skin_factor;
+        ctf_p.CF            *= ctf_p.peaceman_denom / peaceman_denom;
+        ctf_p.peaceman_denom = peaceman_denom;
     }
 
     void Connection::setDFactor(double d_factor)
     {
-        this->m_d_factor = d_factor;
+        this->ctf_properties_.d_factor = d_factor;
     }
 
     void Connection::setKe(double Ke)
     {
-        this->m_Ke = Ke;
+        this->ctf_properties_.Ke = Ke;
     }
 
     void Connection::setCF(double CF)
     {
-        this->m_CF = CF;
+        this->ctf_properties_.CF = CF;
     }
 
     double Connection::CF() const
     {
-        return this->m_CF;
-    }
-
-    double Connection::wpimult() const
-    {
-        return this->m_wpimult;
+        return this->ctf_properties_.CF;
     }
 
     double Connection::Kh() const
     {
-        return this->m_Kh;
+        return this->ctf_properties_.Kh;
     }
 
     double Connection::rw() const
     {
-        return this->m_rw;
+        return this->ctf_properties_.rw;
     }
 
     double Connection::r0() const
     {
-        return this->m_r0;
+        return this->ctf_properties_.r0;
     }
 
     double Connection::re() const
     {
-        return this->m_re;
+        return this->ctf_properties_.re;
     }
 
     double Connection::connectionLength() const
     {
-        return this->m_connection_length;
+        return this->ctf_properties_.connection_length;
     }
 
     double Connection::skinFactor() const
     {
-        return this->m_skin_factor;
+        return this->ctf_properties_.skin_factor;
     }
 
     double Connection::dFactor() const
     {
-        return this->m_d_factor;
+        return this->ctf_properties_.d_factor;
     }
 
     double Connection::Ke() const
     {
-        return this->m_Ke;
+        return this->ctf_properties_.Ke;
     }
 
     void Connection::setState(State state)
@@ -368,8 +359,7 @@ namespace Opm {
 
     void Connection::scaleWellPi(double wellPi)
     {
-        this->m_wpimult *= wellPi;
-        this->m_CF *= wellPi;
+        this->ctf_properties_.CF *= wellPi;
     }
 
     bool Connection::prepareWellPIScaling()
@@ -440,16 +430,8 @@ namespace Opm {
             && (this->m_injmult == that.m_injmult)
             && (this->center_depth == that.center_depth)
             && (this->m_perf_range == that.m_perf_range)
+            && (this->ctf_properties_ == that.ctf_properties_)
             && (this->m_filter_cake == that.m_filter_cake)
-            && (this->m_CF == that.m_CF)
-            && (this->m_rw == that.m_rw)
-            && (this->m_r0 == that.m_r0)
-            && (this->m_re == that.m_re)
-            && (this->m_connection_length == that.m_connection_length)
-            && (this->m_skin_factor == that.m_skin_factor)
-            && (this->m_d_factor == that.m_d_factor)
-            && (this->m_Ke == that.m_Ke)
-            && (this->m_Kh == that.m_Kh)
             ;
     }
 

@@ -162,20 +162,12 @@ namespace Opm {
         Connection(int i, int j, int k,
                    std::size_t          global_index,
                    int                  complnum,
-                   double               depth,
                    State                state,
-                   double               CF,
-                   double               Kh,
-                   double               rw,
-                   double               r0,
-                   double               re,
-                   double               connection_length,
-                   double               skin_factor,
-                   double               d_factor,
-                   double               Ke,
+                   Direction            direction,
+                   CTFKind              ctf_kind,
                    const int            satTableId,
-                   const Direction      direction,
-                   const CTFKind        ctf_kind,
+                   double               depth,
+                   const CTFProperties& ctf_properties,
                    const std::size_t    sort_value,
                    const bool           defaultSatTabId);
 
@@ -198,45 +190,32 @@ namespace Opm {
         int complnum() const;
         int segment() const;
         double CF() const;
-        double wpimult() const;
         double Kh() const;
+        double Ke() const;
         double rw() const;
         double r0() const;
         double re() const;
         double connectionLength() const;
         double skinFactor() const;
         double dFactor() const;
-        double Ke() const;
         CTFKind kind() const;
         const InjMult& injmult() const;
         bool activeInjMult() const;
-        void setInjMult(const InjMult& inj_mult);
-        void setFilterCake(const FilterCake& filter_cake);
         const FilterCake& getFilterCake() const;
         bool filterCakeActive() const;
         double getFilterCakeRadius() const;
         double getFilterCakeArea() const;
 
-        void setState(State state);
-        void setComplnum(int compnum);
-        void setSkinFactor(double skin_factor);
-        void setDFactor(double d_factor);
-        void setKe(double Ke);
-        void setCF(double CF);
-        void scaleWellPi(double wellPi);
-        bool prepareWellPIScaling();
-        bool applyWellPIScaling(const double scaleFactor);
-        void updateSegmentRST(const int segment_number_arg,
-                              const double center_depth_arg);
-        void updateSegment(const int segment_number_arg,
-                           const double center_depth_arg,
-                           const std::size_t compseg_insert_index,
-                           const std::pair<double,double>& perf_range);
+        const CTFProperties& ctfProperties() const
+        {
+            return this->ctf_properties_;
+        }
+
         std::size_t sort_value() const;
         bool getDefaultSatTabId() const;
-        void setDefaultSatTabId(bool id);
         const std::optional<std::pair<double, double>>& perf_range() const;
         std::string str() const;
+
         bool ctfAssignedFromInput() const
         {
             return this->m_ctfkind == CTFKind::DeckValue;
@@ -248,6 +227,26 @@ namespace Opm {
             return ! (*this == that);
         }
 
+        void setInjMult(const InjMult& inj_mult);
+        void setFilterCake(const FilterCake& filter_cake);
+        void setState(State state);
+        void setComplnum(int compnum);
+        void setSkinFactor(double skin_factor);
+        void setDFactor(double d_factor);
+        void setKe(double Ke);
+        void setCF(double CF);
+        void setDefaultSatTabId(bool id);
+
+        void scaleWellPi(double wellPi);
+        bool prepareWellPIScaling();
+        bool applyWellPIScaling(const double scaleFactor);
+        void updateSegmentRST(const int segment_number_arg,
+                              const double center_depth_arg);
+        void updateSegment(const int segment_number_arg,
+                           const double center_depth_arg,
+                           const std::size_t compseg_insert_index,
+                           const std::pair<double,double>& perf_range);
+
         template<class Serializer>
         void serializeOp(Serializer& serializer)
         {
@@ -256,18 +255,10 @@ namespace Opm {
             serializer(this->open_state);
             serializer(this->sat_tableId);
             serializer(this->m_complnum);
-            serializer(this->m_CF);
-            serializer(this->m_Kh);
-            serializer(this->m_rw);
-            serializer(this->m_r0);
-            serializer(this->m_re);
-            serializer(this->m_connection_length);
-            serializer(this->m_skin_factor);
-            serializer(this->m_d_factor);
-            serializer(this->m_Ke);
+            serializer(this->ctf_properties_);
             serializer(this->ijk);
-            serializer(this->m_global_index);
             serializer(this->m_ctfkind);
+            serializer(this->m_global_index);
             serializer(this->m_injmult);
             serializer(this->m_sort_value);
             serializer(this->m_perf_range);
@@ -286,15 +277,7 @@ namespace Opm {
         State open_state { State::SHUT };
         int sat_tableId { -1 };
         int m_complnum { -1 };
-        double m_CF;
-        double m_Kh;
-        double m_rw;
-        double m_r0;
-        double m_re;
-        double m_connection_length;
-        double m_skin_factor;
-        double m_d_factor;
-        double m_Ke;
+        CTFProperties ctf_properties_{};
 
         std::array<int,3> ijk{};
         CTFKind m_ctfkind { CTFKind::DeckValue };
@@ -364,9 +347,6 @@ namespace Opm {
 
         // Whether or not this Connection is subject to WELPI scaling.
         bool m_subject_to_welpi { false };
-
-        // For applying last known WPIMULT to when calculating connection transmissibilty factor in CSKIN
-        double m_wpimult = 1.0;
 
         std::optional<FilterCake> m_filter_cake{};
 

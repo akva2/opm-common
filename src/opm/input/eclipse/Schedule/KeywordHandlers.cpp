@@ -395,8 +395,10 @@ File {} line {}.)", wname, location.keyword, location.filename, location.lineno)
                 // Get well information, modify connection skin factor, and
                 // update well.
                 auto well = this->snapshots[currentStep].wells.get(wname);
-                well.handleCSKINConnections(record);
-                this->snapshots[currentStep].wells.update( std::move(well) );
+
+                if (well.handleCSKIN(record, handlerContext.keyword.location())) {
+                    this->snapshots[currentStep].wells.update(std::move(well));
+                }
             }
         }
     }
