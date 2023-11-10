@@ -80,6 +80,84 @@ namespace Opm {
             Defaulted,
         };
 
+
+        /// Quantities that go into calculating the connection
+        /// transmissibility factor.
+        struct CTFProperties
+        {
+            /// Static connection transmissibility factor calculated from
+            /// input quantities.
+            double CF{};
+
+            /// Static 'Kh' product
+            double Kh{};
+
+            /// Effective permeability.
+            double Ke{};
+
+            /// Connection's wellbore radius
+            double rw{};
+
+            /// Connection's pressure equivalent radius
+            double r0{};
+
+            /// Connection's area equivalent radius--mostly for use by the
+            /// polymer code.
+            double re{};
+
+            /// Length of connection's perfororation interval
+            double connection_length{};
+
+            /// Connection's skin factor.
+            double skin_factor{};
+
+            /// Connection's D factor-i.e., the flow-dependent skin factor
+            /// for gas.
+            double d_factor{};
+
+            /// Denominator in peaceman's formula-i.e., log(r0/rw) + skin.
+            double peaceman_denom{};
+
+            /// Serialisation test object.
+            static CTFProperties serializationTestObject();
+
+            /// Equality operator
+            ///
+            /// \param[in] that Property object to which \c *this will be compared.
+            bool operator==(const CTFProperties& that) const;
+
+            /// Inequality operator
+            ///
+            /// \param[in] that Property object to which \c *this will be compared.
+            bool operator!=(const CTFProperties& that) const
+            {
+                return ! (*this == that);
+            }
+
+            /// Serialisation operator
+            ///
+            /// \tparam Serializer Protocol for serialising and
+            ///   deserialising objects between memory and character
+            ///   buffers.
+            ///
+            /// \param[in,out] serializer Serialisation object.
+            template <class Serializer>
+            void serializeOp(Serializer& serializer)
+            {
+                serializer(this->CF);
+                serializer(this->Kh);
+                serializer(this->Ke);
+                serializer(this->rw);
+                serializer(this->r0);
+                serializer(this->re);
+                serializer(this->connection_length);
+                serializer(this->skin_factor);
+                serializer(this->d_factor);
+                serializer(this->peaceman_denom);
+            }
+        };
+
+
         Connection() = default;
         Connection(int i, int j, int k,
                    std::size_t          global_index,

@@ -40,6 +40,41 @@ namespace {
 
 namespace Opm {
 
+    Connection::CTFProperties
+    Connection::CTFProperties::serializationTestObject()
+    {
+        auto props = Opm::Connection::CTFProperties{};
+
+        props.CF = 1.0;
+        props.Kh = 2.0;
+        props.Ke = 3.0;
+        props.rw = 4.0;
+        props.r0 = 5.0;
+        props.re = 6.0;
+        props.connection_length = 7.0;
+        props.skin_factor = 8.0;
+        props.d_factor = 9.0;
+        props.peaceman_denom = 10.0;
+
+        return props;
+    }
+
+    bool Connection::CTFProperties::operator==(const CTFProperties& that) const
+    {
+        return (this->CF == that.CF)
+            && (this->Kh == that.Kh)
+            && (this->Ke == that.Ke)
+            && (this->rw == that.rw)
+            && (this->r0 == that.r0)
+            && (this->re == that.re)
+            && (this->connection_length == that.connection_length)
+            && (this->skin_factor == that.skin_factor)
+            && (this->d_factor == that.d_factor)
+            && (this->peaceman_denom == that.peaceman_denom)
+            ;
+    }
+
+    // =========================================================================
 
     Connection::Connection(const int i, const int j, const int k,
                            const std::size_t    global_index,
