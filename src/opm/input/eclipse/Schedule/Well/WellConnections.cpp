@@ -742,13 +742,10 @@ namespace Opm {
     }
 
     void WellConnections::loadWELTRAJ(const DeckRecord& record,
-                                      const ScheduleGrid& grid,
-                                      const std::string& wname,
-                                      const KeywordLocation& location)
+                                      const ScheduleGrid&,
+                                      const std::string&,
+                                      const KeywordLocation&)
     {
-        (void) grid; //surpress unused argument compile warning
-        (void) wname;
-        (void) location;
         this->coord[0].push_back(record.getItem("X").getSIDouble(0));
         this->coord[1].push_back(record.getItem("Y").getSIDouble(0));
         this->coord[2].push_back(record.getItem("TVD").getSIDouble(0));
