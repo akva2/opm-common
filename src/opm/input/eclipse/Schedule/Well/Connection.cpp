@@ -312,9 +312,9 @@ constexpr bool defaultSatTabId = true;
         this->open_state = state;
     }
 
-    void Connection::updateSegment(int segment_number_arg,
-                                   double center_depth_arg,
-                                   std::size_t compseg_insert_index,
+    void Connection::updateSegment(const int segment_number_arg,
+                                   const double center_depth_arg,
+                                   const std::size_t compseg_insert_index,
                                    const std::pair<double, double>& perf_range)
     {
         this->segment_number = segment_number_arg;
@@ -323,8 +323,8 @@ constexpr bool defaultSatTabId = true;
         this->m_perf_range = perf_range;
     }
 
-    void Connection::updateSegmentRST(int segment_number_arg,
-                                      double center_depth_arg)
+    void Connection::updateSegmentRST(const int segment_number_arg,
+                                      const double center_depth_arg)
     {
         this->segment_number = segment_number_arg;
         this->center_depth = center_depth_arg;

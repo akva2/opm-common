@@ -148,11 +148,11 @@ namespace Opm {
         void scaleWellPi(double wellPi);
         bool prepareWellPIScaling();
         bool applyWellPIScaling(const double scaleFactor);
-        void updateSegmentRST(int segment_number_arg,
-                              double center_depth_arg);
-        void updateSegment(int segment_number_arg,
-                           double center_depth_arg,
-                           std::size_t compseg_insert_index,
+        void updateSegmentRST(const int segment_number_arg,
+                              const double center_depth_arg);
+        void updateSegment(const int segment_number_arg,
+                           const double center_depth_arg,
+                           const std::size_t compseg_insert_index,
                            const std::pair<double,double>& perf_range);
         std::size_t sort_value() const;
         bool getDefaultSatTabId() const;
