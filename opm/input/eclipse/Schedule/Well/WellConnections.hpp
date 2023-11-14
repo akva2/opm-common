@@ -91,9 +91,16 @@ namespace Opm {
                          const std::string&     wname,
                          const KeywordLocation& location);
 
-        void loadCOMPTRAJ(const DeckRecord& record, const ScheduleGrid& grid, const std::string& wname, const KeywordLocation& location, external::cvf::ref<external::cvf::BoundingBoxTree>& cellSearchTree);
+        void loadCOMPTRAJ(const DeckRecord&      record,
+                          const ScheduleGrid&    grid,
+                          const std::string&     wname,
+                          const KeywordLocation& location,
+                          external::cvf::ref<external::cvf::BoundingBoxTree>& cellSearchTree);
 
-        void loadWELTRAJ(const DeckRecord& record, const ScheduleGrid& grid, const std::string& wname, const KeywordLocation& location);
+        void loadWELTRAJ(const DeckRecord&      record,
+                         const ScheduleGrid&    grid,
+                         const std::string&     wname,
+                         const KeywordLocation& location);
 
         int getHeadI() const;
         int getHeadJ() const;
