@@ -50,7 +50,7 @@ namespace Opm {
             AUTO = 3, // Seems like the AUTO state can not be serialized to restart files.
         };
 
-        static const std::string State2String(State enumValue);
+        static std::string State2String(State enumValue);
         static State StateFromString( const std::string& stringValue );
 
 
@@ -70,7 +70,7 @@ namespace Opm {
             TRACK,
         };
 
-        static const std::string Order2String(Order enumValue);
+        static std::string Order2String(Order enumValue);
         static Order OrderFromString(const std::string& comporderStringValue);
 
 

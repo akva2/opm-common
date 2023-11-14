@@ -426,7 +426,7 @@ constexpr bool defaultSatTabId = true;
         return !( *this == rhs );
     }
 
-const std::string Connection::State2String(State enumValue)
+std::string Connection::State2String(State enumValue)
 {
     switch (enumValue) {
     case State::OPEN:
@@ -500,7 +500,7 @@ Connection::Direction Connection::DirectionFromString(const std::string& s)
     return direction;
 }
 
-const std::string Connection::Order2String(Order enumValue)
+std::string Connection::Order2String(Order enumValue)
 {
     switch (enumValue) {
     case Order::DEPTH:
