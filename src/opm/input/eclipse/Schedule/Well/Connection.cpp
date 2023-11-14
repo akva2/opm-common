@@ -36,80 +36,86 @@
 namespace Opm {
 
 
-    Connection::Connection(int i, int j , int k ,
-                           std::size_t global_index,
-                           int compnum,
-                           double depth,
-                           State stateArg ,
-                           double CF,
-                           double Kh,
-                           double rw,
-                           double r0,
-                           double re,
-                           double connection_length,
-                           double skin_factor,
-                           double d_factor,
-                           double Ke,
-                           const int satTableId,
-                           const Direction directionArg,
-                           const CTFKind ctf_kind,
-                           const std::size_t sort_value,
-                           const bool defaultSatTabId)
-        : direction(directionArg),
-          center_depth(depth),
-          open_state(stateArg),
-          sat_tableId(satTableId),
-          m_complnum( compnum ),
-          m_CF(CF),
-          m_Kh(Kh),
-          m_rw(rw),
-          m_r0(r0),
-          m_re(re),
-          m_connection_length(connection_length),
-          m_skin_factor(skin_factor),
-          m_d_factor(d_factor),
-          m_Ke(Ke),
-          ijk({i,j,k}),
-          m_ctfkind(ctf_kind),
-          m_global_index(global_index),
-          m_sort_value(sort_value),
-          m_defaultSatTabId(defaultSatTabId)
-    {
-    }
+    Connection::Connection(const int i, const int j, const int k,
+                           const std::size_t    global_index,
+                           const int            complnum,
+                           const double         depth,
+                           const State          stateArg,
+                           const double         CF,
+                           const double         Kh,
+                           const double         rw,
+                           const double         r0,
+                           const double         re,
+                           const double         connection_length,
+                           const double         skin_factor,
+                           const double         d_factor,
+                           const double         Ke,
+                           const int            satTableId,
+                           const Direction      directionArg,
+                           const CTFKind        ctf_kind,
+                           const std::size_t    sort_value,
+                           const bool           defaultSatTabId)
+        : direction        (directionArg)
+        , center_depth     (depth)
+        , open_state       (stateArg)
+        , sat_tableId      (satTableId)
+        , m_complnum       (complnum)
+        , m_CF             (CF)
+        , m_Kh             (Kh)
+        , m_rw             (rw)
+        , m_r0             (r0)
+        , m_re             (re)
+        , m_connection_length(connection_length)
+        , m_skin_factor    (skin_factor)
+        , m_d_factor       (d_factor)
+        , m_Ke             (Ke)
+        , ijk              { i, j, k }
+        , m_ctfkind        (ctf_kind)
+        , m_global_index   (global_index)
+        , m_sort_value     (sort_value)
+        , m_defaultSatTabId(defaultSatTabId)
+    {}
 
 namespace {
 constexpr bool defaultSatTabId = true;
 }
 
-Connection::Connection(const RestartIO::RstConnection& rst_connection, const ScheduleGrid& grid, const FieldPropsManager& fp) :
-        direction(rst_connection.dir),
-        center_depth(rst_connection.depth),
-        open_state(rst_connection.state),
-        sat_tableId(rst_connection.drain_sat_table),
-        m_complnum(rst_connection.completion),
-        m_CF(rst_connection.cf),
-        m_Kh(rst_connection.kh),
-        m_rw(rst_connection.diameter / 2),
-        m_r0(rst_connection.r0),
-        m_re(0.0),
-        m_connection_length(0.0),
-        m_skin_factor(rst_connection.skin_factor),
-        m_d_factor(0.0),
-        m_Ke(0.0),
-        ijk(rst_connection.ijk),
-        m_ctfkind(rst_connection.cf_kind),
-        m_global_index(grid.get_cell(this->ijk[0], this->ijk[1], this->ijk[2]).global_index),
-        m_sort_value(rst_connection.rst_index),
-        m_defaultSatTabId(defaultSatTabId),
-        segment_number(rst_connection.segment)
+    Connection::Connection(const RestartIO::RstConnection& rst_connection,
+                           const ScheduleGrid&             grid,
+                           const FieldPropsManager&        fp)
+        : direction        (rst_connection.dir)
+        , center_depth     (rst_connection.depth)
+        , open_state       (rst_connection.state)
+        , sat_tableId      (rst_connection.drain_sat_table)
+        , m_complnum       (rst_connection.completion)
+        , m_CF             (rst_connection.cf)
+        , m_Kh             (rst_connection.kh)
+        , m_rw             (rst_connection.diameter / 2)
+        , m_r0             (rst_connection.r0)
+        , m_re             (0.0)
+        , m_connection_length(0.0)
+        , m_skin_factor    (rst_connection.skin_factor)
+        , m_d_factor       (0.0)
+        , m_Ke             (0.0)
+        , ijk              (rst_connection.ijk)
+        , m_ctfkind        (rst_connection.cf_kind)
+        , m_global_index   (grid.get_cell(this->ijk[0], this->ijk[1], this->ijk[2]).global_index)
+        , m_sort_value     (rst_connection.rst_index)
+        , m_defaultSatTabId(defaultSatTabId)
+        , segment_number   (rst_connection.segment)
     {
         if (this->m_defaultSatTabId) {
-            const auto& satnum = fp.get_int("SATNUM");
-            auto active_index = grid.get_cell(this->ijk[0], this->ijk[1], this->ijk[2]).active_index();
-            this->sat_tableId = satnum[active_index];
+            const auto active_index = grid
+                .get_cell(this->ijk[0], this->ijk[1], this->ijk[2])
+                .active_index();
+
+            this->sat_tableId = fp.get_int("SATNUM")[active_index];
         }
-        if (this->segment_number > 0)
-            this->m_perf_range = std::make_pair(rst_connection.segdist_start, rst_connection.segdist_end);
+
+        if (this->segment_number > 0) {
+            this->m_perf_range = std::make_pair(rst_connection.segdist_start,
+                                                rst_connection.segdist_end);
+        }
 
         //TODO recompute re and perf_length from the grid
     }
@@ -150,7 +156,8 @@ Connection::Connection(const RestartIO::RstConnection& rst_connection, const Sch
         return result;
     }
 
-    bool Connection::sameCoordinate(const int i, const int j, const int k) const {
+    bool Connection::sameCoordinate(const int i, const int j, const int k) const
+    {
         if ((ijk[0] == i) && (ijk[1] == j) && (ijk[2] == k)) {
             return true;
         } else {
@@ -158,130 +165,162 @@ Connection::Connection(const RestartIO::RstConnection& rst_connection, const Sch
         }
     }
 
-    int Connection::getI() const {
+    int Connection::getI() const
+    {
         return ijk[0];
     }
 
-    int Connection::getJ() const {
+    int Connection::getJ() const
+    {
         return ijk[1];
     }
 
-    int Connection::getK() const {
+    int Connection::getK() const
+    {
         return ijk[2];
     }
 
-    std::size_t Connection::global_index() const {
+    std::size_t Connection::global_index() const
+    {
         return this->m_global_index;
     }
 
-    bool Connection::attachedToSegment() const {
-        return (segment_number > 0);
+    bool Connection::attachedToSegment() const
+    {
+        return this->segment_number > 0;
     }
 
-    std::size_t Connection::sort_value() const {
+    std::size_t Connection::sort_value() const
+    {
         return m_sort_value;
     }
 
-    const bool& Connection::getDefaultSatTabId() const {
+    const bool& Connection::getDefaultSatTabId() const
+    {
         return m_defaultSatTabId;
     }
 
-    Connection::Direction Connection::dir() const {
+    Connection::Direction Connection::dir() const
+    {
         return this->direction;
     }
 
-const std::optional<std::pair<double, double>>& Connection::perf_range() const {
+    const std::optional<std::pair<double, double>>&
+    Connection::perf_range() const
+    {
         return this->m_perf_range;
     }
 
-    void Connection::setDefaultSatTabId(bool id) {
+    void Connection::setDefaultSatTabId(bool id)
+    {
         m_defaultSatTabId = id;
     }
 
-    double Connection::depth() const {
+    double Connection::depth() const
+    {
         return this->center_depth;
     }
 
-    Connection::State Connection::state() const {
+    Connection::State Connection::state() const
+    {
         return this->open_state;
     }
 
-    int Connection::satTableId() const {
+    int Connection::satTableId() const
+    {
         return this->sat_tableId;
     }
 
-    int Connection::complnum() const {
+    int Connection::complnum() const
+    {
         return this->m_complnum;
     }
 
-    void Connection::setComplnum(int complnum) {
+    void Connection::setComplnum(int complnum)
+    {
         this->m_complnum = complnum;
     }
 
-    void Connection::setSkinFactor(double skin_factor) {
+    void Connection::setSkinFactor(double skin_factor)
+    {
         this->m_skin_factor = skin_factor;
     }
 
-    void Connection::setDFactor(double d_factor) {
+    void Connection::setDFactor(double d_factor)
+    {
         this->m_d_factor = d_factor;
     }
 
-    void Connection::setKe(double Ke) {
+    void Connection::setKe(double Ke)
+    {
         this->m_Ke = Ke;
     }
 
-    void Connection::setCF(double CF) {
+    void Connection::setCF(double CF)
+    {
         this->m_CF = CF;
     }
 
-    double Connection::CF() const {
+    double Connection::CF() const
+    {
         return this->m_CF;
     }
 
-    double Connection::wpimult() const {
+    double Connection::wpimult() const
+    {
         return this->m_wpimult;
     }
 
-    double Connection::Kh() const {
+    double Connection::Kh() const
+    {
         return this->m_Kh;
     }
 
-    double Connection::rw() const {
+    double Connection::rw() const
+    {
         return this->m_rw;
     }
 
-    double Connection::r0() const {
+    double Connection::r0() const
+    {
         return this->m_r0;
     }
 
-    double Connection::re() const {
+    double Connection::re() const
+    {
         return this->m_re;
     }
 
-    double Connection::connectionLength() const {
+    double Connection::connectionLength() const
+    {
         return this->m_connection_length;
     }
 
-    double Connection::skinFactor() const {
+    double Connection::skinFactor() const
+    {
         return this->m_skin_factor;
     }
 
-    double Connection::dFactor() const {
+    double Connection::dFactor() const
+    {
         return this->m_d_factor;
     }
 
-    double Connection::Ke() const {
+    double Connection::Ke() const
+    {
         return this->m_Ke;
     }
 
-    void Connection::setState(State state) {
+    void Connection::setState(State state)
+    {
         this->open_state = state;
     }
 
     void Connection::updateSegment(int segment_number_arg,
                                    double center_depth_arg,
                                    std::size_t compseg_insert_index,
-                                   const std::pair<double, double>& perf_range) {
+                                   const std::pair<double, double>& perf_range)
+    {
         this->segment_number = segment_number_arg;
         this->center_depth = center_depth_arg;
         this->m_sort_value = compseg_insert_index;
@@ -289,38 +328,44 @@ const std::optional<std::pair<double, double>>& Connection::perf_range() const {
     }
 
     void Connection::updateSegmentRST(int segment_number_arg,
-                                      double center_depth_arg) {
+                                      double center_depth_arg)
+    {
         this->segment_number = segment_number_arg;
         this->center_depth = center_depth_arg;
     }
 
-    int Connection::segment() const {
+    int Connection::segment() const
+    {
         return this->segment_number;
     }
 
-    void Connection::scaleWellPi(double wellPi) {
+    void Connection::scaleWellPi(double wellPi)
+    {
         this->m_wpimult *= wellPi;
         this->m_CF *= wellPi;
     }
 
-    bool Connection::prepareWellPIScaling() {
+    bool Connection::prepareWellPIScaling()
+    {
         const auto update = !this->m_subject_to_welpi;
 
         this->m_subject_to_welpi = true;
 
         return update;
     }
-    
 
-    bool Connection::applyWellPIScaling(const double scaleFactor) {
-        if (! this->m_subject_to_welpi)
+    bool Connection::applyWellPIScaling(const double scaleFactor)
+    {
+        if (! this->m_subject_to_welpi) {
             return false;
+        }
 
         this->scaleWellPi(scaleFactor);
         return true;
     }
 
-    std::string Connection::str() const {
+    std::string Connection::str() const
+    {
         std::stringstream ss;
         ss << "ijk: " << this->ijk[0] << ","  << this->ijk[1] << "," << this->ijk[2] << std::endl;
         ss << "COMPLNUM " << this->m_complnum << std::endl;
@@ -348,9 +393,10 @@ const std::optional<std::pair<double, double>>& Connection::perf_range() const {
         }
 
         return ss.str();
-}
+    }
 
-    bool Connection::operator==( const Connection& rhs ) const {
+    bool Connection::operator==( const Connection& rhs ) const
+    {
         return this->ijk == rhs.ijk
             && this->m_global_index == rhs.m_global_index
             && this->m_complnum == rhs.m_complnum
@@ -374,40 +420,44 @@ const std::optional<std::pair<double, double>>& Connection::perf_range() const {
             && this->m_filter_cake == rhs.m_filter_cake;
     }
 
-    bool Connection::operator!=( const Connection& rhs ) const {
+    bool Connection::operator!=( const Connection& rhs ) const
+    {
         return !( *this == rhs );
     }
 
-
-
-const std::string Connection::State2String( State enumValue ) {
-    switch( enumValue ) {
+const std::string Connection::State2String(State enumValue)
+{
+    switch (enumValue) {
     case State::OPEN:
         return "OPEN";
+
     case State::AUTO:
         return "AUTO";
+
     case State::SHUT:
         return "SHUT";
+
     default:
         throw std::invalid_argument("Unhandled enum value");
     }
 }
 
-
-Connection::State Connection::StateFromString( const std::string& stringValue ) {
+Connection::State Connection::StateFromString( const std::string& stringValue )
+{
     if (stringValue == "OPEN")
         return State::OPEN;
-    else if (stringValue == "SHUT")
+
+    if (stringValue == "SHUT")
         return State::SHUT;
-    else if (stringValue == "STOP")
+
+    if (stringValue == "STOP")
         return State::SHUT;
-    else if (stringValue == "AUTO")
+
+    if (stringValue == "AUTO")
         return State::AUTO;
-    else
-        throw std::invalid_argument("Unknown enum state string: " + stringValue );
+
+    throw std::invalid_argument("Unknown enum state string: " + stringValue );
 }
-
-
 
 std::string Connection::Direction2String(const Direction enumValue)
 {
@@ -434,8 +484,7 @@ std::string Connection::Direction2String(const Direction enumValue)
     return stringValue;
 }
 
-
-Connection::Direction Connection::DirectionFromString(const std::string& s )
+Connection::Direction Connection::DirectionFromString(const std::string& s)
 {
     Direction direction;
 
@@ -450,27 +499,30 @@ Connection::Direction Connection::DirectionFromString(const std::string& s )
     return direction;
 }
 
-
-const std::string Connection::Order2String( Order enumValue ) {
-    switch( enumValue ) {
+const std::string Connection::Order2String(Order enumValue)
+{
+    switch (enumValue) {
     case Order::DEPTH:
         return "DEPTH";
+
     case Order::INPUT:
         return "INPUT";
+
     case Order::TRACK:
         return "TRACK";
+
     default:
         throw std::invalid_argument("Unhandled enum value");
     }
 }
 
-
-Connection::Order Connection::OrderFromString(const std::string& stringValue ) {
+Connection::Order Connection::OrderFromString(const std::string& stringValue )
+{
     if (stringValue == "DEPTH")
         return Order::DEPTH;
-    else if (stringValue == "INPUT")
+    if (stringValue == "INPUT")
         return Order::INPUT;
-    else if (stringValue == "TRACK")
+    if (stringValue == "TRACK")
         return Order::TRACK;
     else
         throw std::invalid_argument("Unknown enum state string: " + stringValue );
@@ -479,11 +531,11 @@ Connection::Order Connection::OrderFromString(const std::string& stringValue ) {
 std::string Connection::CTFKindToString(const CTFKind ctf_kind)
 {
     switch (ctf_kind) {
-        case CTFKind::DeckValue:
-            return "DeckValue";
+    case CTFKind::DeckValue:
+        return "DeckValue";
 
-        case CTFKind::Defaulted:
-            return "Defaulted";
+    case CTFKind::Defaulted:
+        return "Defaulted";
     }
 
     throw std::invalid_argument {
@@ -492,39 +544,45 @@ std::string Connection::CTFKindToString(const CTFKind ctf_kind)
     };
 }
 
-Connection::CTFKind Connection::kind() const {
+Connection::CTFKind Connection::kind() const
+{
     return m_ctfkind;
 }
 
-const InjMult& Connection::injmult() const {
+const InjMult& Connection::injmult() const
+{
     assert(this->activeInjMult());
     return m_injmult.value();
 }
 
-bool Connection::activeInjMult() const {
+bool Connection::activeInjMult() const
+{
     return this->m_injmult.has_value();
 }
 
-void Connection::setInjMult(const InjMult& inj_mult) {
+void Connection::setInjMult(const InjMult& inj_mult)
+{
     m_injmult = inj_mult;
 }
 
-
-void Connection::setFilterCake(const FilterCake& filter_cake) {
-        this->m_filter_cake = filter_cake;
+void Connection::setFilterCake(const FilterCake& filter_cake)
+{
+    this->m_filter_cake = filter_cake;
 }
 
-bool Connection::filterCakeActive() const {
+bool Connection::filterCakeActive() const
+{
     return this->m_filter_cake.has_value();
 }
 
-const FilterCake& Connection::getFilterCake() const {
-        assert(this->filterCakeActive());
-        return this->m_filter_cake.value();
+const FilterCake& Connection::getFilterCake() const
+{
+    assert(this->filterCakeActive());
+    return this->m_filter_cake.value();
 }
 
-
-double Connection::getFilterCakeRadius() const {
+double Connection::getFilterCakeRadius() const
+{
     if (this->getFilterCake().radius.has_value()) {
         return this->getFilterCake().radius.value();
     } else {
@@ -532,8 +590,8 @@ double Connection::getFilterCakeRadius() const {
     }
 }
 
-
-double Connection::getFilterCakeArea() const {
+double Connection::getFilterCakeArea() const
+{
     if (this->getFilterCake().flow_area.has_value()) {
         return this->getFilterCake().flow_area.value();
     } else {
@@ -543,7 +601,5 @@ double Connection::getFilterCakeArea() const {
         return 2. * pi * radius * length;
     }
 }
-
-
 
 } // end of namespace Opm

@@ -17,7 +17,6 @@
   along with OPM.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-
 #ifndef COMPLETION_HPP_
 #define COMPLETION_HPP_
 
@@ -34,32 +33,35 @@
 #include <opm/input/eclipse/Schedule/Well/WINJMULT.hpp>
 
 namespace Opm {
-
-namespace RestartIO {
-    struct RstConnection;
-}
-
     class DeckKeyword;
     class DeckRecord;
     class ScheduleGrid;
     class FieldPropsManager;
+} // namespace Opm
 
-    class Connection {
+namespace Opm { namespace RestartIO {
+    struct RstConnection;
+}} // namespace Opm::RestartIO
+
+namespace Opm {
+
+    class Connection
+    {
     public:
         enum class State {
             OPEN = 1,
             SHUT = 2,
-            AUTO = 3   // Seems like the AUTO state can not be serialized to restart files.
+            AUTO = 3, // Seems like the AUTO state can not be serialized to restart files.
         };
 
-        static const std::string State2String( State enumValue );
+        static const std::string State2String(State enumValue);
         static State StateFromString( const std::string& stringValue );
 
 
-        enum class Direction{
+        enum class Direction {
             X = 1,
             Y = 2,
-            Z = 3
+            Z = 3,
         };
 
         static std::string Direction2String(const Direction enumValue);
@@ -67,13 +69,14 @@ namespace RestartIO {
 
 
         enum class Order {
-                          DEPTH,
-                          INPUT,
-                          TRACK
+            DEPTH,
+            INPUT,
+            TRACK,
         };
 
-        static const std::string Order2String( Order enumValue );
+        static const std::string Order2String(Order enumValue);
         static Order OrderFromString(const std::string& comporderStringValue);
+
 
         enum class CTFKind {
             DeckValue,
@@ -81,27 +84,29 @@ namespace RestartIO {
         };
 
         Connection();
-        Connection(int i, int j , int k ,
-                   std::size_t global_index,
-                   int complnum,
-                   double depth,
-                   State state,
-                   double CF,
-                   double Kh,
-                   double rw,
-                   double r0,
-                   double re,
-                   double connection_length,
-                   double skin_factor,
-                   double d_factor,
-                   double Ke,
-                   const int satTableId,
-                   const Direction direction,
-                   const CTFKind ctf_kind,
-                   const std::size_t sort_value,
-                   const bool defaultSatTabId);
+        Connection(int i, int j, int k,
+                   std::size_t          global_index,
+                   int                  complnum,
+                   double               depth,
+                   State                state,
+                   double               CF,
+                   double               Kh,
+                   double               rw,
+                   double               r0,
+                   double               re,
+                   double               connection_length,
+                   double               skin_factor,
+                   double               d_factor,
+                   double               Ke,
+                   const int            satTableId,
+                   const Direction      direction,
+                   const CTFKind        ctf_kind,
+                   const std::size_t    sort_value,
+                   const bool           defaultSatTabId);
 
-        Connection(const RestartIO::RstConnection& rst_connection, const ScheduleGrid& grid, const FieldPropsManager& fp);
+        Connection(const RestartIO::RstConnection& rst_connection,
+                   const ScheduleGrid&             grid,
+                   const FieldPropsManager&        fp);
 
         static Connection serializationTestObject();
 
@@ -168,33 +173,36 @@ namespace RestartIO {
         template<class Serializer>
         void serializeOp(Serializer& serializer)
         {
-            serializer(direction);
-            serializer(center_depth);
-            serializer(open_state);
-            serializer(sat_tableId);
-            serializer(m_complnum);
-            serializer(m_CF);
-            serializer(m_Kh);
-            serializer(m_rw);
-            serializer(m_r0);
-            serializer(m_re);
-            serializer(m_connection_length);
-            serializer(m_skin_factor);
-            serializer(m_d_factor);
-            serializer(m_Ke);
-            serializer(ijk);
-            serializer(m_global_index);
-            serializer(m_ctfkind);
-            serializer(m_injmult);
-            serializer(m_sort_value);
-            serializer(m_perf_range);
-            serializer(m_defaultSatTabId);
-            serializer(segment_number);
-            serializer(m_subject_to_welpi);
-            serializer(m_filter_cake);
+            serializer(this->direction);
+            serializer(this->center_depth);
+            serializer(this->open_state);
+            serializer(this->sat_tableId);
+            serializer(this->m_complnum);
+            serializer(this->m_CF);
+            serializer(this->m_Kh);
+            serializer(this->m_rw);
+            serializer(this->m_r0);
+            serializer(this->m_re);
+            serializer(this->m_connection_length);
+            serializer(this->m_skin_factor);
+            serializer(this->m_d_factor);
+            serializer(this->m_Ke);
+            serializer(this->ijk);
+            serializer(this->m_global_index);
+            serializer(this->m_ctfkind);
+            serializer(this->m_injmult);
+            serializer(this->m_sort_value);
+            serializer(this->m_perf_range);
+            serializer(this->m_defaultSatTabId);
+            serializer(this->segment_number);
+            serializer(this->m_subject_to_welpi);
+            serializer(this->m_filter_cake);
         }
 
     private:
+        // Note to maintainer: If you add new members to this list, then
+        // please also update the operator==(), serializeOp(), and
+        // serializationTestObject() member functions.
         Direction direction;
         double center_depth;
         State open_state;
@@ -270,8 +278,9 @@ namespace RestartIO {
         std::optional<std::pair<double,double>> m_perf_range;
         bool m_defaultSatTabId;
 
-        // related segment number
-        // 0 means the completion is not related to segment
+        // Associate segment number
+        //
+        // 0 means the connection is not associated to a segment.
         int segment_number = 0;
 
         // Whether or not this Connection is subject to WELPI scaling.
@@ -284,7 +293,7 @@ namespace RestartIO {
 
         static std::string CTFKindToString(const CTFKind);
     };
-}
 
-#endif /* COMPLETION_HPP_ */
+} // namespace Opm
 
+#endif // COMPLETION_HPP_
