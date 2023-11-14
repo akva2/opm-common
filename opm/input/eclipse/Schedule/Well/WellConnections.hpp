@@ -33,10 +33,10 @@
 namespace Opm {
     class ActiveGridCells;
     class DeckRecord;
+    class EclipseGrid;
     class FieldPropsManager;
     class KeywordLocation;
     class ScheduleGrid;
-    class EclipseGrid;
 } // namespace Opm
 
 namespace Opm {
@@ -172,6 +172,7 @@ namespace Opm {
             serializer(this->coord);
             serializer(this->md);
         }
+
     private:
         Connection::Order m_ordering { Connection::Order::TRACK };
         int headI{0};
@@ -204,7 +205,6 @@ namespace Opm {
         void orderTRACK();
         void orderMSW();
         void orderDEPTH();
-
     };
 
     std::optional<int>

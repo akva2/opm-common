@@ -523,12 +523,13 @@ namespace Opm {
             }
         }
     }
-    
-    void WellConnections::loadCOMPTRAJ(const DeckRecord& record,
-                                      const ScheduleGrid& grid,
-                                      const std::string& wname,
-                                      const KeywordLocation& location,
-                                      external::cvf::ref<external::cvf::BoundingBoxTree>& cellSearchTree) {
+
+    void WellConnections::loadCOMPTRAJ(const DeckRecord&      record,
+                                       const ScheduleGrid&    grid,
+                                       const std::string&     wname,
+                                       const KeywordLocation& location,
+                                       external::cvf::ref<external::cvf::BoundingBoxTree>& cellSearchTree)
+    {
 
         // const std::string& completionNamePattern = record.getItem("BRANCH_NUMBER").getTrimmedString(0);
         const auto& perf_top = record.getItem("PERF_TOP");
@@ -743,41 +744,50 @@ namespace Opm {
     void WellConnections::loadWELTRAJ(const DeckRecord& record,
                                       const ScheduleGrid& grid,
                                       const std::string& wname,
-                                      const KeywordLocation& location) {
+                                      const KeywordLocation& location)
+    {
         (void) grid; //surpress unused argument compile warning
         (void) wname;
         (void) location;
         this->coord[0].push_back(record.getItem("X").getSIDouble(0));
-        this->coord[1].push_back(record.getItem("Y").getSIDouble(0)),
+        this->coord[1].push_back(record.getItem("Y").getSIDouble(0));
         this->coord[2].push_back(record.getItem("TVD").getSIDouble(0));
+
         this->md.push_back(record.getItem("MD").getSIDouble(0));
     }
 
-    std::size_t WellConnections::size() const {
+    std::size_t WellConnections::size() const
+    {
         return m_connections.size();
     }
 
-    std::size_t WellConnections::num_open() const {
+    std::size_t WellConnections::num_open() const
+    {
         return std::count_if(this->m_connections.begin(),
                              this->m_connections.end(),
                              [] (const Connection& c) { return c.state() == Connection::State::OPEN; });
     }
 
-    bool WellConnections::empty() const {
+    bool WellConnections::empty() const
+    {
         return this->size() == size_t{0};
     }
 
-    const Connection& WellConnections::get(size_t index) const {
+    const Connection& WellConnections::get(size_t index) const
+    {
         return (*this)[index];
     }
 
-    const Connection& WellConnections::operator[](size_t index) const {
+    const Connection& WellConnections::operator[](size_t index) const
+    {
         return this->m_connections.at(index);
     }
 
-    const Connection& WellConnections::lowest() const {
-        if (this->m_connections.empty())
+    const Connection& WellConnections::lowest() const
+    {
+        if (this->m_connections.empty()) {
             throw std::logic_error("Tried to get lowest connection from empty set");
+        }
 
         const auto max_iter = std::max_element(this->m_connections.begin(),
                                                this->m_connections.end(),
@@ -789,37 +799,48 @@ namespace Opm {
         return *max_iter;
     }
 
-    bool WellConnections::hasGlobalIndex(std::size_t global_index) const {
+    bool WellConnections::hasGlobalIndex(std::size_t global_index) const
+    {
         auto conn_iter = std::find_if(this->begin(), this->end(),
                                       [global_index] (const Connection& conn) {return conn.global_index() == global_index;});
         return (conn_iter != this->end());
     }
 
-    const Connection& WellConnections::getFromIJK(const int i, const int j, const int k) const {
+    const Connection&
+    WellConnections::getFromIJK(const int i, const int j, const int k) const
+    {
         for (size_t ic = 0; ic < size(); ++ic) {
             if (get(ic).sameCoordinate(i, j, k)) {
                 return get(ic);
             }
         }
+
         throw std::runtime_error(" the connection is not found! \n ");
     }
 
-    const Connection& WellConnections::getFromGlobalIndex(std::size_t global_index) const {
-        auto conn_iter = std::find_if(this->begin(), this->end(),
-                                      [global_index] (const Connection& conn) {return conn.global_index() == global_index;});
+    const Connection& WellConnections::getFromGlobalIndex(std::size_t global_index) const
+    {
+        auto conn_iter =
+            std::find_if(this->begin(), this->end(),
+                         [global_index] (const Connection& conn)
+                         { return conn.global_index() == global_index; });
 
-        if (conn_iter == this->end())
+        if (conn_iter == this->end()) {
             throw std::logic_error(fmt::format("No connection with global index {}", global_index));
+        }
+
         return *conn_iter;
     }
 
-    Connection& WellConnections::getFromIJK(const int i, const int j, const int k) {
-      for (size_t ic = 0; ic < size(); ++ic) {
-        if (get(ic).sameCoordinate(i, j, k)) {
-          return this->m_connections[ic];
+    Connection& WellConnections::getFromIJK(const int i, const int j, const int k)
+    {
+        for (size_t ic = 0; ic < size(); ++ic) {
+            if (get(ic).sameCoordinate(i, j, k)) {
+                return this->m_connections[ic];
+            }
         }
-      }
-      throw std::runtime_error(" the connection is not found! \n ");
+
+        throw std::runtime_error(" the connection is not found! \n ");
     }
 
     void WellConnections::add(Connection connection)
@@ -827,41 +848,44 @@ namespace Opm {
         this->m_connections.push_back(std::move(connection));
     }
 
-    bool WellConnections::allConnectionsShut( ) const {
-        if (this->empty())
+    bool WellConnections::allConnectionsShut() const
+    {
+        if (this->empty()) {
             return false;
+        }
 
-
-        auto shut = []( const Connection& c ) {
-            return c.state() == Connection::State::SHUT;
-        };
-
-        return std::all_of( this->m_connections.begin(),
-                            this->m_connections.end(),
-                            shut );
+        return std::all_of(this->m_connections.begin(),
+                           this->m_connections.end(),
+                           [](const Connection& c)
+                           { return c.state() == Connection::State::SHUT; });
     }
 
     void WellConnections::order()
     {
-        if (m_connections.empty())
+        if (m_connections.empty()) {
             return;
+        }
 
-        if (this->m_connections[0].attachedToSegment())
+        if (this->m_connections[0].attachedToSegment()) {
             this->orderMSW();
-        else if (this->m_ordering == Connection::Order::TRACK)
+        } else if (this->m_ordering == Connection::Order::TRACK) {
             this->orderTRACK();
-        else if (this->m_ordering == Connection::Order::DEPTH)
+        } else if (this->m_ordering == Connection::Order::DEPTH) {
             this->orderDEPTH();
+        }
     }
 
-    void WellConnections::orderMSW() {
-        std::sort(this->m_connections.begin(), this->m_connections.end(), [](const Opm::Connection& conn1, const Opm::Connection& conn2)
+    void WellConnections::orderMSW()
+    {
+        std::sort(this->m_connections.begin(), this->m_connections.end(),
+                  [](const Opm::Connection& conn1, const Opm::Connection& conn2)
                   {
                       return conn1.sort_value() < conn2.sort_value();
                   });
     }
 
-    void WellConnections::orderTRACK() {
+    void WellConnections::orderTRACK()
+    {
         // Find the first connection and swap it into the 0-position.
         const double surface_z = 0.0;
         size_t first_index = findClosestConnection(this->headI, this->headJ, surface_z, 0);
@@ -870,10 +894,12 @@ namespace Opm {
         // Repeat for remaining connections.
         //
         // Note that since findClosestConnection() is O(n), this is an
-        // O(n^2) algorithm. However, it should be acceptable since
-        // the expected number of connections is fairly low (< 100).
+        // O(n^2) algorithm. However, it should be acceptable since the
+        // expected number of connections is fairly low (< 100).
 
-        if( this->m_connections.empty() ) return;
+        if (this->m_connections.empty()) {
+            return;
+        }
 
         for (size_t pos = 1; pos < m_connections.size() - 1; ++pos) {
             const auto& prev = m_connections[pos - 1];
@@ -912,27 +938,31 @@ namespace Opm {
         return closest;
     }
 
-    void WellConnections::orderDEPTH() {
-        std::sort(this->m_connections.begin(), this->m_connections.end(), [](const Opm::Connection& conn1, const Opm::Connection& conn2)
+    void WellConnections::orderDEPTH()
+    {
+        std::sort(this->m_connections.begin(), this->m_connections.end(),
+                  [](const Opm::Connection& conn1, const Opm::Connection& conn2)
                   {
                       return conn1.depth() < conn2.depth();
                   });
-
     }
 
-    bool WellConnections::operator==( const WellConnections& rhs ) const {
-        return this->size() == rhs.size() &&
-            this->m_ordering == rhs.m_ordering &&
-            this->coord == rhs.coord &&
-            this->md == rhs.md &&
-            std::equal( this->begin(), this->end(), rhs.begin() );
+    bool WellConnections::operator==(const WellConnections& rhs) const
+    {
+        return (this->size() == rhs.size())
+            && (this->m_ordering == rhs.m_ordering)
+            && (this->coord == rhs.coord)
+            && (this->md == rhs.md)
+            && std::equal(this->begin(), this->end(), rhs.begin());
     }
 
-    bool WellConnections::operator!=( const WellConnections& rhs ) const {
-        return !( *this == rhs );
+    bool WellConnections::operator!=(const WellConnections& rhs) const
+    {
+        return ! (*this == rhs);
     }
 
-    void WellConnections::filter(const ActiveGridCells& grid) {
+    void WellConnections::filter(const ActiveGridCells& grid)
+    {
         auto isInactive = [&grid](const Connection& c) {
             return !grid.cellActive(c.getI(), c.getJ(), c.getK());
         };
@@ -941,7 +971,8 @@ namespace Opm {
         m_connections.erase(new_end, m_connections.end());
     }
 
-    double WellConnections::segment_perf_length(int segment) const {
+    double WellConnections::segment_perf_length(int segment) const
+    {
         double perf_length = 0;
         for (const auto& conn : this->m_connections) {
             if (conn.segment() == segment) {
@@ -949,18 +980,22 @@ namespace Opm {
                 perf_length += end - start;
             }
         }
+
         return perf_length;
     }
 
-    int WellConnections::getHeadI() const {
+    int WellConnections::getHeadI() const
+    {
         return this->headI;
     }
 
-    int WellConnections::getHeadJ() const {
+    int WellConnections::getHeadJ() const
+    {
         return this->headJ;
     }
 
-    const std::vector<double>& WellConnections::getMD() const {
+    const std::vector<double>& WellConnections::getMD() const
+    {
         return this->md;
     }
 
@@ -974,9 +1009,10 @@ namespace Opm {
             return conn.global_index() == global_index;
         });
 
-        if (connPos == connections.end())
+        if (connPos == connections.end()) {
             // No connection exists with the requisite 'global_index'
             return {};
+        }
 
         return { connPos->complnum() };
     }
