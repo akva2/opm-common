@@ -443,7 +443,8 @@ std::string Connection::State2String(State enumValue)
     }
 }
 
-Connection::State Connection::StateFromString( const std::string& stringValue )
+Connection::State
+Connection::StateFromString(std::string_view stringValue)
 {
     if (stringValue == "OPEN")
         return State::OPEN;
@@ -457,7 +458,9 @@ Connection::State Connection::StateFromString( const std::string& stringValue )
     if (stringValue == "AUTO")
         return State::AUTO;
 
-    throw std::invalid_argument("Unknown enum state string: " + stringValue );
+    throw std::invalid_argument {
+        "Unknown Connection::State string: " + std::string { stringValue }
+    };
 }
 
 std::string Connection::Direction2String(const Direction enumValue)
@@ -485,7 +488,7 @@ std::string Connection::Direction2String(const Direction enumValue)
     return stringValue;
 }
 
-Connection::Direction Connection::DirectionFromString(const std::string& s)
+Connection::Direction Connection::DirectionFromString(std::string_view s)
 {
     Direction direction;
 
@@ -493,8 +496,10 @@ Connection::Direction Connection::DirectionFromString(const std::string& s)
     else if ((s == "Y") || (s == "y")) { direction = Direction::Y; }
     else if ((s == "Z") || (s == "z")) { direction = Direction::Z; }
     else {
-        std::string msg = "Unsupported completion direction " + s;
-        throw std::invalid_argument(msg);
+        throw std::invalid_argument {
+            "Unsupported completion direction "
+            + std::string { s }
+        };
     }
 
     return direction;
@@ -517,16 +522,20 @@ std::string Connection::Order2String(Order enumValue)
     }
 }
 
-Connection::Order Connection::OrderFromString(const std::string& stringValue )
+Connection::Order Connection::OrderFromString(std::string_view stringValue)
 {
     if (stringValue == "DEPTH")
         return Order::DEPTH;
+
     if (stringValue == "INPUT")
         return Order::INPUT;
+
     if (stringValue == "TRACK")
         return Order::TRACK;
-    else
-        throw std::invalid_argument("Unknown enum state string: " + stringValue );
+
+    throw std::invalid_argument {
+        "Unknown Connection::Order string: " + std::string { stringValue }
+    };
 }
 
 std::string Connection::CTFKindToString(const CTFKind ctf_kind)

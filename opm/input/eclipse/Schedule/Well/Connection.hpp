@@ -27,6 +27,7 @@
 #include <cstddef>
 #include <optional>
 #include <string>
+#include <string_view>
 
 namespace Opm {
     class DeckKeyword;
@@ -51,7 +52,7 @@ namespace Opm {
         };
 
         static std::string State2String(State enumValue);
-        static State StateFromString( const std::string& stringValue );
+        static State StateFromString(std::string_view stringValue);
 
 
         enum class Direction {
@@ -61,7 +62,7 @@ namespace Opm {
         };
 
         static std::string Direction2String(const Direction enumValue);
-        static Direction   DirectionFromString(const std::string& stringValue);
+        static Direction   DirectionFromString(std::string_view stringValue);
 
 
         enum class Order {
@@ -71,7 +72,7 @@ namespace Opm {
         };
 
         static std::string Order2String(Order enumValue);
-        static Order OrderFromString(const std::string& comporderStringValue);
+        static Order OrderFromString(std::string_view comporderStringValue);
 
 
         enum class CTFKind {
