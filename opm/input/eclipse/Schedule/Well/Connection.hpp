@@ -155,7 +155,7 @@ namespace Opm {
                            std::size_t compseg_insert_index,
                            const std::pair<double,double>& perf_range);
         std::size_t sort_value() const;
-        const bool& getDefaultSatTabId() const;
+        bool getDefaultSatTabId() const;
         void setDefaultSatTabId(bool id);
         const std::optional<std::pair<double, double>>& perf_range() const;
         std::string str() const;

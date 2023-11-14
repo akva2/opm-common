@@ -191,7 +191,7 @@ constexpr bool defaultSatTabId = true;
         return m_sort_value;
     }
 
-    const bool& Connection::getDefaultSatTabId() const
+    bool Connection::getDefaultSatTabId() const
     {
         return m_defaultSatTabId;
     }
