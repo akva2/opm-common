@@ -20,17 +20,13 @@
 #ifndef COMPLETION_HPP_
 #define COMPLETION_HPP_
 
-#include <array>
-#include <cstddef>
-#include <map>
-#include <memory>
-#include <string>
-#include <vector>
-#include <optional>
-#include <limits>
-
 #include <opm/input/eclipse/Schedule/Well/FilterCake.hpp>
 #include <opm/input/eclipse/Schedule/Well/WINJMULT.hpp>
+
+#include <array>
+#include <cstddef>
+#include <optional>
+#include <string>
 
 namespace Opm {
     class DeckKeyword;

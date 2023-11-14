@@ -17,21 +17,22 @@
   along with OPM.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <algorithm>
-#include <cassert>
-#include <exception>
-#include <sstream>
-#include <stdexcept>
-#include <vector>
+#include <opm/input/eclipse/Schedule/Well/Connection.hpp>
 
 #include <opm/io/eclipse/rst/connection.hpp>
+
 #include <opm/input/eclipse/Deck/DeckItem.hpp>
 #include <opm/input/eclipse/Deck/DeckKeyword.hpp>
 #include <opm/input/eclipse/Deck/DeckRecord.hpp>
+
 #include <opm/input/eclipse/EclipseState/Grid/FieldPropsManager.hpp>
-#include <opm/input/eclipse/Schedule/Well/Connection.hpp>
-#include <opm/input/eclipse/Schedule/Well/FilterCake.hpp>
+
 #include <opm/input/eclipse/Schedule/ScheduleGrid.hpp>
+#include <opm/input/eclipse/Schedule/Well/FilterCake.hpp>
+
+#include <cassert>
+#include <sstream>
+#include <stdexcept>
 
 namespace Opm {
 
