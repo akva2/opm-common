@@ -80,7 +80,7 @@ namespace Opm {
             Defaulted,
         };
 
-        Connection();
+        Connection() = default;
         Connection(int i, int j, int k,
                    std::size_t          global_index,
                    int                  complnum,
@@ -200,11 +200,11 @@ namespace Opm {
         // Note to maintainer: If you add new members to this list, then
         // please also update the operator==(), serializeOp(), and
         // serializationTestObject() member functions.
-        Direction direction;
-        double center_depth;
-        State open_state;
-        int sat_tableId;
-        int m_complnum;
+        Direction direction { Direction::Z };
+        double center_depth { 0.0 };
+        State open_state { State::SHUT };
+        int sat_tableId { -1 };
+        int m_complnum { -1 };
         double m_CF;
         double m_Kh;
         double m_rw;
@@ -215,10 +215,11 @@ namespace Opm {
         double m_d_factor;
         double m_Ke;
 
-        std::array<int,3> ijk;
-        CTFKind m_ctfkind;
-        std::optional<InjMult> m_injmult;
-        std::size_t m_global_index;
+        std::array<int,3> ijk{};
+        CTFKind m_ctfkind { CTFKind::DeckValue };
+        std::optional<InjMult> m_injmult{};
+        std::size_t m_global_index{};
+
         /*
           The sort_value member is a peculiar quantity. The connections are
           assembled in the WellConnections class. During the lifetime of the
@@ -270,23 +271,23 @@ namespace Opm {
                explicitly, so the truth is probably that the storage order
                during simulation makes no difference?
         */
+        std::size_t m_sort_value{};
 
-        std::size_t m_sort_value;
-        std::optional<std::pair<double,double>> m_perf_range;
-        bool m_defaultSatTabId;
+        std::optional<std::pair<double,double>> m_perf_range{};
+        bool m_defaultSatTabId{true};
 
         // Associate segment number
         //
         // 0 means the connection is not associated to a segment.
-        int segment_number = 0;
+        int segment_number { 0 };
 
         // Whether or not this Connection is subject to WELPI scaling.
-        bool m_subject_to_welpi = false;
+        bool m_subject_to_welpi { false };
 
         // For applying last known WPIMULT to when calculating connection transmissibilty factor in CSKIN
         double m_wpimult = 1.0;
 
-        std::optional<FilterCake> m_filter_cake;
+        std::optional<FilterCake> m_filter_cake{};
 
         static std::string CTFKindToString(const CTFKind);
     };

@@ -121,11 +121,6 @@ constexpr bool defaultSatTabId = true;
         //TODO recompute re and perf_length from the grid
     }
 
-    Connection::Connection()
-          : Connection(0, 0, 0, 0, 0, 0.0, State::SHUT, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-                       0, Direction::X, CTFKind::DeckValue, 0, false)
-    {}
-
     Connection Connection::serializationTestObject()
     {
         Connection result;
