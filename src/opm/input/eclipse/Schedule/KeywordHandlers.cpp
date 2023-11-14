@@ -376,20 +376,24 @@ File {} line {}.)", wname, location.keyword, location.filename, location.lineno)
         handlerContext.compsegs_handled(wname);
     }
 
-    void Schedule::handleCSKIN(HandlerContext& handlerContext) {
+    void Schedule::handleCSKIN(HandlerContext& handlerContext)
+    {
+        using Kw = ParserKeywords::CSKIN;
+
         // Get CSKIN keyword info and current step
         const auto& keyword = handlerContext.keyword;
         const auto& currentStep = handlerContext.currentStep;
 
         // Loop over records in CSKIN
-        for (const auto& record: keyword) {
+        for (const auto& record : keyword) {
             // Get well names
-            const auto& wellNamePattern = record.getItem( "WELL" ).getTrimmedString(0);
+            const auto wellNamePattern = record.getItem<Kw::WELL>().getTrimmedString(0);
             const auto well_names = this->wellNames(wellNamePattern, handlerContext);
 
             // Loop over well(s) in record
             for (const auto& wname : well_names) {
-                // Get well information, modify connection skin factor, and update well
+                // Get well information, modify connection skin factor, and
+                // update well.
                 auto well = this->snapshots[currentStep].wells.get(wname);
                 well.handleCSKINConnections(record);
                 this->snapshots[currentStep].wells.update( std::move(well) );
