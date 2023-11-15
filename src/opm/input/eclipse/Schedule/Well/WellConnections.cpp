@@ -840,11 +840,6 @@ namespace Opm {
         throw std::runtime_error(" the connection is not found! \n ");
     }
 
-    void WellConnections::add(Connection connection)
-    {
-        this->m_connections.push_back(std::move(connection));
-    }
-
     bool WellConnections::allConnectionsShut() const
     {
         if (this->empty()) {

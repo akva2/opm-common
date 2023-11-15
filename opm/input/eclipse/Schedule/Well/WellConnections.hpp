@@ -67,6 +67,11 @@ namespace Opm {
             }
         }
 
+        void add(const Connection& conn)
+        {
+            this->m_connections.push_back(conn);
+        }
+
         void addConnection(const int i, const int j, const int k,
                            const std::size_t global_index,
                            const double depth,
@@ -105,7 +110,6 @@ namespace Opm {
         int getHeadI() const;
         int getHeadJ() const;
         const std::vector<double>& getMD() const;
-        void add(Connection);
         std::size_t size() const;
         bool empty() const;
         std::size_t num_open() const;
