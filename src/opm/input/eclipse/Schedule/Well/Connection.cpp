@@ -363,29 +363,31 @@ constexpr bool defaultSatTabId = true;
     std::string Connection::str() const
     {
         std::stringstream ss;
-        ss << "ijk: " << this->ijk[0] << ","  << this->ijk[1] << "," << this->ijk[2] << std::endl;
-        ss << "COMPLNUM " << this->m_complnum << std::endl;
-        ss << "CF " << this->m_CF << std::endl;
-        ss << "RW " << this->m_rw << std::endl;
-        ss << "R0 " << this->m_r0 << std::endl;
-        ss << "Re " << this->m_re << std::endl;
-        ss << "connection length " << this->m_connection_length << std::endl;
-        ss << "skinf " << this->m_skin_factor << std::endl;
-        ss << "dfactor " << this->m_d_factor << std::endl;
-        ss << "Ke " << this->m_Ke << std::endl;
-        ss << "kh " << this->m_Kh << std::endl;
-        ss << "sat_tableId " << this->sat_tableId << std::endl;
-        ss << "open_state " << Connection::State2String(this->open_state) << std::endl;
-        ss << "direction " << Connection::Direction2String(this->direction) << std::endl;
-        ss << "CTF Source " << Connection::CTFKindToString(this->m_ctfkind) << '\n';
-        ss << "segment_nr " << this->segment_number << std::endl;
-        ss << "center_depth " << this->center_depth << std::endl;
-        ss << "sort_value" << this->m_sort_value<< std::endl;
+        ss << "ijk: " << this->ijk[0] << ','  << this->ijk[1] << ',' << this->ijk[2] << '\n'
+           << "COMPLNUM " << this->m_complnum << '\n'
+           << "CF " << this->CF() << '\n'
+           << "RW " << this->rw() << '\n'
+           << "R0 " << this->r0() << '\n'
+           << "Re " << this->re() << '\n'
+           << "connection length " << this->connectionLength() << '\n'
+           << "skinf " << this->skinFactor() << '\n'
+           << "dfactor " << this->dFactor() << '\n'
+           << "Ke " << this->Ke() << '\n'
+           << "kh " << this->Kh() << '\n'
+           << "sat_tableId " << this->sat_tableId << '\n'
+           << "open_state " << Connection::State2String(this->open_state) << '\n'
+           << "direction " << Connection::Direction2String(this->direction) << '\n'
+           << "CTF Source " << Connection::CTFKindToString(this->m_ctfkind) << '\n'
+           << "segment_nr " << this->segment_number << '\n'
+           << "center_depth " << this->center_depth << '\n'
+           << "sort_value" << this->m_sort_value<< '\n';
+
         if (this->m_injmult.has_value()) {
-            ss << "INJMULT " << InjMult::InjMultToString(this->m_injmult.value()) << std::endl;
+            ss << "INJMULT " << InjMult::InjMultToString(this->m_injmult.value()) << '\n';
         }
+
         if (this->m_filter_cake.has_value()) {
-            ss << "FilterCake " << FilterCake::filterCakeToString(this->m_filter_cake.value()) << std::endl;
+            ss << "FilterCake " << FilterCake::filterCakeToString(this->m_filter_cake.value()) << '\n';
         }
 
         return ss.str();
