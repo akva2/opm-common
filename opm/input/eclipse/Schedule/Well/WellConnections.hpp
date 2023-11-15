@@ -23,6 +23,7 @@
 #include <opm/input/eclipse/Schedule/Well/Connection.hpp>
 #include <external/resinsight/LibGeometry/cvfBoundingBoxTree.h>
 
+#include <array>
 #include <cstddef>
 #include <optional>
 #include <string>
@@ -182,7 +183,8 @@ namespace Opm {
         int headI{0};
         int headJ{0};
         std::vector<Connection> m_connections{};
-        std::vector<std::vector<double>> coord{3, std::vector<double>(0, 0.0) };
+
+        std::array<std::vector<double>, 3> coord{};
         std::vector<double> md{};
 
         void addConnection(const int i, const int j, const int k,
