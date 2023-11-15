@@ -162,7 +162,7 @@ namespace {
                                                    Opm::Connection::DirectionFromString("Z")};
         external::cvf::Vec3d effective_connection = connection_vector;
         effective_connection[2] *= ntg;
-        for (size_t i = 0; i < 3; ++i)
+        for (std::size_t i = 0; i < 3; ++i)
         {
            const auto& K = permComponents(direction[i], cell_perm);
            perm_thickness[i] = std::sqrt(K[0] * K[1]) * effective_connection[i];
@@ -186,7 +186,7 @@ namespace {
                                                    Opm::Connection::DirectionFromString("Z")};
         external::cvf::Vec3d effective_connection = connection_vector;
         effective_connection[2] *= ntg;
-        for (size_t i = 0; i < 3; ++i)
+        for (std::size_t i = 0; i < 3; ++i)
         {
            const double angle = 6.2831853071795864769252867665590057683943387987502116419498;
            const auto& K = permComponents(direction[i], cell_perm);
@@ -566,7 +566,7 @@ namespace Opm {
         // Calulate the x,y,z coordinates of the begin and end of a perforation
         external::cvf::Vec3d p_top;
         external::cvf::Vec3d p_bot;
-        for (size_t i = 0; i < 3 ; ++i) {
+        for (std::size_t i = 0; i < 3 ; ++i) {
              p_top[i] =  Opm::linearInterpolation(this->md, this->coord[i], perf_top.getSIDouble(0));
              p_bot[i] =  Opm::linearInterpolation(this->md, this->coord[i], perf_bot.getSIDouble(0));
         }
@@ -588,7 +588,7 @@ namespace Opm {
         int I{0};
         int J{0};
         int k{0};
-        for (size_t is = 0; is < intersections.size(); ++is){
+        for (std::size_t is = 0; is < intersections.size(); ++is){
             auto ijk = std::array<int, 3>{};
             ijk = ecl_grid->getIJK(intersections[is].globCellIndex);
             I = ijk[0];
@@ -767,15 +767,15 @@ namespace Opm {
 
     bool WellConnections::empty() const
     {
-        return this->size() == size_t{0};
+        return this->size() == std::size_t{0};
     }
 
-    const Connection& WellConnections::get(size_t index) const
+    const Connection& WellConnections::get(std::size_t index) const
     {
         return (*this)[index];
     }
 
-    const Connection& WellConnections::operator[](size_t index) const
+    const Connection& WellConnections::operator[](std::size_t index) const
     {
         return this->m_connections.at(index);
     }
@@ -806,7 +806,7 @@ namespace Opm {
     const Connection&
     WellConnections::getFromIJK(const int i, const int j, const int k) const
     {
-        for (size_t ic = 0; ic < size(); ++ic) {
+        for (std::size_t ic = 0; ic < size(); ++ic) {
             if (get(ic).sameCoordinate(i, j, k)) {
                 return get(ic);
             }
@@ -831,7 +831,7 @@ namespace Opm {
 
     Connection& WellConnections::getFromIJK(const int i, const int j, const int k)
     {
-        for (size_t ic = 0; ic < size(); ++ic) {
+        for (std::size_t ic = 0; ic < size(); ++ic) {
             if (get(ic).sameCoordinate(i, j, k)) {
                 return this->m_connections[ic];
             }
@@ -893,20 +893,21 @@ namespace Opm {
             return;
         }
 
-        for (size_t pos = 1; pos < m_connections.size() - 1; ++pos) {
+        for (std::size_t pos = 1; pos < m_connections.size() - 1; ++pos) {
             const auto& prev = m_connections[pos - 1];
             const double prevz = prev.depth();
-            size_t next_index = findClosestConnection(prev.getI(), prev.getJ(), prevz, pos);
+            std::size_t next_index = findClosestConnection(prev.getI(), prev.getJ(), prevz, pos);
             std::swap(m_connections[next_index], m_connections[pos]);
         }
     }
 
-    size_t WellConnections::findClosestConnection(int oi, int oj, double oz, size_t start_pos)
+    std::size_t WellConnections::findClosestConnection(int oi, int oj, double oz,
+                                                       std::size_t start_pos)
     {
-        size_t closest = std::numeric_limits<size_t>::max();
+        std::size_t closest = std::numeric_limits<std::size_t>::max();
         int min_ijdist2 = std::numeric_limits<int>::max();
         double min_zdiff = std::numeric_limits<double>::max();
-        for (size_t pos = start_pos; pos < m_connections.size(); ++pos) {
+        for (std::size_t pos = start_pos; pos < m_connections.size(); ++pos) {
             const auto& connection = m_connections[ pos ];
 
             const double depth = connection.depth();
@@ -926,7 +927,7 @@ namespace Opm {
                 }
             }
         }
-        assert(closest != std::numeric_limits<size_t>::max());
+        assert(closest != std::numeric_limits<std::size_t>::max());
         return closest;
     }
 
