@@ -19,21 +19,31 @@
 
 #include <opm/input/eclipse/Schedule/Well/WellConnections.hpp>
 
+#include <opm/io/eclipse/rst/connection.hpp>
+
 #include <opm/common/OpmLog/KeywordLocation.hpp>
 #include <opm/common/OpmLog/OpmLog.hpp>
 #include <opm/common/utility/ActiveGridCells.hpp>
-
-#include <opm/io/eclipse/rst/connection.hpp>
+#include <opm/common/utility/numeric/linearInterpolation.hpp>
 
 #include <opm/input/eclipse/EclipseState/Grid/EclipseGrid.hpp>
-#include <opm/input/eclipse/EclipseState/Grid/GridDims.hpp>
 #include <opm/input/eclipse/EclipseState/Grid/FieldPropsManager.hpp>
-#include <opm/input/eclipse/Schedule/Well/Connection.hpp>
+#include <opm/input/eclipse/EclipseState/Grid/GridDims.hpp>
+
 #include <opm/input/eclipse/Schedule/ScheduleGrid.hpp>
+#include <opm/input/eclipse/Schedule/Well/Connection.hpp>
+#include <opm/input/eclipse/Schedule/Well/WDFAC.hpp>
+#include <opm/input/eclipse/Schedule/WellTraj/RigEclipseWellLogExtractor.hpp>
 
 #include <opm/input/eclipse/Units/Units.hpp>
 
 #include <opm/input/eclipse/Deck/DeckRecord.hpp>
+
+#include <external/resinsight/LibCore/cvfVector3.h>
+#include <external/resinsight/ReservoirDataModel/RigHexIntersectionTools.h>
+#include <external/resinsight/ReservoirDataModel/RigWellLogExtractionTools.h>
+#include <external/resinsight/ReservoirDataModel/RigWellLogExtractor.h>
+#include <external/resinsight/ReservoirDataModel/RigWellPath.h>
 
 #include <algorithm>
 #include <array>
@@ -46,28 +56,7 @@
 #include <utility>
 #include <vector>
 
-#include <stddef.h>
-#include <opm/common/OpmLog/OpmLog.hpp>
-#include <opm/common/utility/ActiveGridCells.hpp>
-#include <opm/input/eclipse/Units/Units.hpp>
-#include <opm/io/eclipse/rst/connection.hpp>
-#include <opm/common/OpmLog/KeywordLocation.hpp>
-#include <opm/input/eclipse/Deck/DeckRecord.hpp>
-#include <opm/input/eclipse/EclipseState/Grid/EclipseGrid.hpp>
-#include <opm/input/eclipse/EclipseState/Grid/FieldPropsManager.hpp>
-#include <opm/input/eclipse/Schedule/Well/Connection.hpp>
-#include <opm/input/eclipse/Schedule/Well/WellConnections.hpp>
-#include <opm/input/eclipse/Schedule/ScheduleGrid.hpp>
-#include <opm/common/utility/numeric/linearInterpolation.hpp>
-
 #include <fmt/format.h>
-
-#include <external/resinsight/LibCore/cvfVector3.h>
-#include <external/resinsight/ReservoirDataModel/RigHexIntersectionTools.h>
-#include <external/resinsight/ReservoirDataModel/RigWellLogExtractionTools.h>
-#include <external/resinsight/ReservoirDataModel/RigWellLogExtractor.h>
-#include <external/resinsight/ReservoirDataModel/RigWellPath.h>
-#include <opm/input/eclipse/Schedule/WellTraj/RigEclipseWellLogExtractor.hpp>
 
 namespace {
 
