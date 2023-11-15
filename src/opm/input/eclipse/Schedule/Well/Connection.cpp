@@ -393,34 +393,33 @@ constexpr bool defaultSatTabId = true;
         return ss.str();
     }
 
-    bool Connection::operator==( const Connection& rhs ) const
+    bool Connection::operator==(const Connection& that) const
     {
-        return this->ijk == rhs.ijk
-            && this->m_global_index == rhs.m_global_index
-            && this->m_complnum == rhs.m_complnum
-            && this->m_CF == rhs.m_CF
-            && this->m_rw == rhs.m_rw
-            && this->m_r0 == rhs.m_r0
-            && this->m_re == rhs.m_re
-            && this->m_connection_length == rhs.m_connection_length
-            && this->m_skin_factor == rhs.m_skin_factor
-            && this->m_d_factor == rhs.m_d_factor
-            && this->m_Ke == rhs.m_Ke
-            && this->m_injmult == rhs.m_injmult
-            && this->m_Kh == rhs.m_Kh
-            && this->sat_tableId == rhs.sat_tableId
-            && this->open_state == rhs.open_state
-            && this->direction == rhs.direction
-            && this->segment_number == rhs.segment_number
-            && this->center_depth == rhs.center_depth
-            && this->m_sort_value == rhs.m_sort_value
-            && this->m_subject_to_welpi == rhs.m_subject_to_welpi
-            && this->m_filter_cake == rhs.m_filter_cake;
-    }
-
-    bool Connection::operator!=( const Connection& rhs ) const
-    {
-        return !( *this == rhs );
+        return (this->direction == that.direction)
+            && (this->open_state == that.open_state)
+            && (this->sat_tableId == that.sat_tableId)
+            && (this->m_complnum == that.m_complnum)
+            && (this->m_ctfkind == that.m_ctfkind)
+            && (this->m_global_index == that.m_global_index)
+            && (this->m_sort_value == that.m_sort_value)
+            && (this->m_defaultSatTabId == that.m_defaultSatTabId)
+            && (this->segment_number == that.segment_number)
+            && (this->m_subject_to_welpi == that.m_subject_to_welpi)
+            && (this->ijk == that.ijk)
+            && (this->m_injmult == that.m_injmult)
+            && (this->center_depth == that.center_depth)
+            && (this->m_perf_range == that.m_perf_range)
+            && (this->m_filter_cake == that.m_filter_cake)
+            && (this->m_CF == that.m_CF)
+            && (this->m_rw == that.m_rw)
+            && (this->m_r0 == that.m_r0)
+            && (this->m_re == that.m_re)
+            && (this->m_connection_length == that.m_connection_length)
+            && (this->m_skin_factor == that.m_skin_factor)
+            && (this->m_d_factor == that.m_d_factor)
+            && (this->m_Ke == that.m_Ke)
+            && (this->m_Kh == that.m_Kh)
+            ;
     }
 
 std::string Connection::State2String(State enumValue)

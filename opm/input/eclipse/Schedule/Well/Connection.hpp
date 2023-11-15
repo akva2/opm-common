@@ -164,8 +164,11 @@ namespace Opm {
             return this->m_ctfkind == CTFKind::DeckValue;
         }
 
-        bool operator==( const Connection& ) const;
-        bool operator!=( const Connection& ) const;
+        bool operator==(const Connection&) const;
+        bool operator!=(const Connection& that) const
+        {
+            return ! (*this == that);
+        }
 
         template<class Serializer>
         void serializeOp(Serializer& serializer)
