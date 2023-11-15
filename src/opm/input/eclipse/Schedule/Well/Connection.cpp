@@ -591,22 +591,20 @@ const FilterCake& Connection::getFilterCake() const
 
 double Connection::getFilterCakeRadius() const
 {
-    if (this->getFilterCake().radius.has_value()) {
-        return this->getFilterCake().radius.value();
+    if (const auto& radius = this->getFilterCake().radius; radius.has_value()) {
+        return *radius;
     } else {
-        return this->m_rw;
+        return this->rw();
     }
 }
 
 double Connection::getFilterCakeArea() const
 {
-    if (this->getFilterCake().flow_area.has_value()) {
-        return this->getFilterCake().flow_area.value();
+    if (const auto& flow_area = this->getFilterCake().flow_area; flow_area.has_value()) {
+        return *flow_area;
     } else {
-        const double radius = this->getFilterCakeRadius();
-        const double length = this->m_connection_length;
-        constexpr double pi = 3.14159265;
-        return 2. * pi * radius * length;
+        constexpr double two_pi = 2 * 3.14159265358979323846264;
+        return two_pi * this->getFilterCakeRadius() * this->connectionLength();
     }
 }
 
