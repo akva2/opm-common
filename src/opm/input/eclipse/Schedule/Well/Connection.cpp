@@ -154,11 +154,7 @@ constexpr bool defaultSatTabId = true;
 
     bool Connection::sameCoordinate(const int i, const int j, const int k) const
     {
-        if ((ijk[0] == i) && (ijk[1] == j) && (ijk[2] == k)) {
-            return true;
-        } else {
-            return false;
-        }
+        return this->ijk == std::array { i, j, k };
     }
 
     int Connection::getI() const
