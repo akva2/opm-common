@@ -439,7 +439,10 @@ std::string Connection::State2String(State enumValue)
         return "SHUT";
 
     default:
-        throw std::invalid_argument("Unhandled enum value");
+        throw std::invalid_argument {
+            "Unhandled Connnection::State value " +
+            std::to_string(static_cast<int>(enumValue))
+        };
     }
 }
 
@@ -518,7 +521,10 @@ std::string Connection::Order2String(Order enumValue)
         return "TRACK";
 
     default:
-        throw std::invalid_argument("Unhandled enum value");
+        throw std::invalid_argument {
+            "Unhandled Connection::Order value " +
+            std::to_string(static_cast<int>(enumValue))
+        };
     }
 }
 
