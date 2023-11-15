@@ -139,50 +139,67 @@ namespace {
         return 0.28 * (num / den);
     }
 
+    double peacemanDenominator(const double r0,
+                               const double rw,
+                               const double skin_factor)
+    {
+        return std::log(r0 / std::min(rw, r0)) + skin_factor;
+    }
+
     // Calculate permeability thickness Kh for line segment in a cell for x,y,z directions
     std::array<double, 3>
-    permThickness(const external::cvf::Vec3d& connection_vector,
+    permThickness(const external::cvf::Vec3d& effective_connection,
                   const std::array<double,3>& cell_perm,
                   const double ntg)
     {
-        std::array<double, 3> perm_thickness;
-        Opm::Connection::Direction direction[3] = {Opm::Connection::DirectionFromString("X"),
-                                                   Opm::Connection::DirectionFromString("Y"),
-                                                   Opm::Connection::DirectionFromString("Z")};
-        external::cvf::Vec3d effective_connection = connection_vector;
-        effective_connection[2] *= ntg;
-        for (std::size_t i = 0; i < 3; ++i)
-        {
-           const auto& K = permComponents(direction[i], cell_perm);
-           perm_thickness[i] = std::sqrt(K[0] * K[1]) * effective_connection[i];
+        auto perm_thickness = std::array {
+            effective_connection[0],
+            effective_connection[1],
+            effective_connection[2] * ntg,
+        };
+
+        const auto direction = std::array {
+            Opm::Connection::Direction::X,
+            Opm::Connection::Direction::Y,
+            Opm::Connection::Direction::Z,
+        };
+
+        for (std::size_t i = 0; i < 3; ++i) {
+            const auto K = permComponents(direction[i], cell_perm);
+            perm_thickness[i] *= std::sqrt(K[0] * K[1]);
         }
+
         return perm_thickness;
     }
 
     // Calculate directional (x,y,z) peaceman connection factors CFx, CFy, CFz
     std::array<double, 3>
-    connectionFactor(const external::cvf::Vec3d& connection_vector,
-                     const std::array<double,3>& cell_perm,
-                     std::array<double,3> cell_size,
+    connectionFactor(const std::array<double,3>& cell_perm,
+                     const std::array<double,3>& cell_size,
                      const double ntg,
-                     const std::array<double, 3> Kh,
+                     const std::array<double,3>& Kh,
                      const double rw,
                      const double skin_factor)
     {
-        std::array<double, 3> connection_factor;
-        Opm::Connection::Direction direction[3] = {Opm::Connection::DirectionFromString("X"),
-                                                   Opm::Connection::DirectionFromString("Y"),
-                                                   Opm::Connection::DirectionFromString("Z")};
-        external::cvf::Vec3d effective_connection = connection_vector;
-        effective_connection[2] *= ntg;
-        for (std::size_t i = 0; i < 3; ++i)
-        {
-           const double angle = 6.2831853071795864769252867665590057683943387987502116419498;
-           const auto& K = permComponents(direction[i], cell_perm);
-           const auto& D = effectiveExtent(direction[i], ntg, cell_size);
-           const auto& r0 = effectiveRadius(K,D);
-           connection_factor[i] = angle * Kh[i] / (std::log(r0 / std::min(rw, r0)) + skin_factor);
+        auto connection_factor = std::array<double, 3>{};
+
+        const auto direction = std::array {
+            Opm::Connection::Direction::X,
+            Opm::Connection::Direction::Y,
+            Opm::Connection::Direction::Z,
+        };
+
+        const double angle = 6.2831853071795864769252867665590057683943387987502116419498;
+
+        for (std::size_t i = 0; i < 3; ++i) {
+            const auto K = permComponents(direction[i], cell_perm);
+            const auto D = effectiveExtent(direction[i], ntg, cell_size);
+            const auto r0 = effectiveRadius(K, D);
+
+            connection_factor[i] = angle * Kh[i]
+                / peacemanDenominator(r0, rw, skin_factor);
         }
+
         return connection_factor;
     }
 
@@ -639,8 +656,7 @@ namespace Opm {
                                                             cell_perm,
                                                             props->ntg);
 
-                const auto& connection_factor = connectionFactor(connection_vector,
-                                                                 cell_perm,
+                const auto& connection_factor = connectionFactor(cell_perm,
                                                                  cell_size,
                                                                  props->ntg,
                                                                  perm_thickness,
