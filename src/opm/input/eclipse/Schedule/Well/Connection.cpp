@@ -34,6 +34,10 @@
 #include <sstream>
 #include <stdexcept>
 
+namespace {
+    constexpr bool restartDefaultSatTabId = true;
+}
+
 namespace Opm {
 
 
@@ -77,10 +81,6 @@ namespace Opm {
         , m_defaultSatTabId(defaultSatTabId)
     {}
 
-namespace {
-constexpr bool defaultSatTabId = true;
-}
-
     Connection::Connection(const RestartIO::RstConnection& rst_connection,
                            const ScheduleGrid&             grid,
                            const FieldPropsManager&        fp)
@@ -102,7 +102,7 @@ constexpr bool defaultSatTabId = true;
         , m_ctfkind        (rst_connection.cf_kind)
         , m_global_index   (grid.get_cell(this->ijk[0], this->ijk[1], this->ijk[2]).global_index)
         , m_sort_value     (rst_connection.rst_index)
-        , m_defaultSatTabId(defaultSatTabId)
+        , m_defaultSatTabId(restartDefaultSatTabId)
         , segment_number   (rst_connection.segment)
     {
         if (this->m_defaultSatTabId) {
