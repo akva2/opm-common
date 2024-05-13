@@ -380,8 +380,12 @@ namespace { namespace SatFunc {
 
             const auto numTab = sgof.size();
             const auto numDep = std::size_t{2}; // Krg, Pcgo
+            auto numR = numRows;
+            for (std::size_t i = 0; i < sgof.size(); ++i) {
+                numR = std::max(numR, sgof[i].numRows());
+            }
 
-            return detail::createSatfuncTable(numTab, numRows, numDep,
+            return detail::createSatfuncTable(numTab, numR, numDep,
                 [tolcrit, &units, &sgof](const std::size_t           tableID,
                                          const std::size_t           primID,
                                          Opm::LinearisedOutputTable& linTable)
@@ -1061,8 +1065,17 @@ namespace { namespace SatFunc {
 
                 const auto numTab = sgof.size();
                 const auto numDep = std::size_t{2}; // Krow, Krog
+                auto numR1 = numRows;
+                for (std::size_t i = 0; i < sgof.size(); ++i) {
+                    numR1 = std::max(numR1, sgof[i].numRows());
+                }
+                auto numR2 = numRows;
+                for (std::size_t i = 0; i < swof.size(); ++i) {
+                    numR2 = std::max(numR2, swof[i].numRows());
+                }
+                auto numR = 2 * std::max(numR1, numR2);
 
-                return detail::createSatfuncTable(numTab, numRows, numDep,
+                return detail::createSatfuncTable(numTab, numR, numDep,
                      [tolcrit, &sgof, &swof]
                         (const std::size_t           tableID,
                          const std::size_t           primID,
@@ -1127,8 +1140,12 @@ namespace { namespace SatFunc {
 
                 const auto numTab = sof3.size();
                 const auto numDep = std::size_t{2}; // Krow, Krog
+                auto numR = numRows;
+                for (std::size_t i = 0; i < sof3.size(); ++i) {
+                    numR = std::max(numR, sof3[i].numRows());
+                }
 
-                return detail::createSatfuncTable(numTab, numRows, numDep,
+                return detail::createSatfuncTable(numTab, numR, numDep,
                     [tolcrit, &sof3](const std::size_t           tableID,
                                      const std::size_t           primID,
                                      Opm::LinearisedOutputTable& linTable)
@@ -1200,8 +1217,12 @@ namespace { namespace SatFunc {
 
             const auto numTab = swfn.size();
             const auto numDep = std::size_t{2}; // Krw, Pcow
+            auto numR = numRows;
+            for (std::size_t i = 0; i < swfn.size(); ++i) {
+                numR = std::max(numR, swfn[i].numRows());
+            }
 
-            return detail::createSatfuncTable(numTab, numRows, numDep,
+            return detail::createSatfuncTable(numTab, numR, numDep,
                 [tolcrit, &swfn, &units]
                     (const std::size_t           tableID,
                      const std::size_t           primID,
@@ -1278,8 +1299,12 @@ namespace { namespace SatFunc {
 
             const auto numTab = swof.size();
             const auto numDep = std::size_t{2}; // Krw, Pcow
+            auto numR = numRows;
+            for (std::size_t i = 0; i < swof.size(); ++i) {
+                numR = std::max(numR, swof[i].numRows());
+            }
 
-            return detail::createSatfuncTable(numTab, numRows, numDep,
+            return detail::createSatfuncTable(numTab, numR, numDep,
                 [tolcrit, &swof, &units]
                     (const std::size_t           tableID,
                      const std::size_t           primID,
@@ -1351,8 +1376,12 @@ namespace { namespace SatFunc {
 
             const auto numTab = swfn.size();
             const auto numDep = std::size_t{2}; // Krw, Pcow
+            auto numR = numRows;
+            for (std::size_t i = 0; i < swfn.size(); ++i) {
+                numR = std::max(numR, swfn[i].numRows());
+            }
 
-            return detail::createSatfuncTable(numTab, numRows, numDep,
+            return detail::createSatfuncTable(numTab, numR, numDep,
                 [tolcrit, &swfn]
                     (const std::size_t           tableID,
                      const std::size_t           primID,
@@ -1436,8 +1465,12 @@ namespace { namespace SatFunc {
 
             const auto numTab = wsf.size();
             const auto numDep = std::size_t{2}; // Krw, {zero pc}
+            auto numR = numRows;
+            for (std::size_t i = 0; i < wsf.size(); ++i) {
+                numR = std::max(numR, wsf[i].numRows());
+            }
 
-            return detail::createSatfuncTable(numTab, numRows, numDep,
+            return detail::createSatfuncTable(numTab, numR, numDep,
                 [tolcrit, &wsf]
                     (const std::size_t           tableID,
                      const std::size_t           primID,
