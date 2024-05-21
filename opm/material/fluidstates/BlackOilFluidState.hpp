@@ -131,6 +131,11 @@ public:
     enum { numPhases = FluidSystem::numPhases };
     enum { numComponents = FluidSystem::numComponents };
 
+    BlackOilFluidState(std::shared_ptr<FluidSystem> fs)
+        : fluidSystem_(std::move(fs))
+    {
+    }
+
     /*!
      * \brief Make sure that all attributes are defined.
      *
@@ -373,7 +378,7 @@ public:
         if constexpr (enableTemperature || enableEnergy) {
             return *temperature_;
         } else {
-            static Scalar tmp(FluidSystem::reservoirTemperature(pvtRegionIdx_));
+            static Scalar tmp(fluidSystem_->reservoirTemperature(pvtRegionIdx_));
             return tmp;
         }
     }
@@ -524,11 +529,11 @@ public:
         const auto& rho = density(phaseIdx);
 
         if (phaseIdx == waterPhaseIdx)
-            return rho/FluidSystem::molarMass(waterCompIdx, pvtRegionIdx_);
+            return rho / fluidSystem_->molarMass(waterCompIdx, pvtRegionIdx_);
 
         return
-            rho*(moleFraction(phaseIdx, gasCompIdx)/FluidSystem::molarMass(gasCompIdx, pvtRegionIdx_)
-                 + moleFraction(phaseIdx, oilCompIdx)/FluidSystem::molarMass(oilCompIdx, pvtRegionIdx_));
+            rho*(moleFraction(phaseIdx, gasCompIdx) / fluidSystem_->molarMass(gasCompIdx, pvtRegionIdx_) +
+                 moleFraction(phaseIdx, oilCompIdx) / fluidSystem_->molarMass(oilCompIdx, pvtRegionIdx_));
 
     }
 
@@ -544,7 +549,7 @@ public:
      * \brief Return the dynamic viscosity of a fluid phase [Pa s].
      */
     Scalar viscosity(unsigned phaseIdx) const
-    { return FluidSystem::viscosity(*this, phaseIdx, pvtRegionIdx_); }
+    { return fluidSystem_->viscosity(*this, phaseIdx, pvtRegionIdx_); }
 
     /*!
      * \brief Return the mass fraction of a component in a fluid phase [-].
@@ -561,10 +566,10 @@ public:
             if (compIdx == waterCompIdx)
                 return 0.0;
             else if (compIdx == oilCompIdx)
-                return 1.0 - FluidSystem::convertRsToXoG(Rs(), pvtRegionIdx_);
+                return 1.0 - fluidSystem_->convertRsToXoG(Rs(), pvtRegionIdx_);
             else {
                 assert(compIdx == gasCompIdx);
-                return FluidSystem::convertRsToXoG(Rs(), pvtRegionIdx_);
+                return fluidSystem_->convertRsToXoG(Rs(), pvtRegionIdx_);
             }
             break;
 
@@ -572,10 +577,10 @@ public:
             if (compIdx == waterCompIdx)
                 return 0.0;
             else if (compIdx == oilCompIdx)
-                return FluidSystem::convertRvToXgO(Rv(), pvtRegionIdx_);
+                return fluidSystem_->convertRvToXgO(Rv(), pvtRegionIdx_);
             else {
                 assert(compIdx == gasCompIdx);
-                return 1.0 - FluidSystem::convertRvToXgO(Rv(), pvtRegionIdx_);
+                return 1.0 - fluidSystem_->convertRvToXgO(Rv(), pvtRegionIdx_);
             }
             break;
         }
@@ -598,12 +603,12 @@ public:
             if (compIdx == waterCompIdx)
                 return 0.0;
             else if (compIdx == oilCompIdx)
-                return 1.0 - FluidSystem::convertXoGToxoG(FluidSystem::convertRsToXoG(Rs(), pvtRegionIdx_),
-                                                          pvtRegionIdx_);
+                return 1.0 - fluidSystem_->convertXoGToxoG(fluidSystem_->convertRsToXoG(Rs(), pvtRegionIdx_),
+                                                           pvtRegionIdx_);
             else {
                 assert(compIdx == gasCompIdx);
-                return FluidSystem::convertXoGToxoG(FluidSystem::convertRsToXoG(Rs(), pvtRegionIdx_),
-                                                    pvtRegionIdx_);
+                return fluidSystem_->convertXoGToxoG(fluidSystem_->convertRsToXoG(Rs(), pvtRegionIdx_),
+                                                     pvtRegionIdx_);
             }
             break;
 
@@ -611,12 +616,12 @@ public:
             if (compIdx == waterCompIdx)
                 return 0.0;
             else if (compIdx == oilCompIdx)
-                return FluidSystem::convertXgOToxgO(FluidSystem::convertRvToXgO(Rv(), pvtRegionIdx_),
-                                                    pvtRegionIdx_);
+                return fluidSystem_->convertXgOToxgO(fluidSystem_->convertRvToXgO(Rv(), pvtRegionIdx_),
+                                                     pvtRegionIdx_);
             else {
                 assert(compIdx == gasCompIdx);
-                return 1.0 - FluidSystem::convertXgOToxgO(FluidSystem::convertRvToXgO(Rv(), pvtRegionIdx_),
-                                                          pvtRegionIdx_);
+                return 1.0 - fluidSystem_->convertXgOToxgO(fluidSystem_->convertRvToXgO(Rv(), pvtRegionIdx_),
+                                                           pvtRegionIdx_);
             }
             break;
         }
@@ -637,7 +642,7 @@ public:
     {
         Scalar result(0.0);
         for (unsigned compIdx = 0; compIdx < numComponents; ++ compIdx)
-            result += FluidSystem::molarMass(compIdx, pvtRegionIdx_)*moleFraction(phaseIdx, compIdx);
+            result += fluidSystem_->molarMass(compIdx, pvtRegionIdx_)*moleFraction(phaseIdx, compIdx);
         return result;
     }
 
@@ -645,7 +650,7 @@ public:
      * \brief Return the fugacity coefficient of a component in a fluid phase [-].
      */
     Scalar fugacityCoefficient(unsigned phaseIdx, unsigned compIdx) const
-    { return FluidSystem::fugacityCoefficient(*this, phaseIdx, compIdx, pvtRegionIdx_); }
+    { return fluidSystem_->fugacityCoefficient(*this, phaseIdx, compIdx, pvtRegionIdx_); }
 
     /*!
      * \brief Return the fugacity of a component in a fluid phase [Pa].
@@ -658,21 +663,23 @@ public:
             *pressure(phaseIdx);
     }
 
+    const FluidSystem& fluidSystem() const { return *fluidSystem_; }
+
 private:
-    static unsigned storageToCanonicalPhaseIndex_(unsigned storagePhaseIdx)
+    unsigned storageToCanonicalPhaseIndex_(unsigned storagePhaseIdx) const
     {
         if constexpr (numStoragePhases == 3)
             return storagePhaseIdx;
         else
-            return FluidSystem::activeToCanonicalPhaseIdx(storagePhaseIdx);
+            return fluidSystem_->activeToCanonicalPhaseIdx(storagePhaseIdx);
     }
 
-    static unsigned canonicalToStoragePhaseIndex_(unsigned canonicalPhaseIdx)
+    unsigned canonicalToStoragePhaseIndex_(unsigned canonicalPhaseIdx) const
     {
         if constexpr (numStoragePhases == 3)
             return canonicalPhaseIdx;
         else
-            return FluidSystem::canonicalToActivePhaseIdx(canonicalPhaseIdx);
+            return fluidSystem_->canonicalToActivePhaseIdx(canonicalPhaseIdx);
     }
 
     ConditionalStorage<enableTemperature || enableEnergy, Scalar> temperature_;
@@ -690,6 +697,8 @@ private:
     ConditionalStorage<enableBrine, Scalar> saltConcentration_;
     ConditionalStorage<enableSaltPrecipitation, Scalar> saltSaturation_;
     unsigned short pvtRegionIdx_;
+
+    std::shared_ptr<FluidSystem> fluidSystem_;
 };
 
 } // namespace Opm

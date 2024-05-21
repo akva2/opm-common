@@ -120,6 +120,8 @@ private:
 
     std::vector<SolidEnergyLawParams> solidEnergyLawParams_;
     std::vector<ThermalConductionLawParams> thermalConductionLawParams_;
+
+    std::shared_ptr<FluidSystem> fluidSystem_;
 };
 } // namespace Opm
 

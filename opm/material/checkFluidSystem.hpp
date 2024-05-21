@@ -221,6 +221,8 @@ public:
         return this->base().compressFactor(phaseIdx);
     }
 
+    const FluidSystem& getFluidSystem() const { return fs_; }
+
 private:
     bool allowSaturation_;
     bool allowTemperature_;
@@ -228,6 +230,8 @@ private:
     bool allowComposition_;
     bool allowDensity_;
     int restrictPhaseIdx_;
+
+    FluidSystem fs_{};
 };
 
 template <class Scalar, class BaseFluidState>
@@ -273,7 +277,7 @@ void checkFluidState(const BaseFluidState& fs)
  * \brief Checks whether a fluid system adheres to the specification.
  */
 template <class Scalar, class FluidSystem, class RhsEval, class LhsEval>
-void checkFluidSystem()
+void checkFluidSystem(FluidSystem& fluidSystem)
 {
     std::cout << "Testing fluid system '"
               << Opm::demangle(typeid(FluidSystem).name())
@@ -298,7 +302,7 @@ void checkFluidSystem()
         fs.base().setPressure(phaseIdx, 1e5);
         fs.base().setSaturation(phaseIdx, 1.0/numPhases);
         for (int compIdx = 0; compIdx < numComponents; ++ compIdx) {
-            fs.base().setMoleFraction(phaseIdx, compIdx, 1.0/numComponents);
+            fs.base().setMoleFraction(phaseIdx, compIdx, 1.0 / numComponents);
         }
     }
 
@@ -335,40 +339,40 @@ void checkFluidSystem()
     val = 2*val; // get rid of GCC warning (only occurs with paranoid warning flags)
 
     // actually check the fluid system API
-    try { FluidSystem::init(); } catch (...) {};
+    try { fluidSystem.init(); } catch (...) {};
     for (unsigned phaseIdx = 0; phaseIdx < numPhases; ++ phaseIdx) {
         fs.restrictToPhase(static_cast<int>(phaseIdx));
         fs.allowPressure(FluidSystem::isCompressible(phaseIdx));
         fs.allowComposition(true);
         fs.allowDensity(false);
-        try { [[maybe_unused]] auto tmpVal = FluidSystem::density(fs, paramCache, phaseIdx); static_assert(std::is_same<decltype(tmpVal), RhsEval>::value, "The default return value must be the scalar used by the fluid state!"); } catch (...) {};
-        try { val = FluidSystem::template density<FluidState, LhsEval>(fs, paramCache, phaseIdx); } catch (...) {};
-        try { scalarVal = FluidSystem::template density<FluidState, Scalar>(fs, paramCache, phaseIdx); } catch (...) {};
+        try { [[maybe_unused]] auto tmpVal = fluidSystem.density(fs, paramCache, phaseIdx); static_assert(std::is_same<decltype(tmpVal), RhsEval>::value, "The default return value must be the scalar used by the fluid state!"); } catch (...) {};
+        try { val = fluidSystem.template density<FluidState, LhsEval>(fs, paramCache, phaseIdx); } catch (...) {};
+        try { scalarVal = fluidSystem.template density<FluidState, Scalar>(fs, paramCache, phaseIdx); } catch (...) {};
 
         fs.allowPressure(true);
         fs.allowDensity(true);
-        try { [[maybe_unused]] auto tmpVal = FluidSystem::viscosity(fs, paramCache, phaseIdx); static_assert(std::is_same<decltype(tmpVal), RhsEval>::value, "The default return value must be the scalar used by the fluid state!"); } catch (...) {};
-        try { [[maybe_unused]] auto tmpVal = FluidSystem::enthalpy(fs, paramCache, phaseIdx); static_assert(std::is_same<decltype(tmpVal), RhsEval>::value, "The default return value must be the scalar used by the fluid state!"); } catch (...) {};
-        try { [[maybe_unused]] auto tmpVal = FluidSystem::heatCapacity(fs, paramCache, phaseIdx); static_assert(std::is_same<decltype(tmpVal), RhsEval>::value, "The default return value must be the scalar used by the fluid state!"); } catch (...) {};
-        try { [[maybe_unused]] auto tmpVal = FluidSystem::thermalConductivity(fs, paramCache, phaseIdx); static_assert(std::is_same<decltype(tmpVal), RhsEval>::value, "The default return value must be the scalar used by the fluid state!"); } catch (...) {};
-        try { val = FluidSystem::template viscosity<FluidState, LhsEval>(fs, paramCache, phaseIdx); } catch (...) {};
-        try { val = FluidSystem::template enthalpy<FluidState, LhsEval>(fs, paramCache, phaseIdx); } catch (...) {};
-        try { val = FluidSystem::template heatCapacity<FluidState, LhsEval>(fs, paramCache, phaseIdx); } catch (...) {};
-        try { val = FluidSystem::template thermalConductivity<FluidState, LhsEval>(fs, paramCache, phaseIdx); } catch (...) {};
-        try { scalarVal = FluidSystem::template viscosity<FluidState, Scalar>(fs, paramCache, phaseIdx); } catch (...) {};
-        try { scalarVal = FluidSystem::template enthalpy<FluidState, Scalar>(fs, paramCache, phaseIdx); } catch (...) {};
-        try { scalarVal = FluidSystem::template heatCapacity<FluidState, Scalar>(fs, paramCache, phaseIdx); } catch (...) {};
-        try { scalarVal = FluidSystem::template thermalConductivity<FluidState, Scalar>(fs, paramCache, phaseIdx); } catch (...) {};
+        try { [[maybe_unused]] auto tmpVal = fluidSystem.viscosity(fs, paramCache, phaseIdx); static_assert(std::is_same<decltype(tmpVal), RhsEval>::value, "The default return value must be the scalar used by the fluid state!"); } catch (...) {};
+        try { [[maybe_unused]] auto tmpVal = fluidSystem.enthalpy(fs, paramCache, phaseIdx); static_assert(std::is_same<decltype(tmpVal), RhsEval>::value, "The default return value must be the scalar used by the fluid state!"); } catch (...) {};
+        try { [[maybe_unused]] auto tmpVal = fluidSystem.heatCapacity(fs, paramCache, phaseIdx); static_assert(std::is_same<decltype(tmpVal), RhsEval>::value, "The default return value must be the scalar used by the fluid state!"); } catch (...) {};
+        try { [[maybe_unused]] auto tmpVal = fluidSystem.thermalConductivity(fs, paramCache, phaseIdx); static_assert(std::is_same<decltype(tmpVal), RhsEval>::value, "The default return value must be the scalar used by the fluid state!"); } catch (...) {};
+        try { val = fluidSystem.template viscosity<FluidState, LhsEval>(fs, paramCache, phaseIdx); } catch (...) {};
+        try { val = fluidSystem.template enthalpy<FluidState, LhsEval>(fs, paramCache, phaseIdx); } catch (...) {};
+        try { val = fluidSystem.template heatCapacity<FluidState, LhsEval>(fs, paramCache, phaseIdx); } catch (...) {};
+        try { val = fluidSystem.template thermalConductivity<FluidState, LhsEval>(fs, paramCache, phaseIdx); } catch (...) {};
+        try { scalarVal = fluidSystem.template viscosity<FluidState, Scalar>(fs, paramCache, phaseIdx); } catch (...) {};
+        try { scalarVal = fluidSystem.template enthalpy<FluidState, Scalar>(fs, paramCache, phaseIdx); } catch (...) {};
+        try { scalarVal = fluidSystem.template heatCapacity<FluidState, Scalar>(fs, paramCache, phaseIdx); } catch (...) {};
+        try { scalarVal = fluidSystem.template thermalConductivity<FluidState, Scalar>(fs, paramCache, phaseIdx); } catch (...) {};
 
         for (unsigned compIdx = 0; compIdx < numComponents; ++ compIdx) {
             fs.allowComposition(!FluidSystem::isIdealMixture(phaseIdx));
-            try { [[maybe_unused]] auto tmpVal = FluidSystem::fugacityCoefficient(fs, paramCache, phaseIdx, compIdx); static_assert(std::is_same<decltype(tmpVal), RhsEval>::value, "The default return value must be the scalar used by the fluid state!"); } catch (...) {};
-            try { val = FluidSystem::template fugacityCoefficient<FluidState, LhsEval>(fs, paramCache, phaseIdx, compIdx); } catch (...) {};
-            try { scalarVal = FluidSystem::template fugacityCoefficient<FluidState, Scalar>(fs, paramCache, phaseIdx, compIdx); } catch (...) {};
+            try { [[maybe_unused]] auto tmpVal = fluidSystem.fugacityCoefficient(fs, paramCache, phaseIdx, compIdx); static_assert(std::is_same<decltype(tmpVal), RhsEval>::value, "The default return value must be the scalar used by the fluid state!"); } catch (...) {};
+            try { val = fluidSystem.template fugacityCoefficient<FluidState, LhsEval>(fs, paramCache, phaseIdx, compIdx); } catch (...) {};
+            try { scalarVal = fluidSystem.template fugacityCoefficient<FluidState, Scalar>(fs, paramCache, phaseIdx, compIdx); } catch (...) {};
             fs.allowComposition(true);
-            try { [[maybe_unused]] auto tmpVal = FluidSystem::diffusionCoefficient(fs, paramCache, phaseIdx, compIdx); static_assert(std::is_same<decltype(tmpVal), RhsEval>::value, "The default return value must be the scalar used by the fluid state!"); } catch (...) {};
-            try { val = FluidSystem::template diffusionCoefficient<FluidState, LhsEval>(fs, paramCache, phaseIdx, compIdx); } catch (...) {};
-            try { scalarVal = FluidSystem::template fugacityCoefficient<FluidState, Scalar>(fs, paramCache, phaseIdx, compIdx); } catch (...) {};
+            try { [[maybe_unused]] auto tmpVal = fluidSystem.diffusionCoefficient(fs, paramCache, phaseIdx, compIdx); static_assert(std::is_same<decltype(tmpVal), RhsEval>::value, "The default return value must be the scalar used by the fluid state!"); } catch (...) {};
+            try { val = fluidSystem.template diffusionCoefficient<FluidState, LhsEval>(fs, paramCache, phaseIdx, compIdx); } catch (...) {};
+            try { scalarVal = fluidSystem.template fugacityCoefficient<FluidState, Scalar>(fs, paramCache, phaseIdx, compIdx); } catch (...) {};
         }
     }
 
@@ -382,7 +386,7 @@ void checkFluidSystem()
 
     // test for molarMass() and componentName()
     for (unsigned compIdx = 0; compIdx < numComponents; ++ compIdx) {
-        val = FluidSystem::molarMass(compIdx);
+        val = fluidSystem.molarMass(compIdx);
         std::string{FluidSystem::componentName(compIdx)};
     }
 }

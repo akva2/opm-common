@@ -47,9 +47,10 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(ApiConformance, Scalar, Types)
     using Evaluation = Opm::DenseAd::Evaluation<Scalar, 2>;
     using FluidStateScalar = Opm::BlackOilFluidState<Scalar, FluidSystem>;
     using FluidState = Opm::BlackOilFluidState<Evaluation, FluidSystem>;
+    auto fluidSystem = std::make_shared<FluidSystem>();
 
-    FluidStateScalar fss{};
+    FluidStateScalar fss{fluidSystem};
     checkFluidState<Scalar>(fss);
-    FluidState fs{};
+    FluidState fs{fluidSystem};
     checkFluidState<Evaluation>(fs);
 }

@@ -330,7 +330,7 @@ solventComponentIndex(unsigned phaseIdx)
 
 template <class Scalar, class IndexTraits>
 unsigned BlackOilFluidSystem<Scalar,IndexTraits>::
-soluteComponentIndex(unsigned phaseIdx)
+soluteComponentIndex(unsigned phaseIdx) const
 {
     switch (phaseIdx) {
     case waterPhaseIdx:
@@ -369,7 +369,7 @@ componentName(unsigned compIdx)
 
 template <class Scalar, class IndexTraits>
 short BlackOilFluidSystem<Scalar,IndexTraits>::
-activeToCanonicalPhaseIdx(unsigned activePhaseIdx)
+activeToCanonicalPhaseIdx(unsigned activePhaseIdx) const
 {
     assert(activePhaseIdx<numActivePhases());
     return activeToCanonicalPhaseIdx_[activePhaseIdx];
@@ -377,7 +377,7 @@ activeToCanonicalPhaseIdx(unsigned activePhaseIdx)
 
 template <class Scalar, class IndexTraits>
 short BlackOilFluidSystem<Scalar,IndexTraits>::
-canonicalToActivePhaseIdx(unsigned phaseIdx)
+canonicalToActivePhaseIdx(unsigned phaseIdx) const
 {
     assert(phaseIdx<numPhases);
     assert(phaseIsActive(phaseIdx));

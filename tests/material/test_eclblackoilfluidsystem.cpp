@@ -639,8 +639,9 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(BlackOil, Evaluation, Types)
     auto python = std::make_shared<Opm::Python>();
     Opm::EclipseState eclState(deck);
     Opm::Schedule schedule(deck, eclState, python);
+    auto fluidSystem = std::make_shared<FluidSystem>();
 
-    FluidSystem::initFromState(eclState, schedule);
+    fluidSystem->initFromState(eclState, schedule);
 
     // create a parameter cache
     using ParamCache = typename FluidSystem::template ParameterCache<Scalar>;
@@ -648,27 +649,27 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(BlackOil, Evaluation, Types)
     BOOST_CHECK_EQUAL(paramCache.regionIndex(), 1);
 
     BOOST_CHECK_SMALL(Opm::abs(paramCache.maxOilSat() - 0.5), 1e-10);
-    BOOST_CHECK_SMALL(Opm::abs(FluidSystem::reservoirTemperature() - (273.15 + 15.555)), 1e-10);
-    BOOST_CHECK(FluidSystem::enableDissolvedGas());
-    BOOST_CHECK(FluidSystem::enableVaporizedOil());
-    BOOST_CHECK_EQUAL(FluidSystem::numRegions(), 2);
-    BOOST_CHECK_EQUAL(FluidSystem::numActivePhases(), 3);
+    BOOST_CHECK_SMALL(Opm::abs(fluidSystem->reservoirTemperature() - (273.15 + 15.555)), 1e-10);
+    BOOST_CHECK(fluidSystem->enableDissolvedGas());
+    BOOST_CHECK(fluidSystem->enableVaporizedOil());
+    BOOST_CHECK_EQUAL(fluidSystem->numRegions(), 2);
+    BOOST_CHECK_EQUAL(fluidSystem->numActivePhases(), 3);
 
     for (unsigned phaseIdx = 0; phaseIdx < numPhases; ++ phaseIdx)
-        BOOST_CHECK(FluidSystem::phaseIsActive(phaseIdx));
+        BOOST_CHECK(fluidSystem->phaseIsActive(phaseIdx));
 
     BOOST_CHECK_EQUAL(FluidSystem::solventComponentIndex(oilPhaseIdx), oilCompIdx);
     BOOST_CHECK_EQUAL(FluidSystem::solventComponentIndex(gasPhaseIdx), gasCompIdx);
     BOOST_CHECK_EQUAL(FluidSystem::solventComponentIndex(waterPhaseIdx), waterCompIdx);
 
-    BOOST_CHECK_EQUAL(FluidSystem::soluteComponentIndex(oilPhaseIdx), gasCompIdx);
-    BOOST_CHECK_EQUAL(FluidSystem::soluteComponentIndex(gasPhaseIdx), oilCompIdx);
+    BOOST_CHECK_EQUAL(fluidSystem->soluteComponentIndex(oilPhaseIdx), gasCompIdx);
+    BOOST_CHECK_EQUAL(fluidSystem->soluteComponentIndex(gasPhaseIdx), oilCompIdx);
 
-    BOOST_CHECK_SMALL(std::abs(FluidSystem::referenceDensity(oilPhaseIdx, /*regionIdx=*/1) - 860.04), 1e-10);
-    BOOST_CHECK_SMALL(std::abs(FluidSystem::referenceDensity(gasPhaseIdx, /*regionIdx=*/1) - 0.853), 1e-10);
-    BOOST_CHECK_SMALL(std::abs(FluidSystem::referenceDensity(waterPhaseIdx, /*regionIdx=*/1) - 1033), 1e-10);
+    BOOST_CHECK_SMALL(std::abs(fluidSystem->referenceDensity(oilPhaseIdx, /*regionIdx=*/1) - 860.04), 1e-10);
+    BOOST_CHECK_SMALL(std::abs(fluidSystem->referenceDensity(gasPhaseIdx, /*regionIdx=*/1) - 0.853), 1e-10);
+    BOOST_CHECK_SMALL(std::abs(fluidSystem->referenceDensity(waterPhaseIdx, /*regionIdx=*/1) - 1033), 1e-10);
 
-    Opm::BlackOilFluidState<Scalar, FluidSystem> fluidState;
+    Opm::BlackOilFluidState<Scalar, FluidSystem> fluidState(fluidSystem);
     Opm::Valgrind::SetUndefined(fluidState);
 
     static const Scalar eps = std::sqrt(std::numeric_limits<Scalar>::epsilon());
@@ -681,10 +682,10 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(BlackOil, Evaluation, Types)
             fluidState.setSaturation(phaseIdx, 1e-3);
         }
 
-        Scalar RsSat = FluidSystem::saturatedDissolutionFactor(fluidState, oilPhaseIdx, regionIdx);
+        Scalar RsSat = fluidSystem->saturatedDissolutionFactor(fluidState, oilPhaseIdx, regionIdx);
         fluidState.setRs(RsSat);
 
-        Scalar RvSat = FluidSystem::saturatedDissolutionFactor(fluidState, gasPhaseIdx, regionIdx);
+        Scalar RvSat = fluidSystem->saturatedDissolutionFactor(fluidState, gasPhaseIdx, regionIdx);
         fluidState.setRv(RvSat);
 
         paramCache.updateAll(fluidState);
@@ -694,35 +695,35 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(BlackOil, Evaluation, Types)
             // thermdynamic properties return the same value as the generic ones and that
             // the generic methods return the same value as the ones for the saturated
             // quantities (we specify the fluid state to be on the saturation line)
-            BOOST_CHECK_SMALL(Opm::abs(FluidSystem::density(fluidState, paramCache, phaseIdx) -
-                                       FluidSystem::density(fluidState, phaseIdx, regionIdx)), eps);
+            BOOST_CHECK_SMALL(Opm::abs(fluidSystem->density(fluidState, paramCache, phaseIdx) -
+                                       fluidSystem->density(fluidState, phaseIdx, regionIdx)), eps);
 
-            BOOST_CHECK_SMALL(Opm::abs(FluidSystem::density(fluidState, paramCache, phaseIdx) -
-                                       FluidSystem::saturatedDensity(fluidState, phaseIdx, regionIdx)), eps);
+            BOOST_CHECK_SMALL(Opm::abs(fluidSystem->density(fluidState, paramCache, phaseIdx) -
+                                       fluidSystem->saturatedDensity(fluidState, phaseIdx, regionIdx)), eps);
 
-            Scalar b = FluidSystem::inverseFormationVolumeFactor(fluidState, phaseIdx, regionIdx);
-            Scalar bSat = FluidSystem::saturatedInverseFormationVolumeFactor(fluidState, phaseIdx, regionIdx);
+            Scalar b = fluidSystem->inverseFormationVolumeFactor(fluidState, phaseIdx, regionIdx);
+            Scalar bSat = fluidSystem->saturatedInverseFormationVolumeFactor(fluidState, phaseIdx, regionIdx);
             BOOST_CHECK_SMALL(Opm::abs(b - bSat), eps);
 
-            BOOST_CHECK_SMALL(Opm::abs(FluidSystem::viscosity(fluidState, paramCache, phaseIdx) -
-                                       FluidSystem::viscosity(fluidState, phaseIdx, regionIdx)), 1e-10);
+            BOOST_CHECK_SMALL(Opm::abs(fluidSystem->viscosity(fluidState, paramCache, phaseIdx) -
+                                       fluidSystem->viscosity(fluidState, phaseIdx, regionIdx)), 1e-10);
 
-            Scalar R = FluidSystem::saturatedDissolutionFactor(fluidState, phaseIdx, regionIdx);
-            Scalar R2 = FluidSystem::saturatedDissolutionFactor(fluidState, phaseIdx, regionIdx);
+            Scalar R = fluidSystem->saturatedDissolutionFactor(fluidState, phaseIdx, regionIdx);
+            Scalar R2 = fluidSystem->saturatedDissolutionFactor(fluidState, phaseIdx, regionIdx);
             BOOST_CHECK_SMALL(Opm::abs(R - R2), eps);
 
             // water is immiscible and thus there is no saturation pressure
             if (phaseIdx != waterPhaseIdx) {
-                BOOST_CHECK_SMALL(Opm::abs(FluidSystem::saturationPressure(fluidState, phaseIdx, regionIdx) - p), eps*p);
+                BOOST_CHECK_SMALL(Opm::abs(fluidSystem->saturationPressure(fluidState, phaseIdx, regionIdx) - p), eps*p);
             }
         }
 
-        BOOST_CHECK_SMALL(Opm::abs(FluidSystem::bubblePointPressure(fluidState, regionIdx) - p), eps*p);
-        BOOST_CHECK_SMALL(Opm::abs(FluidSystem::dewPointPressure(fluidState, regionIdx) - p), eps*p);
+        BOOST_CHECK_SMALL(Opm::abs(fluidSystem->bubblePointPressure(fluidState, regionIdx) - p), eps*p);
+        BOOST_CHECK_SMALL(Opm::abs(fluidSystem->dewPointPressure(fluidState, regionIdx) - p), eps*p);
     }
 
     // make sure that the {oil,gas,water}Pvt() methods are available
-    [[maybe_unused]] const auto& gPvt = FluidSystem::gasPvt();
-    [[maybe_unused]] const auto& oPvt = FluidSystem::oilPvt();
-    [[maybe_unused]] const auto& wPvt = FluidSystem::waterPvt();
+    [[maybe_unused]] const auto& gPvt = fluidSystem->gasPvt();
+    [[maybe_unused]] const auto& oPvt = fluidSystem->oilPvt();
+    [[maybe_unused]] const auto& wPvt = fluidSystem->waterPvt();
 }

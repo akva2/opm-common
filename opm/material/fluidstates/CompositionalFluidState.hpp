@@ -60,6 +60,12 @@ class CompositionalFluidState<Scalar, FluidSystem, true>
                                FluidStateExplicitViscosityModule<Scalar, FluidSystem::numPhases, CompositionalFluidState<Scalar, FluidSystem, true> >,
                                FluidStateExplicitEnthalpyModule<Scalar, FluidSystem::numPhases, CompositionalFluidState<Scalar, FluidSystem, true> > >
 {
+public:
+    const FluidSystem& fluidSystem() const
+    {
+        static FluidSystem fs;
+        return fs;
+    }
 };
 
 // specialization for the enthalpy disabled case
@@ -77,6 +83,12 @@ class CompositionalFluidState<Scalar, FluidSystem, false>
                                FluidStateExplicitViscosityModule<Scalar, FluidSystem::numPhases, CompositionalFluidState<Scalar, FluidSystem, false> >,
                                FluidStateNullEnthalpyModule<Scalar, FluidSystem::numPhases, CompositionalFluidState<Scalar, FluidSystem, false> > >
 {
+public:
+    const FluidSystem& fluidSystem() const
+    {
+        static FluidSystem fs;
+        return fs;
+    }
 };
 
 } // namespace Opm

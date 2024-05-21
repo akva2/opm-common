@@ -80,7 +80,7 @@
 
 // check that the blackoil fluid system implements all non-standard functions
 template <class Evaluation, class FluidSystem>
-void ensureBlackoilApi()
+void ensureBlackoilApi(std::shared_ptr<FluidSystem> fluidSystem)
 {
     // here we don't want to call these methods at runtime, we just want to make sure
     // that they compile
@@ -90,12 +90,12 @@ void ensureBlackoilApi()
         Opm::Deck deck;
         Opm::EclipseState eclState(deck);
         Opm::Schedule schedule(deck, eclState, python);
-        FluidSystem::initFromState(eclState, schedule);
+        fluidSystem->initFromState(eclState, schedule);
 #endif
 
         typedef typename FluidSystem::Scalar Scalar;
         typedef Opm::BlackOilFluidState<Evaluation, FluidSystem> FluidState;
-        FluidState fluidState;
+        FluidState fluidState(fluidSystem);
         Evaluation XoG = 0.0;
         Evaluation XwG = 0.0;
         Evaluation XgO = 0.0;
@@ -103,9 +103,9 @@ void ensureBlackoilApi()
         Evaluation Rv = 0.0;
 
         // some additional typedefs
-        typedef typename FluidSystem::OilPvt OilPvt;
-        typedef typename FluidSystem::GasPvt GasPvt;
-        typedef typename FluidSystem::WaterPvt WaterPvt;
+        using OilPvt = typename FluidSystem::OilPvt;
+        using GasPvt = typename FluidSystem::GasPvt;
+        using WaterPvt = typename FluidSystem::WaterPvt;
 
         // check the black-oil specific enums
         static_assert(FluidSystem::numPhases == 3, "");
@@ -125,52 +125,52 @@ void ensureBlackoilApi()
         std::shared_ptr<WaterPvt> waterPvt;
 
         unsigned numPvtRegions = 2;
-        FluidSystem::initBegin(numPvtRegions);
-        FluidSystem::setEnableDissolvedGas(true);
-        FluidSystem::setEnableVaporizedOil(true);
-        FluidSystem::setEnableDissolvedGasInWater(true);
-        FluidSystem::setGasPvt(gasPvt);
-        FluidSystem::setOilPvt(oilPvt);
-        FluidSystem::setWaterPvt(waterPvt);
-        FluidSystem::setReferenceDensities(/*oil=*/600.0,
+        fluidSystem->initBegin(numPvtRegions);
+        fluidSystem->setEnableDissolvedGas(true);
+        fluidSystem->setEnableVaporizedOil(true);
+        fluidSystem->setEnableDissolvedGasInWater(true);
+        fluidSystem->setGasPvt(gasPvt);
+        fluidSystem->setOilPvt(oilPvt);
+        fluidSystem->setWaterPvt(waterPvt);
+        fluidSystem->setReferenceDensities(/*oil=*/600.0,
                                            /*water=*/1000.0,
                                            /*gas=*/1.0,
                                            /*regionIdx=*/0);
-        FluidSystem::initEnd();
+        fluidSystem->initEnd();
 
         // the molarMass() method has an optional argument for the PVT region
-        [[maybe_unused]] unsigned numRegions = FluidSystem::numRegions();
-        [[maybe_unused]] Scalar Mg = FluidSystem::molarMass(FluidSystem::gasCompIdx,
-                                                      /*regionIdx=*/0);
-        [[maybe_unused]] bool b1 = FluidSystem::enableDissolvedGas();
-        [[maybe_unused]] bool b2 = FluidSystem::enableVaporizedOil();
-        [[maybe_unused]] Scalar rhoRefOil = FluidSystem::referenceDensity(FluidSystem::oilPhaseIdx,
-                                                                    /*regionIdx=*/0);
-        std::cout << FluidSystem::convertXoGToRs(XoG, /*regionIdx=*/0);
-        std::cout << FluidSystem::convertXwGToRsw(XwG, /*regionIdx=*/0);
-        std::cout << FluidSystem::convertXgOToRv(XgO, /*regionIdx=*/0);
-        std::cout << FluidSystem::convertXoGToxoG(XoG, /*regionIdx=*/0);
-        std::cout << FluidSystem::convertXgOToxgO(XgO, /*regionIdx=*/0);
-        std::cout << FluidSystem::convertRsToXoG(Rs, /*regionIdx=*/0);
-        std::cout << FluidSystem::convertRvToXgO(Rv, /*regionIdx=*/0);
+        [[maybe_unused]] unsigned numRegions = fluidSystem->numRegions();
+        [[maybe_unused]] Scalar Mg = fluidSystem->molarMass(FluidSystem::gasCompIdx,
+                                                            /*regionIdx=*/0);
+        [[maybe_unused]] bool b1 = fluidSystem->enableDissolvedGas();
+        [[maybe_unused]] bool b2 = fluidSystem->enableVaporizedOil();
+        [[maybe_unused]] Scalar rhoRefOil = fluidSystem->referenceDensity(FluidSystem::oilPhaseIdx,
+                                                                          /*regionIdx=*/0);
+        std::cout << fluidSystem->convertXoGToRs(XoG, /*regionIdx=*/0);
+        std::cout << fluidSystem->convertXwGToRsw(XwG, /*regionIdx=*/0);
+        std::cout << fluidSystem->convertXgOToRv(XgO, /*regionIdx=*/0);
+        std::cout << fluidSystem->convertXoGToxoG(XoG, /*regionIdx=*/0);
+        std::cout << fluidSystem->convertXgOToxgO(XgO, /*regionIdx=*/0);
+        std::cout << fluidSystem->convertRsToXoG(Rs, /*regionIdx=*/0);
+        std::cout << fluidSystem->convertRvToXgO(Rv, /*regionIdx=*/0);
 
         for (unsigned phaseIdx = 0; phaseIdx < FluidSystem::numPhases; ++ phaseIdx) {
-            std::cout << FluidSystem::density(fluidState, phaseIdx, /*regionIdx=*/0);
-            std::cout << FluidSystem::saturatedDensity(fluidState, phaseIdx, /*regionIdx=*/0);
-            std::cout << FluidSystem::inverseFormationVolumeFactor(fluidState, phaseIdx, /*regionIdx=*/0);
-            std::cout << FluidSystem::saturatedInverseFormationVolumeFactor(fluidState, phaseIdx, /*regionIdx=*/0);
-            std::cout << FluidSystem::viscosity(fluidState, phaseIdx, /*regionIdx=*/0);
-            std::cout << FluidSystem::saturatedDissolutionFactor(fluidState, phaseIdx, /*regionIdx=*/0);
-            std::cout << FluidSystem::saturatedDissolutionFactor(fluidState, phaseIdx, /*regionIdx=*/0, /*maxSo=*/1.0);
-            std::cout << FluidSystem::saturationPressure(fluidState, phaseIdx, /*regionIdx=*/0);
-            for (unsigned compIdx = 0; compIdx < FluidSystem::numComponents; ++ compIdx)
-                std::cout << FluidSystem::fugacityCoefficient(fluidState, phaseIdx, compIdx,  /*regionIdx=*/0);
+            std::cout << fluidSystem->density(fluidState, phaseIdx, /*regionIdx=*/0);
+            std::cout << fluidSystem->saturatedDensity(fluidState, phaseIdx, /*regionIdx=*/0);
+            std::cout << fluidSystem->inverseFormationVolumeFactor(fluidState, phaseIdx, /*regionIdx=*/0);
+            std::cout << fluidSystem->saturatedInverseFormationVolumeFactor(fluidState, phaseIdx, /*regionIdx=*/0);
+            std::cout << fluidSystem->viscosity(fluidState, phaseIdx, /*regionIdx=*/0);
+            std::cout << fluidSystem->saturatedDissolutionFactor(fluidState, phaseIdx, /*regionIdx=*/0);
+            std::cout << fluidSystem->saturatedDissolutionFactor(fluidState, phaseIdx, /*regionIdx=*/0, /*maxSo=*/1.0);
+            std::cout << fluidSystem->saturationPressure(fluidState, phaseIdx, /*regionIdx=*/0);
+            for (unsigned compIdx = 0; compIdx < fluidSystem->numComponents; ++ compIdx)
+                std::cout << fluidSystem->fugacityCoefficient(fluidState, phaseIdx, compIdx,  /*regionIdx=*/0);
         }
 
         // the "not considered safe to use directly" API
-        [[maybe_unused]] const OilPvt& oilPvt2 = FluidSystem::oilPvt();
-        [[maybe_unused]] const GasPvt& gasPvt2 = FluidSystem::gasPvt();
-        [[maybe_unused]] const WaterPvt& waterPvt2 = FluidSystem::waterPvt();
+        [[maybe_unused]] const OilPvt& oilPvt2 = fluidSystem->oilPvt();
+        [[maybe_unused]] const GasPvt& gasPvt2 = fluidSystem->gasPvt();
+        [[maybe_unused]] const WaterPvt& waterPvt2 = fluidSystem->waterPvt();
     }
 }
 
@@ -264,13 +264,15 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(BlackoilFluidSystem, Scalar, ScalarTypes)
     using Evaluation = Opm::DenseAd::Evaluation<Scalar,3>;
     using FluidSystem = Opm::BlackOilFluidSystem<Scalar>;
 
-    if (false) checkFluidSystem<Scalar, FluidSystem, Scalar, Scalar>();
-    if (false) checkFluidSystem<Scalar, FluidSystem, Evaluation, Scalar>();
-    if (false) checkFluidSystem<Scalar, FluidSystem, Evaluation, Evaluation>();
+    auto fluidSystem = std::make_shared<FluidSystem>();
+
+    if (false) checkFluidSystem<Scalar, FluidSystem, Scalar, Scalar>(*fluidSystem);
+    if (false) checkFluidSystem<Scalar, FluidSystem, Evaluation, Scalar>(*fluidSystem);
+    if (false) checkFluidSystem<Scalar, FluidSystem, Evaluation, Evaluation>(*fluidSystem);
 
     using BlackoilDummyEval = Opm::DenseAd::Evaluation<Scalar, 1>;
-    ensureBlackoilApi<Scalar, FluidSystem>();
-    ensureBlackoilApi<BlackoilDummyEval, FluidSystem>();
+    ensureBlackoilApi<Scalar, FluidSystem>(fluidSystem);
+    ensureBlackoilApi<BlackoilDummyEval, FluidSystem>(fluidSystem);
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(BrineCO2FluidSystem, Scalar, ScalarTypes)
@@ -278,29 +280,33 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(BrineCO2FluidSystem, Scalar, ScalarTypes)
     using Evaluation = Opm::DenseAd::Evaluation<Scalar,3>;
     using FluidSystem = Opm::BrineCO2FluidSystem<Scalar>;
 
-    checkFluidSystem<Scalar, FluidSystem, Scalar, Scalar>();
-    checkFluidSystem<Scalar, FluidSystem, Evaluation, Scalar>();
-    checkFluidSystem<Scalar, FluidSystem, Evaluation, Evaluation>();
+    FluidSystem fluidSystem;
+
+    checkFluidSystem<Scalar, FluidSystem, Scalar, Scalar>(fluidSystem);
+    checkFluidSystem<Scalar, FluidSystem, Evaluation, Scalar>(fluidSystem);
+    checkFluidSystem<Scalar, FluidSystem, Evaluation, Evaluation>(fluidSystem);
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(H2ON2FluidSystem, Scalar, ScalarTypes)
 {
     using Evaluation = Opm::DenseAd::Evaluation<Scalar,3>;
     using FluidSystem = Opm::H2ON2FluidSystem<Scalar>;
+    FluidSystem fluidSystem;
 
-    checkFluidSystem<Scalar, FluidSystem, Scalar, Scalar>();
-    checkFluidSystem<Scalar, FluidSystem, Evaluation, Scalar>();
-    checkFluidSystem<Scalar, FluidSystem, Evaluation, Evaluation>();
+    checkFluidSystem<Scalar, FluidSystem, Scalar, Scalar>(fluidSystem);
+    checkFluidSystem<Scalar, FluidSystem, Evaluation, Scalar>(fluidSystem);
+    checkFluidSystem<Scalar, FluidSystem, Evaluation, Evaluation>(fluidSystem);
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(H2ON2LiquidPhaseFluidSystem, Scalar, ScalarTypes)
 {
     using Evaluation = Opm::DenseAd::Evaluation<Scalar,3>;
     using FluidSystem = Opm::H2ON2LiquidPhaseFluidSystem<Scalar>;
+    FluidSystem fluidSystem;
 
-    checkFluidSystem<Scalar, FluidSystem, Scalar, Scalar>();
-    checkFluidSystem<Scalar, FluidSystem, Evaluation, Scalar>();
-    checkFluidSystem<Scalar, FluidSystem, Evaluation, Evaluation>();
+    checkFluidSystem<Scalar, FluidSystem, Scalar, Scalar>(fluidSystem);
+    checkFluidSystem<Scalar, FluidSystem, Evaluation, Scalar>(fluidSystem);
+    checkFluidSystem<Scalar, FluidSystem, Evaluation, Evaluation>(fluidSystem);
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(H2OAirFluidSystem, Scalar, ScalarTypes)
@@ -308,20 +314,22 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(H2OAirFluidSystem, Scalar, ScalarTypes)
     using Evaluation = Opm::DenseAd::Evaluation<Scalar,3>;
     using H2O = Opm::SimpleH2O<Scalar>;
     using FluidSystem = Opm::H2OAirFluidSystem<Scalar, H2O>;
+    FluidSystem fluidSystem;
 
-    checkFluidSystem<Scalar, FluidSystem, Scalar, Scalar>();
-    checkFluidSystem<Scalar, FluidSystem, Evaluation, Scalar>();
-    checkFluidSystem<Scalar, FluidSystem, Evaluation, Evaluation>();
+    checkFluidSystem<Scalar, FluidSystem, Scalar, Scalar>(fluidSystem);
+    checkFluidSystem<Scalar, FluidSystem, Evaluation, Scalar>(fluidSystem);
+    checkFluidSystem<Scalar, FluidSystem, Evaluation, Evaluation>(fluidSystem);
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(H2OAirXyleneFluidSystem, Scalar, ScalarTypes)
 {
     using Evaluation = Opm::DenseAd::Evaluation<Scalar,3>;
     using FluidSystem = Opm::H2OAirXyleneFluidSystem<Scalar>;
+    FluidSystem fluidSystem;
 
-    checkFluidSystem<Scalar, FluidSystem, Scalar, Scalar>();
-    checkFluidSystem<Scalar, FluidSystem, Evaluation, Scalar>();
-    checkFluidSystem<Scalar, FluidSystem, Evaluation, Evaluation>();
+    checkFluidSystem<Scalar, FluidSystem, Scalar, Scalar>(fluidSystem);
+    checkFluidSystem<Scalar, FluidSystem, Evaluation, Scalar>(fluidSystem);
+    checkFluidSystem<Scalar, FluidSystem, Evaluation, Evaluation>(fluidSystem);
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(TwoPhaseImmiscibleFluidSystemLL, Scalar, ScalarTypes)
@@ -329,10 +337,11 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(TwoPhaseImmiscibleFluidSystemLL, Scalar, ScalarTyp
     using Evaluation = Opm::DenseAd::Evaluation<Scalar,3>;
     using Liquid = Opm::LiquidPhase<Scalar, Opm::H2O<Scalar>>;
     using FluidSystem = Opm::TwoPhaseImmiscibleFluidSystem<Scalar, Liquid, Liquid>;
+    FluidSystem fluidSystem;
 
-    checkFluidSystem<Scalar, FluidSystem, Scalar, Scalar>();
-    checkFluidSystem<Scalar, FluidSystem, Evaluation, Scalar>();
-    checkFluidSystem<Scalar, FluidSystem, Evaluation, Evaluation>();
+    checkFluidSystem<Scalar, FluidSystem, Scalar, Scalar>(fluidSystem);
+    checkFluidSystem<Scalar, FluidSystem, Evaluation, Scalar>(fluidSystem);
+    checkFluidSystem<Scalar, FluidSystem, Evaluation, Evaluation>(fluidSystem);
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(TwoPhaseImmiscibleFluidSystemLG, Scalar, ScalarTypes)
@@ -341,10 +350,11 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(TwoPhaseImmiscibleFluidSystemLG, Scalar, ScalarTyp
     using Gas = Opm::GasPhase<Scalar, Opm::N2<Scalar>>;
     using Liquid = Opm::LiquidPhase<Scalar, Opm::H2O<Scalar>>;
     using FluidSystem = Opm::TwoPhaseImmiscibleFluidSystem<Scalar, Liquid, Gas>;
+    FluidSystem fluidSystem;
 
-    checkFluidSystem<Scalar, FluidSystem, Scalar, Scalar>();
-    checkFluidSystem<Scalar, FluidSystem, Evaluation, Scalar>();
-    checkFluidSystem<Scalar, FluidSystem, Evaluation, Evaluation>();
+    checkFluidSystem<Scalar, FluidSystem, Scalar, Scalar>(fluidSystem);
+    checkFluidSystem<Scalar, FluidSystem, Evaluation, Scalar>(fluidSystem);
+    checkFluidSystem<Scalar, FluidSystem, Evaluation, Evaluation>(fluidSystem);
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(TwoPhaseImmiscibleFluidSystemGL, Scalar, ScalarTypes)
@@ -353,10 +363,11 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(TwoPhaseImmiscibleFluidSystemGL, Scalar, ScalarTyp
     using Gas = Opm::GasPhase<Scalar, Opm::N2<Scalar>>;
     using Liquid = Opm::LiquidPhase<Scalar, Opm::H2O<Scalar>>;
     using FluidSystem = Opm::TwoPhaseImmiscibleFluidSystem<Scalar, Gas, Liquid>;
+    FluidSystem fluidSystem;
 
-    checkFluidSystem<Scalar, FluidSystem, Scalar, Scalar>();
-    checkFluidSystem<Scalar, FluidSystem, Evaluation, Scalar>();
-    checkFluidSystem<Scalar, FluidSystem, Evaluation, Evaluation>();
+    checkFluidSystem<Scalar, FluidSystem, Scalar, Scalar>(fluidSystem);
+    checkFluidSystem<Scalar, FluidSystem, Evaluation, Scalar>(fluidSystem);
+    checkFluidSystem<Scalar, FluidSystem, Evaluation, Evaluation>(fluidSystem);
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(SinglePhaseFluidSystemL, Scalar, ScalarTypes)
@@ -364,10 +375,11 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(SinglePhaseFluidSystemL, Scalar, ScalarTypes)
     using Evaluation = Opm::DenseAd::Evaluation<Scalar,3>;
     using Liquid = Opm::LiquidPhase<Scalar, Opm::H2O<Scalar>>;
     using FluidSystem = Opm::SinglePhaseFluidSystem<Scalar, Liquid>;
+    FluidSystem fluidSystem;
 
-    checkFluidSystem<Scalar, FluidSystem, Scalar, Scalar>();
-    checkFluidSystem<Scalar, FluidSystem, Evaluation, Scalar>();
-    checkFluidSystem<Scalar, FluidSystem, Evaluation, Evaluation>();
+    checkFluidSystem<Scalar, FluidSystem, Scalar, Scalar>(fluidSystem);
+    checkFluidSystem<Scalar, FluidSystem, Evaluation, Scalar>(fluidSystem);
+    checkFluidSystem<Scalar, FluidSystem, Evaluation, Evaluation>(fluidSystem);
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(SinglePhaseFluidSystemG, Scalar, ScalarTypes)
@@ -375,42 +387,45 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(SinglePhaseFluidSystemG, Scalar, ScalarTypes)
     using Evaluation = Opm::DenseAd::Evaluation<Scalar,3>;
     using Gas = Opm::GasPhase<Scalar, Opm::N2<Scalar>>;
     using FluidSystem = Opm::SinglePhaseFluidSystem<Scalar, Gas>;
+    FluidSystem fluidSystem;
 
-    checkFluidSystem<Scalar, FluidSystem, Scalar, Scalar>();
-    checkFluidSystem<Scalar, FluidSystem, Evaluation, Scalar>();
-    checkFluidSystem<Scalar, FluidSystem, Evaluation, Evaluation>();
+    checkFluidSystem<Scalar, FluidSystem, Scalar, Scalar>(fluidSystem);
+    checkFluidSystem<Scalar, FluidSystem, Evaluation, Scalar>(fluidSystem);
+    checkFluidSystem<Scalar, FluidSystem, Evaluation, Evaluation>(fluidSystem);
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(ThreeComponentFluidSystem, Scalar, ScalarTypes)
 {
     using Evaluation = Opm::DenseAd::Evaluation<Scalar,3>;
     using FluidSystem = Opm::ThreeComponentFluidSystem<Scalar>;
+    FluidSystem fluidSystem;
 
-    checkFluidSystem<Scalar, FluidSystem, Scalar, Scalar>();
-    checkFluidSystem<Scalar, FluidSystem, Evaluation, Scalar>();
-    checkFluidSystem<Scalar, FluidSystem, Evaluation, Evaluation>();
+    checkFluidSystem<Scalar, FluidSystem, Scalar, Scalar>(fluidSystem);
+    checkFluidSystem<Scalar, FluidSystem, Evaluation, Scalar>(fluidSystem);
+    checkFluidSystem<Scalar, FluidSystem, Evaluation, Evaluation>(fluidSystem);
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(GenericFluidSystem, Scalar, ScalarTypes)
 {
     using Evaluation = Opm::DenseAd::Evaluation<Scalar, 4>;
     using FluidSystem = Opm::GenericOilGasFluidSystem<Scalar, 4>;
+    FluidSystem fluidSystem;
 
     using CompParm = typename FluidSystem::ComponentParam;
     using CO2 = Opm::SimpleCO2<Scalar>;
     using C1 = Opm::C1<Scalar>;
     using N2 = Opm::N2<Scalar>;
     using C10 = Opm::C10<Scalar>;
-    FluidSystem::addComponent(CompParm {CO2::name(), CO2::molarMass(), CO2::criticalTemperature(),
-                                        CO2::criticalPressure(), CO2::criticalVolume(), CO2::acentricFactor()});
-    FluidSystem::addComponent(CompParm {C1::name(), C1::molarMass(), C1::criticalTemperature(),
-                                        C1::criticalPressure(), C1::criticalVolume(), C1::acentricFactor()});
-    FluidSystem::addComponent(CompParm{C10::name(), C10::molarMass(), C10::criticalTemperature(),
-                                       C10::criticalPressure(), C10::criticalVolume(), C10::acentricFactor()});
-    FluidSystem::addComponent(CompParm{N2::name(), N2::molarMass(), N2::criticalTemperature(),
-                                       N2::criticalPressure(), N2::criticalVolume(), N2::acentricFactor()});
+    fluidSystem.addComponent(CompParm {CO2::name(), CO2::molarMass(), CO2::criticalTemperature(),
+                                       CO2::criticalPressure(), CO2::criticalVolume(), CO2::acentricFactor()});
+    fluidSystem.addComponent(CompParm {C1::name(), C1::molarMass(), C1::criticalTemperature(),
+                                       C1::criticalPressure(), C1::criticalVolume(), C1::acentricFactor()});
+    fluidSystem.addComponent(CompParm{C10::name(), C10::molarMass(), C10::criticalTemperature(),
+                                      C10::criticalPressure(), C10::criticalVolume(), C10::acentricFactor()});
+    fluidSystem.addComponent(CompParm{N2::name(), N2::molarMass(), N2::criticalTemperature(),
+                                      N2::criticalPressure(), N2::criticalVolume(), N2::acentricFactor()});
 
-    checkFluidSystem<Scalar, FluidSystem, Scalar, Scalar>();
-    checkFluidSystem<Scalar, FluidSystem, Evaluation, Scalar>();
-    checkFluidSystem<Scalar, FluidSystem, Evaluation, Evaluation>();
+    checkFluidSystem<Scalar, FluidSystem, Scalar, Scalar>(fluidSystem);
+    checkFluidSystem<Scalar, FluidSystem, Evaluation, Scalar>(fluidSystem);
+    checkFluidSystem<Scalar, FluidSystem, Evaluation, Evaluation>(fluidSystem);
 }

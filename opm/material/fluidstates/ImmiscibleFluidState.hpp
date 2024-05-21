@@ -32,12 +32,6 @@
 
 #include "ModularFluidState.hpp"
 
-#include <opm/material/common/Valgrind.hpp>
-
-#include <algorithm>
-
-#include <string.h>
-
 namespace Opm {
 
 /*!
@@ -64,8 +58,11 @@ class ImmiscibleFluidState<Scalar, FluidSystem, true>
                                FluidStateExplicitEnthalpyModule<Scalar, FluidSystem::numPhases, ImmiscibleFluidState<Scalar, FluidSystem, true> > >
 {
 public:
-    ImmiscibleFluidState()
-    {}
+    const FluidSystem& fluidSystem() const
+    {
+        static FluidSystem fs;
+        return fs;
+    }
 };
 
 // specialization for the enthalpy disabled case
@@ -84,8 +81,11 @@ class ImmiscibleFluidState<Scalar, FluidSystem, false>
                                FluidStateNullEnthalpyModule<Scalar, FluidSystem::numPhases, ImmiscibleFluidState<Scalar, FluidSystem, false> > >
 {
 public:
-    ImmiscibleFluidState()
-    {}
+    const FluidSystem& fluidSystem() const
+    {
+        static FluidSystem fs;
+        return fs;
+    }
 };
 } // namespace Opm
 

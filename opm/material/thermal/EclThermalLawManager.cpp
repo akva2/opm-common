@@ -125,7 +125,7 @@ initHeatcr_(const EclipseState& eclState, size_t numElems,
     solidEnergyApproach_ = EclSolidEnergyApproach::Heatcr;
     // actually the value of the reference temperature does not matter for energy
     // conservation. We set it anyway to faciliate comparisons with ECL
-    HeatcrLawParams::setReferenceTemperature(FluidSystem::surfaceTemperature);
+    HeatcrLawParams::setReferenceTemperature(fluidSystem_->surfaceTemperature);
 
     const std::vector<double>& heatcrData = fieldPropsDoubleOnLeafAssigner(eclState.fieldProps(), "HEATCR");
     const std::vector<double>& heatcrtData = fieldPropsDoubleOnLeafAssigner(eclState.fieldProps(), "HEATCRT");

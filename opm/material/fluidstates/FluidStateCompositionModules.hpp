@@ -31,9 +31,8 @@
 #include <opm/material/common/Valgrind.hpp>
 #include <opm/material/common/MathToolbox.hpp>
 
-#include <algorithm>
 #include <array>
-#include <cmath>
+#include <memory>
 
 namespace Opm {
 
@@ -75,7 +74,7 @@ public:
         return
             abs(sumMoleFractions_[phaseIdx])
             *moleFraction_[phaseIdx][compIdx]
-            *FluidSystem::molarMass(compIdx)
+            *fluidSystem_->molarMass(compIdx)
             / max(1e-40, abs(averageMolarMass_[phaseIdx]));
     }
 
@@ -121,7 +120,7 @@ public:
         averageMolarMass_[phaseIdx] = 0.0;
         for (unsigned compJIdx = 0; compJIdx < numComponents; ++compJIdx) {
             sumMoleFractions_[phaseIdx] += moleFraction_[phaseIdx][compJIdx];
-            averageMolarMass_[phaseIdx] += moleFraction_[phaseIdx][compJIdx]*FluidSystem::molarMass(compJIdx);
+            averageMolarMass_[phaseIdx] += moleFraction_[phaseIdx][compJIdx]*fluidSystem_->molarMass(compJIdx);
         }
     }
 
@@ -228,6 +227,7 @@ protected:
     std::array<Scalar,numPhases> Z_;
     std::array<Scalar,numComponents> K_;
     Scalar L_;
+    std::shared_ptr<FluidSystem> fluidSystem_;
 };
 
 /*!
