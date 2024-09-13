@@ -115,10 +115,12 @@ const std::vector<double>& RigWellPath::measuredDepths() const
 std::vector<double> RigWellPath::trueVerticalDepths() const
 {
     std::vector<double> tvds;
-    for ( const cvf::Vec3d& point : m_wellPathPoints )
-    {
-        tvds.push_back( std::fabs( point.z() ) );
-    }
+    tvds.resize(m_wellPathPoints.size());
+    std::transform(m_wellPathPoints.begin(), m_wellPathPoints.end(), tvds.begin(),
+                   [](const auto& point)
+                   {
+                       return std::fabs(point.z());
+                   });
     return tvds;
 }
 
@@ -218,7 +220,7 @@ cvf::Vec3d
                                                         double* horizontalLengthAlongWellToStartClipPoint /*= nullptr*/ ) const
 {
     CVF_ASSERT( vectorValuesAlongWellPath.size() == m_wellPathPoints.size() );
-    cvf::Vec3d interpolatedVector = cvf::Vec3d::ZERO;
+    cvf::Vec3d interpolatedVector;
 
     if ( horizontalLengthAlongWellToStartClipPoint ) *horizontalLengthAlongWellToStartClipPoint = 0.0;
 
@@ -575,12 +577,11 @@ std::vector<cvf::Vec3d>
 //--------------------------------------------------------------------------------------------------
 bool RigWellPath::isAnyPointInsideBoundingBox( const std::vector<cvf::Vec3d>& points, const cvf::BoundingBox& boundingBox )
 {
-    for ( const cvf::Vec3d& point : points )
-    {
-        if ( boundingBox.contains( point ) ) return true;
-    }
-
-    return false;
+    return std::any_of(points.begin(), points.end(),
+                       [&boundingBox](const auto& point)
+                       {
+                          return boundingBox.contains(point);
+                       });
 }
 
 //--------------------------------------------------------------------------------------------------

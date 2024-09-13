@@ -110,9 +110,7 @@ namespace Opm {
             cnames.insert({{"H2O", -1}, {"CO2", -1}, {"NACL", -1}});
             for (size_t c = 0; c < num_comp; ++c) {
                 const auto& name = item.getTrimmedString(c);
-                if (cnames.find(name) != cnames.end()) {
-                    cnames[name] = c;
-                }
+                cnames.try_emplace(name, c);
             }
         }
 

@@ -269,7 +269,7 @@ namespace Opm {
         const bool unified  = output ? getUNIFOUT() : getUNIFIN();
         const bool fmt_file = output ? getFMTOUT()  : getFMTIN();
 
-        auto ext = std::string{};
+        std::string ext;
         if (unified) {
             ext = fmt_file ? "FUNRST" : "UNRST";
         }

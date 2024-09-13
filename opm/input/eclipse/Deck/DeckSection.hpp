@@ -20,6 +20,7 @@
 #ifndef SECTION_HPP
 #define SECTION_HPP
 
+#include <algorithm>
 #include <string>
 
 #include <opm/input/eclipse/Deck/DeckView.hpp>
@@ -84,8 +85,9 @@ class DeckSection : public DeckView {
         std::vector<const DeckKeyword*> getKeywordList(const std::string& keyword) const {
             std::vector<const DeckKeyword*> kw_list;
             auto view = this->operator[](keyword);
-            for (const auto& kw : view)
-                kw_list.push_back(&kw);
+            kw_list.reserve(view.size());
+            std::transform(view.begin(), view.end(), kw_list.begin(),
+                           [](const auto& kw) { return &kw; });
             return kw_list;
         }
 

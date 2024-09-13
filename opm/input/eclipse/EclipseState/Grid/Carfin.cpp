@@ -252,7 +252,8 @@ namespace Opm
         return m_dims[dim];
     }
 
-    std::string Carfin::NAME() const {
+    const std::string& Carfin::NAME() const
+    {
         return name_grid;
     }
 

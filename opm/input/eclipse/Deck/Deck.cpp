@@ -30,8 +30,9 @@ namespace Opm {
     std::vector< const DeckKeyword* > Deck::getKeywordList( const std::string& keyword ) const {
         std::vector<const DeckKeyword *> pointers;
         auto view = this->global_view().operator[](keyword);
-        for (const auto& kw : view)
-            pointers.push_back(&kw);
+        pointers.reserve(view.size());
+        std::transform(view.begin(), view.end(), pointers.begin(),
+                       [](const auto& kw) { return &kw; });
         return pointers;
     }
 

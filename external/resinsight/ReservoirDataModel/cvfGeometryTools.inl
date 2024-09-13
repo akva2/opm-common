@@ -17,6 +17,7 @@
 //
 /////////////////////////////////////////////////////////////////////////////////
 
+#include <algorithm>
 #include <cmath>
 
 namespace external
@@ -76,10 +77,7 @@ bool GeometryTools::insertVertexInPolygon( std::vector<IndexType>*              
 
     // Check if vertex is directly included already
 
-    for ( typename std::vector<IndexType>::iterator it = polygon->begin(); it != polygon->end(); ++it )
-    {
-        if ( *it == vertexIndex ) return true;
-    }
+    return std::any_of(polygon->begin(), polygon->end(), vertexIndex);
 
 #if 1
     // Check if the new point is within tolerance of one of the polygon vertices
@@ -652,10 +650,9 @@ void GeometryTools::calculatePartiallyFreeCubeFacePolygon(
 
     // Build search maps
     {
-        size_t count;
         for ( size_t i = 0; i < faceOverlapPolygons.size(); ++i )
         {
-            count = 0;
+            size_t count = 0;
             for ( typename std::vector<IndexType>::const_iterator pcIt = faceOverlapPolygons[i]->begin();
                   pcIt != faceOverlapPolygons[i]->end();
                   ++pcIt )
