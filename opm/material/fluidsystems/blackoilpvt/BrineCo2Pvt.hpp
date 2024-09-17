@@ -84,24 +84,7 @@ public:
                          int thermalMixingModelSalt = 1,
                          int thermalMixingModelLiquid = 2,
                          Scalar T_ref = 288.71, //(273.15 + 15.56)
-                         Scalar P_ref = 101325)
-        : salinity_(salinity)
-    {
-        // Throw an error if reference state is not (T, p) = (15.56 C, 1 atm) = (288.71 K, 1.01325e5 Pa)
-        if (T_ref != Scalar(288.71) || P_ref != Scalar(1.01325e5)) {
-            OPM_THROW(std::runtime_error,
-                "BrineCo2Pvt class can only be used with default reference state (T, P) = (288.71 K, 1.01325e5 Pa)!");
-        }
-        setActivityModelSalt(activityModel);
-        setThermalMixingModel(thermalMixingModelSalt, thermalMixingModelLiquid);
-        int num_regions =  salinity_.size();
-        co2ReferenceDensity_.resize(num_regions);
-        brineReferenceDensity_.resize(num_regions);
-        for (int i = 0; i < num_regions; ++i) {
-            co2ReferenceDensity_[i] = CO2::gasDensity(T_ref, P_ref, true);
-            brineReferenceDensity_[i] = Brine::liquidDensity(T_ref, P_ref, salinity_[i], true);
-        }
-    }
+                         Scalar P_ref = 101325);
 
 #if HAVE_ECL_INPUT
     /*!
@@ -111,12 +94,7 @@ public:
     void initFromState(const EclipseState& eclState, const Schedule&);
 #endif
 
-    void setNumRegions(size_t numRegions)
-    {
-        brineReferenceDensity_.resize(numRegions);
-        co2ReferenceDensity_.resize(numRegions);
-        salinity_.resize(numRegions);
-    }
+    void setNumRegions(size_t numRegions);
 
     void setVapPars(const Scalar, const Scalar)
     {
@@ -128,19 +106,13 @@ public:
     void setReferenceDensities(unsigned regionIdx,
                                Scalar rhoRefBrine,
                                Scalar rhoRefCO2,
-                               Scalar /*rhoRefWater*/)
-    {
-        brineReferenceDensity_[regionIdx] = rhoRefBrine;
-        co2ReferenceDensity_[regionIdx] = rhoRefCO2;
-    }
-
+                               Scalar /*rhoRefWater*/);
 
     /*!
      * \brief Finish initializing the oil phase PVT properties.
      */
     void initEnd()
     {
-
     }
 
     /*!
@@ -164,61 +136,16 @@ public:
     /*!
     * \brief Set activity coefficient model for salt in solubility model
     */
-    void setActivityModelSalt(int activityModel)
-    {
-        // Only 1, 2 and 3 are allowed
-        if (activityModel > 3 || activityModel < 1) {
-            OPM_THROW(std::runtime_error, "The salt activity model options are 1, 2 or 3");
-        }
-        activityModel_ = activityModel;
-    }
+    void setActivityModelSalt(int activityModel);
 
     /*!
     * \brief Set thermal mixing model for co2 in brine
     */
-    void setThermalMixingModel(int thermalMixingModelSalt, int thermalMixingModelLiquid)
-    {
-        if (thermalMixingModelSalt == 0)
-            saltMixType_ = Co2StoreConfig::SaltMixingType::NONE;
-        else if (thermalMixingModelSalt == 1)
-            saltMixType_ = Co2StoreConfig::SaltMixingType::MICHAELIDES;
-        else 
-            OPM_THROW(std::runtime_error, "The thermal mixing model option for salt are 0 or 1");
+    void setThermalMixingModel(int thermalMixingModelSalt, int thermalMixingModelLiquid);
 
-        if (thermalMixingModelLiquid == 0)
-            liquidMixType_ = Co2StoreConfig::LiquidMixingType::NONE;
-        else if (thermalMixingModelLiquid == 1)
-            liquidMixType_ = Co2StoreConfig::LiquidMixingType::IDEAL;
-        else if (thermalMixingModelLiquid == 2)
-            liquidMixType_ = Co2StoreConfig::LiquidMixingType::DUANSUN;
-        else 
-            OPM_THROW(std::runtime_error, "The thermal mixing model option for liquid are 0, 1 and 2");
-    }
+    void setEzrokhiDenCoeff(const std::vector<EzrokhiTable>& denaqa);
 
-    void setEzrokhiDenCoeff(const std::vector<EzrokhiTable>& denaqa)
-    {
-        if (denaqa.empty())
-            return;
-
-        enableEzrokhiDensity_ = true;
-        ezrokhiDenNaClCoeff_ = {static_cast<Scalar>(denaqa[0].getC0("NACL")), 
-                                static_cast<Scalar>(denaqa[0].getC1("NACL")), 
-                                static_cast<Scalar>(denaqa[0].getC2("NACL"))};
-        ezrokhiDenCo2Coeff_ = {static_cast<Scalar>(denaqa[0].getC0("CO2")), 
-                               static_cast<Scalar>(denaqa[0].getC1("CO2")), 
-                               static_cast<Scalar>(denaqa[0].getC2("CO2"))};
-    }
-
-    void setEzrokhiViscCoeff(const std::vector<EzrokhiTable>& viscaqa)
-    {
-        if (viscaqa.empty())
-            return;
-
-        enableEzrokhiViscosity_ = true;
-        ezrokhiViscNaClCoeff_ = {static_cast<Scalar>(viscaqa[0].getC0("NACL")), 
-                                 static_cast<Scalar>(viscaqa[0].getC1("NACL")), 
-                                 static_cast<Scalar>(viscaqa[0].getC2("NACL"))};
-    }
+    void setEzrokhiViscCoeff(const std::vector<EzrokhiTable>& viscaqa);
 
     /*!
      * \brief Return the number of PVT regions which are considered by this PVT-object.
