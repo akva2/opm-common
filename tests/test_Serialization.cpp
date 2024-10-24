@@ -159,7 +159,7 @@ namespace {
     std::tuple<T,int,int> PackUnpack(T& in)
     {
         Opm::Serialization::MemPacker packer;
-        Opm::Serializer ser(packer);
+        Opm::Serializer ser(packer, true);
         ser.pack(in);
         const size_t pos1 = ser.position();
         T out{};

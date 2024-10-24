@@ -378,7 +378,22 @@ namespace Opm
         }
 
         template <typename T, class Serializer>
-        void pack_unpack(Serializer& serializer) {
+        void checksum_state(Serializer& serializer)
+        {
+            for (std::size_t index = 0; index < this->snapshots.size(); index++) {
+                serializer.appendCheckSum(this->snapshots[index].get<T>().get());
+            }
+        }
+
+        template <typename T, class Serializer>
+        void pack_unpack(Serializer& serializer)
+        {
+            if (serializer.isCheckSumming()) {
+                this->template checksum_state<T>(serializer);
+                return;
+            }
+
+            const bool checksum_enabled = serializer.manualCheckSumming(true);
             std::vector<T> value_list;
             std::vector<std::size_t> index_list;
 
@@ -390,6 +405,12 @@ namespace Opm
 
             if (!serializer.isSerializing())
                 this->template unpack_state<T>(value_list, index_list);
+
+            if (checksum_enabled) {
+                this->template checksum_state<T>(serializer);
+            }
+
+            serializer.manualCheckSumming(false);
         }
 
         template <typename T>
@@ -434,9 +455,27 @@ namespace Opm
             }
         }
 
+        template <typename K, typename T, class Serializer>
+        void checksum_map(Serializer& serializer)
+        {
+            for (std::size_t index = 0; index < this->snapshots.size(); index++) {
+                for (const auto& it : this->snapshots[index].get_map<K,T>()) {
+                    serializer.appendCheckSum(it.first);
+                    serializer.appendCheckSum(*it.second);
+                }
+            }
+        }
 
         template <typename K, typename T, class Serializer>
-        void pack_unpack_map(Serializer& serializer) {
+        void pack_unpack_map(Serializer& serializer)
+        {
+            // Serializer in check-summing mode
+            if (serializer.isCheckSumming()) {
+                this->template checksum_map<K,T>(serializer);
+                return;
+            }
+
+            const bool checksum_enabled = serializer.manualCheckSumming(true);
             std::vector<T> value_list;
             std::vector<std::size_t> index_list;
 
@@ -448,6 +487,12 @@ namespace Opm
 
             if (!serializer.isSerializing())
                 unpack_map<K,T>(value_list, index_list);
+
+            if (checksum_enabled) {
+                this->template checksum_map<K,T>(serializer);
+            }
+
+            serializer.manualCheckSumming(false);
         }
 
 

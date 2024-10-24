@@ -21,10 +21,15 @@
 #ifndef SERIALIZER_HPP
 #define SERIALIZER_HPP
 
+#include <opm/common/utility/CheckSum.hpp>
+
+#include <boost/crc.hpp>
+
 #include <algorithm>
 #include <functional>
 #include <map>
 #include <memory>
+#include <numeric>
 #include <optional>
 #include <set>
 #include <stdexcept>
@@ -91,8 +96,11 @@ class Serializer {
 public:
     //! \brief Constructor.
     //! \param packer Packer to use
-    explicit Serializer(const Packer& packer) :
-        m_packer(packer)
+    //! \param checksum True to use check-summing
+    Serializer(const Packer& packer, bool checksum)
+        : m_packer(packer)
+        , m_checksum(m_checksummer)
+        , m_use_checksum(checksum)
     {}
 
     //! \brief Applies current serialization op to the passed data.
@@ -122,12 +130,26 @@ public:
         } else if constexpr (has_serializeOp<detail::remove_cvr_t<T>>::value) {
             const_cast<T&>(data).serializeOp(*this);
         } else {
-            if (m_op == Operation::PACKSIZE)
+            switch (m_op) {
+            case Operation::PACKSIZE:
                 m_packSize += m_packer.packSize(data);
-            else if (m_op == Operation::PACK)
+                break;
+            case Operation::PACK:
                 m_packer.pack(data, m_buffer, m_position);
-            else if (m_op == Operation::UNPACK)
+                if (m_use_checksum && !m_suspend_check_sum) {
+                    m_checksum.checkSum(data);
+                }
+                break;
+            case Operation::UNPACK:
                 m_packer.unpack(const_cast<T&>(data), m_buffer, m_position);
+                if (m_use_checksum && !m_suspend_check_sum) {
+                    m_checksum.checkSum(data);
+                }
+                break;
+            case Operation::CHECKSUM:
+                m_checksum.checkSum(data);
+                break;
+            }
         }
     }
 
@@ -142,10 +164,19 @@ public:
         m_packSize = 0;
         (*this)(data);
         m_position = 0;
+        if (m_use_checksum) {
+            m_packSize += sizeof(uint32_t);
+            m_checksummer.reset();
+        }
         m_buffer.resize(m_packSize);
         m_ptrmap.clear();
         m_op = Operation::PACK;
         (*this)(data);
+        if (m_use_checksum) {
+            m_suspend_check_sum = true;
+            (*this)(m_checksummer.checksum());
+            m_suspend_check_sum = false;
+        }
     }
 
     //! \brief Call this to serialize data.
@@ -158,11 +189,20 @@ public:
         m_op = Operation::PACKSIZE;
         m_packSize = 0;
         variadic_call(data...);
+        if (m_use_checksum) {
+            m_packSize += sizeof(uint32_t);
+            m_checksummer.reset();
+        }
         m_position = 0;
         m_buffer.resize(m_packSize);
         m_ptrmap.clear();
         m_op = Operation::PACK;
         variadic_call(data...);
+        if (m_use_checksum) {
+            m_suspend_check_sum = true;
+            (*this)(m_checksummer.checksum());
+            m_suspend_check_sum = false;
+        }
     }
 
     //! \brief Call this to de-serialize data.
@@ -174,7 +214,19 @@ public:
         m_position = 0;
         m_ptrmap.clear();
         m_op = Operation::UNPACK;
+        if (m_use_checksum) {
+            m_checksummer.reset();
+        }
         (*this)(data);
+        if (m_use_checksum) {
+            m_suspend_check_sum = true;
+            uint32_t check_sum;
+            (*this)(check_sum);
+            if (check_sum != m_checksummer.checksum()) {
+                throw std::runtime_error("Check-sum mismatch in de-serialization");
+            }
+            m_suspend_check_sum = false;
+        }
     }
 
     //! \brief Call this to de-serialize data.
@@ -186,7 +238,54 @@ public:
         m_position = 0;
         m_ptrmap.clear();
         m_op = Operation::UNPACK;
+        if (m_use_checksum) {
+            m_checksummer.reset();
+        }
         variadic_call(data...);
+        if (m_use_checksum) {
+            m_suspend_check_sum = true;
+            uint32_t check_sum;
+            (*this)(check_sum);
+            if (check_sum != m_checksummer.checksum()) {
+                throw std::runtime_error("Check-sum mismatch in de-serialization");
+            }
+            m_suspend_check_sum = false;
+        }
+    }
+
+    //! \brief Call this to calculate check-sum of data.
+    //! \tparam T Type of class to check-sum
+    //! param data Class to check-sum
+    template<class T>
+    uint32_t checksum(const T& data)
+    {
+        m_op = Operation::CHECKSUM;
+        m_checksummer.reset();
+        m_ptrmap.clear();
+        (*this)(data);
+        return m_checksummer.checksum();
+    }
+
+    template<class T>
+    void appendCheckSum(const T& data)
+    {
+        Operation op = Operation::CHECKSUM;
+        std::swap(op, m_op);
+        (*this)(data);
+        std::swap(op, m_op);
+    }
+
+    //! \brief Call this to calculate check-sum of data.
+    //! \tparam T Type of class to check-sum
+    //! param data Class to check-sum
+    template<class...  Args>
+    uint32_t checksum(const Args&... data)
+    {
+        m_op = Operation::CHECKSUM;
+        m_checksummer.reset();
+        m_ptrmap.clear();
+        variadic_call(data...);
+        return m_checksummer.checksum();
     }
 
     //! \brief Returns current position in buffer.
@@ -199,6 +298,23 @@ public:
     bool isSerializing() const
     {
         return m_op != Operation::UNPACK;
+    }
+
+    //! \brief Returns true if we are currently doing a check-summing operation.
+    bool isCheckSumming() const
+    {
+        return m_op == Operation::CHECKSUM;
+    }
+
+    //! \brief Suspend automatic check-summing if enabled.
+    //! \return True if check-summing is enabled
+    bool manualCheckSumming(bool manual)
+    {
+        if (m_use_checksum) {
+            m_suspend_check_sum = manual;
+        }
+
+        return m_use_checksum;
     }
 
 protected:
@@ -351,6 +467,13 @@ protected:
                 (*this)(entry);
                 data_mut.insert(entry);
             }
+        } else if (m_op == Operation::CHECKSUM) {
+            (*this)(data.size());
+            for (std::size_t i : getSortedIndex(data)) {
+                auto it = data.begin();
+                std::advance(it, i);
+                (*this)(*it);
+            }
         } else {
             (*this)(data.size());
             std::for_each(data.begin(), data.end(), std::ref(*this));
@@ -372,6 +495,14 @@ protected:
                 (*this)(entry);
                 data_mut.insert(entry);
             }
+        } else if (m_op == Operation::CHECKSUM) {
+            std::set<typename Set::value_type> sset;
+            for (const auto& d : data) {
+                sset.insert(d);
+            }
+            (*this)(data.size());
+            for (auto& i : sset)
+                (*this)(i);
         } else {
             (*this)(data.size());
             std::for_each(data.begin(), data.end(), std::ref(*this));
@@ -405,7 +536,8 @@ protected:
     enum class Operation {
         PACKSIZE, //!< Calculating serialization buffer size
         PACK,     //!< Performing serialization
-        UNPACK    //!< Performing de-serialization
+        UNPACK,   //!< Performing de-serialization
+        CHECKSUM  //!< Performing check-summing
     };
 
     //! \brief Predicate for detecting vectors.
@@ -551,14 +683,21 @@ protected:
     {
         using T1 = typename PtrType::element_type;
         void* data_ptr = reinterpret_cast<void*>(data.get());
-        (*this)(data_ptr);
-        if (!data_ptr)
-            return;
+        if (m_op != Operation::CHECKSUM) {
+            (*this)(data_ptr);
+            if (!data_ptr)
+                return;
+          }
 
         if (m_op == Operation::PACK || m_op == Operation::PACKSIZE) {
             if (m_ptrmap.count(data_ptr) == 0) {
                 (*this)(*data);
                 m_ptrmap[data_ptr] = nullptr;
+            }
+        } else if (m_op == Operation::CHECKSUM) {
+            (*this)(data ? 1 : 0);
+            if (data) {
+                (*this)(*data);
             }
         } else {  // m_op == Operation::UNPACK
             if (m_ptrmap.count(data_ptr) == 0) {
@@ -575,15 +714,22 @@ protected:
     void uniqueptr(const PtrType& data)
     {
         using T1 = typename PtrType::element_type;
-        void* data_ptr = reinterpret_cast<void*>(&(*data));
-        (*this)(data_ptr);
-        if (!data_ptr)
-            return;
+        void* data_ptr = reinterpret_cast<void*>(data.get());
+        if (m_op != Operation::CHECKSUM) {
+            (*this)(data_ptr);
+            if (!data_ptr)
+                return;
+        }
 
         if (m_op == Operation::PACK || m_op == Operation::PACKSIZE) {
             if (m_ptrmap.count(data_ptr) == 0) {
                 (*this)(*data);
                 m_ptrmap[data_ptr] = nullptr;
+            }
+        } else if (m_op == Operation::CHECKSUM) {
+            (*this)(data ? 1 : 0);
+            if (data) {
+                (*this)(*data);
             }
         } else {  // m_op == Operation::UNPACK
             if (m_ptrmap.count(data_ptr) == 0) {
@@ -596,12 +742,34 @@ protected:
         }
     }
 
+    template<class Container>
+    std::vector<std::size_t> getSortedIndex(const Container& C)
+    {
+        std::vector<std::size_t> index(C.size());
+        std::iota(index.begin(), index.end(), 0);
+        std::sort(index.begin(), index.end(),
+                  [&C](std::size_t i, std::size_t j)
+                  {
+                      auto it1 = C.begin();
+                      std::advance(it1, i);
+                      auto it2 = C.begin();
+                      std::advance(it2, j);
+                      return it1->first < it2->first;
+                  });
+
+        return index;
+    }
+
     const Packer& m_packer; //!< Packer to use
     Operation m_op = Operation::PACKSIZE; //!< Current operation
     size_t m_packSize = 0; //!< Required buffer size after PACKSIZE has been done
     size_t m_position = 0; //!< Current position in buffer
     std::vector<char> m_buffer; //!< Buffer for serialized data
     std::map<void*, void*> m_ptrmap; //!< Map to keep track of which pointer data has been serialized and actual pointers during unpacking
+    Serialization::CheckSum<boost::crc_32_type> m_checksum;
+    boost::crc_32_type m_checksummer; //!< Checksum calculator
+    bool m_use_checksum; //!< True to calculate check-sum during pack/unpack
+    bool m_suspend_check_sum = false; //!< True to suspend automatic check-summing
 };
 
 }

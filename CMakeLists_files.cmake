@@ -812,6 +812,7 @@ list( APPEND PUBLIC_HEADER_FILES
       opm/common/OpmLog/StreamLog.hpp
       opm/common/OpmLog/TimerLog.hpp
       opm/common/utility/ActiveGridCells.hpp
+      opm/common/utility/CheckSum.hpp
       opm/common/utility/CSRGraphFromCoordinates.hpp
       opm/common/utility/CSRGraphFromCoordinates_impl.hpp
       opm/common/utility/DemangledType.hpp
