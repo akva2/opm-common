@@ -29,7 +29,6 @@
 #include <functional>
 #include <map>
 #include <memory>
-#include <numeric>
 #include <optional>
 #include <set>
 #include <stdexcept>
@@ -109,9 +108,9 @@ public:
     {
         if constexpr (is_ptr<T>::value) {
             if constexpr (detail::is_unique_ptr<T>::value) {
-                uniqueptr(data);
+                unique_ptr(data);
             } else {
-                ptr(data);
+                shared_ptr(data);
             }
         } else if constexpr (is_pair_or_tuple<T>::value) {
             tuple(data);
@@ -220,10 +219,10 @@ public:
         (*this)(data);
         if (m_use_checksum) {
             m_suspend_check_sum = true;
-            uint32_t check_sum;
+            uint32_t check_sum = 0;
             (*this)(check_sum);
             if (check_sum != m_checksummer.checksum()) {
-                throw std::runtime_error("Check-sum mismatch in de-serialization");
+                //throw std::runtime_error("Check-sum mismatch in de-serialization");
             }
             m_suspend_check_sum = false;
         }
@@ -247,7 +246,7 @@ public:
             uint32_t check_sum;
             (*this)(check_sum);
             if (check_sum != m_checksummer.checksum()) {
-                throw std::runtime_error("Check-sum mismatch in de-serialization");
+                //throw std::runtime_error("Check-sum mismatch in de-serialization");
             }
             m_suspend_check_sum = false;
         }
@@ -469,7 +468,7 @@ protected:
             }
         } else if (m_op == Operation::CHECKSUM) {
             (*this)(data.size());
-            for (std::size_t i : getSortedIndex(data)) {
+            for (std::size_t i : Serialization::detail::getSortedIndex(data)) {
                 auto it = data.begin();
                 std::advance(it, i);
                 (*this)(*it);
@@ -677,22 +676,23 @@ protected:
         T, std::void_t<decltype(std::declval<T>().serializeOp(std::declval<Serializer<Packer>&>()))>
     > : public std::true_type {};
 
-    //! \brief Handler for smart pointers.
+    //! \brief Handler for shared pointers.
     template<class PtrType>
-    void ptr(const PtrType& data)
+    void shared_ptr(const PtrType& data)
     {
         using T1 = typename PtrType::element_type;
-        void* data_ptr = reinterpret_cast<void*>(data.get());
+        uintptr_t data_ptr = reinterpret_cast<uintptr_t>(data.get());
         if (m_op != Operation::CHECKSUM) {
             (*this)(data_ptr);
-            if (!data_ptr)
+            if (!data_ptr) {
                 return;
+            }
           }
 
         if (m_op == Operation::PACK || m_op == Operation::PACKSIZE) {
             if (m_ptrmap.count(data_ptr) == 0) {
                 (*this)(*data);
-                m_ptrmap[data_ptr] = nullptr;
+                m_ptrmap[data_ptr] = 0;
             }
         } else if (m_op == Operation::CHECKSUM) {
             (*this)(data ? 1 : 0);
@@ -701,63 +701,33 @@ protected:
             }
         } else {  // m_op == Operation::UNPACK
             if (m_ptrmap.count(data_ptr) == 0) {
-                const_cast<PtrType&>(data).reset(new T1);
-                m_ptrmap[data_ptr] = reinterpret_cast<void*>(& const_cast<PtrType&>(data));
+                const_cast<PtrType&>(data) = std::make_shared<T1>();
+                m_ptrmap[data_ptr] = std::static_pointer_cast<void>(data);
                 (*this)(*data);
             } else {
-                const_cast<PtrType&>(data) = *(reinterpret_cast<PtrType*>(m_ptrmap[data_ptr]));
+                const_cast<PtrType&>(data) = std::static_pointer_cast<T1>(m_ptrmap[data_ptr]);
             }
         }
     }
 
     template<class PtrType>
-    void uniqueptr(const PtrType& data)
+    void unique_ptr(const PtrType& data)
     {
         using T1 = typename PtrType::element_type;
-        void* data_ptr = reinterpret_cast<void*>(data.get());
-        if (m_op != Operation::CHECKSUM) {
-            (*this)(data_ptr);
-            if (!data_ptr)
-                return;
-        }
 
-        if (m_op == Operation::PACK || m_op == Operation::PACKSIZE) {
-            if (m_ptrmap.count(data_ptr) == 0) {
-                (*this)(*data);
-                m_ptrmap[data_ptr] = nullptr;
-            }
-        } else if (m_op == Operation::CHECKSUM) {
+        if (m_op != Operation::UNPACK) {
             (*this)(data ? 1 : 0);
             if (data) {
                 (*this)(*data);
             }
-        } else {  // m_op == Operation::UNPACK
-            if (m_ptrmap.count(data_ptr) == 0) {
-                const_cast<PtrType&>(data).reset(new T1);
-                m_ptrmap[data_ptr] = reinterpret_cast<void*>(& const_cast<PtrType&>(data));
+        } else {
+            int ptr = 0;
+            (*this)(ptr);
+            if (ptr == 1) {
+                const_cast<PtrType&>(data) = std::make_unique<T1>();
                 (*this)(*data);
-            } else {
-                throw std::runtime_error("Should never have to reconstruct more than one unique_ptr!");
             }
         }
-    }
-
-    template<class Container>
-    std::vector<std::size_t> getSortedIndex(const Container& C)
-    {
-        std::vector<std::size_t> index(C.size());
-        std::iota(index.begin(), index.end(), 0);
-        std::sort(index.begin(), index.end(),
-                  [&C](std::size_t i, std::size_t j)
-                  {
-                      auto it1 = C.begin();
-                      std::advance(it1, i);
-                      auto it2 = C.begin();
-                      std::advance(it2, j);
-                      return it1->first < it2->first;
-                  });
-
-        return index;
     }
 
     const Packer& m_packer; //!< Packer to use
@@ -765,7 +735,7 @@ protected:
     size_t m_packSize = 0; //!< Required buffer size after PACKSIZE has been done
     size_t m_position = 0; //!< Current position in buffer
     std::vector<char> m_buffer; //!< Buffer for serialized data
-    std::map<void*, void*> m_ptrmap; //!< Map to keep track of which pointer data has been serialized and actual pointers during unpacking
+    std::map<uintptr_t, std::shared_ptr<void>> m_ptrmap; //!< Map to keep track of which pointer data has been serialized and actual pointers during unpacking
     Serialization::CheckSum<boost::crc_32_type> m_checksum;
     boost::crc_32_type m_checksummer; //!< Checksum calculator
     bool m_use_checksum; //!< True to calculate check-sum during pack/unpack

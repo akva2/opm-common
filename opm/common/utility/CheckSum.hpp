@@ -19,6 +19,7 @@
 #ifndef OPM_CHECKSUM_HPP
 #define OPM_CHECKSUM_HPP
 
+#include <numeric>
 #include <opm/common/utility/TimeService.hpp>
 
 #include <algorithm>
@@ -26,9 +27,29 @@
 #include <cstddef>
 #include <cstring>
 #include <string>
+#include <vector>
 
 namespace Opm::Serialization {
 namespace detail {
+
+template<class Container>
+std::vector<std::size_t> getSortedIndex(const Container& C)
+{
+    std::vector<std::size_t> index(C.size());
+    std::iota(index.begin(), index.end(), 0);
+    std::sort(index.begin(), index.end(),
+              [&C](std::size_t i, std::size_t j)
+              {
+        auto it1 = C.begin();
+        std::advance(it1, i);
+        auto it2 = C.begin();
+        std::advance(it2, j);
+        return it1->first < it2->first;
+    });
+
+    return index;
+}
+
 
 //! \brief Abstract struct for check-summing which is (partially) specialized for specific types.
 template <bool pod, class T>

@@ -19,13 +19,16 @@
 #ifndef SCHEDULE_HPP
 #define SCHEDULE_HPP
 
+#include "opm/common/utility/CheckSum.hpp"
 #include <cstddef>
 #include <ctime>
 #include <functional>
 #include <iosfwd>
+#include <iostream>
 #include <map>
 #include <memory>
 #include <optional>
+#include <ostream>
 #include <set>
 #include <string>
 #include <unordered_map>
@@ -380,8 +383,8 @@ namespace Opm
         template <typename T, class Serializer>
         void checksum_state(Serializer& serializer)
         {
-            for (std::size_t index = 0; index < this->snapshots.size(); index++) {
-                serializer.appendCheckSum(this->snapshots[index].get<T>().get());
+            for (const auto& it : this->snapshots) {
+                serializer.appendCheckSum(it.get<T>().get());
             }
         }
 
@@ -389,7 +392,9 @@ namespace Opm
         void pack_unpack(Serializer& serializer)
         {
             if (serializer.isCheckSumming()) {
+                serializer.manualCheckSumming(true);
                 this->template checksum_state<T>(serializer);
+                serializer.manualCheckSumming(false);
                 return;
             }
 
@@ -414,20 +419,26 @@ namespace Opm
         }
 
         template <typename T>
-        std::vector<std::pair<std::size_t,  T>> unique() const {
+        std::vector<std::pair<std::size_t,  T>> unique() const
+        {
             std::vector<std::pair<std::size_t, T>> values;
+            const T* last_value = nullptr;
             for (std::size_t index = 0; index < this->snapshots.size(); index++) {
                 const auto& member = this->snapshots[index].get<T>();
                 const auto& value = member.get();
-                if (values.empty() || !(value == values.back().second))
+                if (&value != last_value) {
+                    last_value = &value;
                     values.push_back( std::make_pair(index, value));
+                }
             }
             return values;
         }
 
 
         template <typename T>
-        void pack_state(std::vector<T>& value_list, std::vector<std::size_t>& index_list) const {
+        void pack_state(std::vector<T>& value_list,
+                        std::vector<std::size_t>& index_list) const
+        {
             auto unique_values = this->template unique<T>();
             for (auto& [index, value] : unique_values) {
                 value_list.push_back( std::move(value) );
@@ -437,10 +448,12 @@ namespace Opm
 
 
         template <typename T>
-        void unpack_state(const std::vector<T>& value_list, const std::vector<std::size_t>& index_list) {
+        void unpack_state(const std::vector<T>& value_list,
+                          const std::vector<std::size_t>& index_list)
+        {
             std::size_t unique_index = 0;
             while (unique_index < value_list.size()) {
-                const auto& value = value_list[unique_index];
+                auto& value = value_list[unique_index];
                 const auto& first_index = index_list[unique_index];
                 auto last_index = this->snapshots.size();
                 if (unique_index < (value_list.size() - 1))
@@ -448,7 +461,7 @@ namespace Opm
 
                 auto& target_state = this->snapshots[first_index];
                 target_state.get<T>().update( std::move(value) );
-                for (std::size_t index=first_index + 1; index < last_index; index++)
+                for (std::size_t index = first_index + 1; index < last_index; index++)
                     this->snapshots[index].get<T>().update( target_state.get<T>() );
 
                 unique_index++;
@@ -458,10 +471,13 @@ namespace Opm
         template <typename K, typename T, class Serializer>
         void checksum_map(Serializer& serializer)
         {
-            for (std::size_t index = 0; index < this->snapshots.size(); index++) {
-                for (const auto& it : this->snapshots[index].get_map<K,T>()) {
-                    serializer.appendCheckSum(it.first);
-                    serializer.appendCheckSum(*it.second);
+            for (auto& it : snapshots) {
+                const auto& map = it.get_map<K,T>();
+                for (const auto index : Serialization::detail::getSortedIndex(map)) {
+                    auto entry = map.begin();
+                    std::advance(entry, index);
+                    serializer.appendCheckSum(entry->first);
+                    serializer.appendCheckSum(*entry->second);
                 }
             }
         }
@@ -479,8 +495,9 @@ namespace Opm
             std::vector<T> value_list;
             std::vector<std::size_t> index_list;
 
-            if (serializer.isSerializing())
+            if (serializer.isSerializing()) {
                 pack_map<K,T>(value_list, index_list);
+            }
 
             serializer(value_list);
             serializer(index_list);
@@ -498,8 +515,8 @@ namespace Opm
 
         template <typename K, typename T>
         void pack_map(std::vector<T>& value_list,
-                      std::vector<std::size_t>& index_list) {
-
+                      std::vector<std::size_t>& index_list)
+        {
             const auto& last_map = this->snapshots.back().get_map<K,T>();
             std::vector<K> key_list{ last_map.keys() };
             std::unordered_map<K,T> current_value;
@@ -525,8 +542,8 @@ namespace Opm
 
         template <typename K, typename T>
         void unpack_map(const std::vector<T>& value_list,
-                        const std::vector<std::size_t>& index_list) {
-
+                        const std::vector<std::size_t>& index_list)
+        {
             std::unordered_map<K, std::vector<std::pair<std::size_t, T>>> storage;
             for (std::size_t storage_index = 0; storage_index < value_list.size(); storage_index++) {
                 const auto& value = value_list[storage_index];
