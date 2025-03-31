@@ -102,6 +102,9 @@ Schedule make_schedule(std::string sched_input, bool add_grid = true) {
 
 BOOST_AUTO_TEST_CASE(TestIOConfigCreation) {
     const std::string deckData  = R"(
+SOLUTION
+RPTRST
+  BASIC=0 /
 SCHEDULE
 DATES             -- 1
  10  OKT 2008 /
@@ -578,7 +581,7 @@ PORO
   1000*0.25 /
 SOLUTION
 RPTRST
- ACIP KRG KRO KRW NORST SFREQ=10 ALLPROPS/
+ ACIP KRG KRO KRW NORST SFREQ=10 ALLPROPS BASIC=0/
 SCHEDULE
 DATES             -- 1
  10  OKT 2008 /
@@ -592,6 +595,9 @@ DATES             -- 2
 )";
 
     const std::string deckData2 = R"(
+SOLUTION
+RPTRST
+  BASIC=0 /
 SCHEDULE
 DATES             -- 1
  10  OKT 2008 /
@@ -608,6 +614,9 @@ DATES             -- 3
 )";
 
     const char* deckData3 = R"(
+SOLUTION
+RPTRST
+  BASIC=0 /
 SCHEDULE
 DATES             -- 1
  10  OKT 2008 /

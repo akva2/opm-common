@@ -514,7 +514,9 @@ RSTConfig::RSTConfig(const SOLUTIONSection& solution_section,
             // than one (1) in the RPTSOL keyword.  Here, when handling the
             // RPTRST keyword in the SOLUTION section, we unconditionally
             // request that restart file output be generated at time zero.
-            this->write_rst_file = true;
+            if (this->basic == 0) {
+                this->write_rst_file = false;
+            }
         }
         else if (keyword.name() == ParserKeywords::RPTSOL::keywordName) {
             this->handleRPTSOL(keyword, parseContext, errors);
