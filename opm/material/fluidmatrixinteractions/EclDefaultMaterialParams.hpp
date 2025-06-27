@@ -75,7 +75,7 @@ public:
      * \brief Set the parameter object for the gas-oil twophase law.
      */
     void setGasOilParams(std::shared_ptr<GasOilParams> val)
-    { gasOilParams_ = *val; }
+    { gasOilParams_ = std::move(*val); }
 
     /*!
      * \brief The parameter object for the oil-water twophase law.
@@ -93,7 +93,7 @@ public:
      * \brief Set the parameter object for the oil-water twophase law.
      */
     void setOilWaterParams(std::shared_ptr<OilWaterParams> val)
-    { oilWaterParams_ = *val; }
+    { oilWaterParams_ = std::move(*val); }
 
     /*!
      * \brief Set the saturation of "connate" water.

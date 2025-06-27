@@ -38,7 +38,9 @@
 #include <cassert>
 #include <cmath>
 #include <memory>
+
 namespace Opm {
+
 /*!
  * \ingroup FluidMatrixInteractions
  *
@@ -109,7 +111,9 @@ public:
     void setWagConfig(std::shared_ptr<WagHysteresisConfig::WagHysteresisConfigRecord> value)
     {
         wagConfig_ = value;
-        cTransf_ = wagConfig().wagLandsParam();
+        if (!wagState_)
+          wagState_ = std::make_unique<WagState>();
+        wagState_->cTransf_ = wagConfig().wagLandsParam();
     }
 
     /*!
@@ -187,20 +191,22 @@ public:
 
         // For WAG hysteresis, assume initial state along primary drainage curve.
         if (gasOilHysteresisWAG()) {
-            swatImbStart_ = Swco_;
-            swatImbStartNxt_ = -1.0; // Trigger check for saturation gt Swco at first update ...
-            cTransf_ = wagConfig().wagLandsParam();
-            krnSwDrainStart_ = Sncrd_;
-            krnSwDrainStartNxt_ = Sncrd_;
-            krnImbStart_ = 0.0;
-            krnImbStartNxt_ = 0.0;
-            krnDrainStart_ = 0.0;
-            krnDrainStartNxt_ = 0.0;
+            if (!wagState_)
+              wagState_ = std::make_unique<WagState>();
+            wagState_->swatImbStart_ = Swco_;
+            wagState_->swatImbStartNxt_ = -1.0; // Trigger check for saturation gt Swco at first update ...
+            wagState_->cTransf_ = wagConfig().wagLandsParam();
+            wagState_->krnSwDrainStart_ = Sncrd_;
+            wagState_->krnSwDrainStartNxt_ = Sncrd_;
+            wagState_->krnImbStart_ = 0.0;
+            wagState_->krnImbStartNxt_ = 0.0;
+            wagState_->krnDrainStart_ = 0.0;
+            wagState_->krnDrainStartNxt_ = 0.0;
             isDrain_ = true;
-            wasDrain_ = true;
-            krnSwImbStart_ = Sncrd_;
-            SncrtWAG_ = Sncrd_;
-            nState_ = 1;
+            wagState_->wasDrain_ = true;
+            wagState_->krnSwImbStart_ = Sncrd_;
+            wagState_->SncrtWAG_ = Sncrd_;
+            wagState_->nState_ = 1;
         }
     }
 
@@ -383,8 +389,9 @@ public:
 
     Scalar SnTrapped(bool maximumTrapping) const
     {
-        if(!maximumTrapping && isDrain_)
+        if (!maximumTrapping && isDrain_) {
             return 0.0;
+        }
 
         // For Killough the trapped saturation is already computed
         if( config().krHysteresisModel() > 1 )
@@ -416,7 +423,7 @@ public:
     }
 
     Scalar SncrtWAG() const
-    { return SncrtWAG_; }
+    { return wagState_->SncrtWAG_; }
 
     Scalar Snmaxd() const
     { return Snmaxd_; }
@@ -489,46 +496,51 @@ public:
     { return (config().enableWagHysteresis() && gasOilSystem_ && wagConfig().wagGasFlag()) ; }
 
     Scalar reductionDrain() const
-    { return std::pow(Swco_/(swatImbStart_+tolWAG_*wagConfig().wagWaterThresholdSaturation()), wagConfig().wagSecondaryDrainageReduction());}
+    { return std::pow(Swco_ /
+                      (wagState_->swatImbStart_ + wagState_->tolWAG_ * wagConfig().wagWaterThresholdSaturation()),
+                      wagConfig().wagSecondaryDrainageReduction());}
 
     Scalar reductionDrainNxt() const
-    { return std::pow(Swco_/(swatImbStartNxt_+tolWAG_*wagConfig().wagWaterThresholdSaturation()), wagConfig().wagSecondaryDrainageReduction());}
+    { return std::pow(Swco_ /
+                     (wagState_->swatImbStartNxt_ + wagState_->tolWAG_ *
+                      wagConfig().wagWaterThresholdSaturation()),
+                     wagConfig().wagSecondaryDrainageReduction());}
 
     bool threePhaseState() const
-    { return (swatImbStart_ > (Swco_ + wagConfig().wagWaterThresholdSaturation()) ); }
+    { return (wagState_->swatImbStart_ > (Swco_ + wagConfig().wagWaterThresholdSaturation()) ); }
 
     Scalar nState() const
-    { return nState_;}
+    { return wagState_->nState_;}
 
     Scalar krnSwDrainRevert() const
-    { return krnSwDrainRevert_;}
+    { return wagState_->krnSwDrainRevert_;}
 
     Scalar krnDrainStart() const
-    { return krnDrainStart_;}
+    { return wagState_->krnDrainStart_;}
 
     Scalar krnDrainStartNxt() const
-    { return krnDrainStartNxt_;}
+    { return wagState_->krnDrainStartNxt_;}
 
     Scalar krnImbStart() const
-    { return krnImbStart_;}
+    { return wagState_->krnImbStart_;}
 
     Scalar krnImbStartNxt() const
-    { return krnImbStartNxt_;}
+    { return wagState_->krnImbStartNxt_;}
 
     Scalar krnSwWAG() const
-    { return krnSwWAG_;}
+    { return wagState_->krnSwWAG_;}
 
     Scalar krnSwDrainStart() const
-    { return krnSwDrainStart_;}
+    { return wagState_->krnSwDrainStart_;}
 
     Scalar krnSwDrainStartNxt() const
-    { return krnSwDrainStartNxt_;}
+    { return wagState_->krnSwDrainStartNxt_;}
 
     Scalar krnSwImbStart() const
-    { return krnSwImbStart_;}
+    { return wagState_->krnSwImbStart_;}
 
     Scalar tolWAG() const
-    { return tolWAG_;}
+    { return wagState_->tolWAG_;}
 
     template <class Evaluation>
     Evaluation computeSwf(const Evaluation& Sw)  const
@@ -537,7 +549,7 @@ public:
         Scalar SgCut = wagConfig().wagImbCurveLinearFraction()*(Snhy()- SncrtWAG());
         Evaluation Swf = 1.0;
         //Scalar C = wagConfig().wagLandsParam();
-        Scalar C = cTransf_;
+        Scalar C = wagState_->cTransf_;
 
         if (SgT > SgCut) {
             Swf -= (Sncrd() + 0.5*( SgT + Opm::sqrt( SgT*SgT + 4.0/C*SgT))); // 1-Sgf
@@ -557,19 +569,20 @@ public:
     Evaluation computeKrImbWAG(const Evaluation& Sw)  const
     {
         Evaluation Swf = Sw;
-        if (nState_ <= 2)  // Skipping for "higher order" curves seems consistent with benchmark, further investigations needed ...
+        if (wagState_->nState_ <= 2)  // Skipping for "higher order" curves seems consistent with benchmark, further investigations needed ...
             Swf = computeSwf(Sw);
-        if (Swf <= krnSwDrainStart_) { // Use secondary drainage curve
+        if (Swf <= wagState_->krnSwDrainStart_) { // Use secondary drainage curve
             Evaluation Krg = EffLawT::twoPhaseSatKrn(drainageParams_, Swf);
-            Evaluation KrgImb2 = (Krg-krnDrainStart_)*reductionDrain() + krnImbStart_;
+            Evaluation KrgImb2 = (Krg - wagState_->krnDrainStart_) * reductionDrain() + wagState_->krnImbStart_;
             return KrgImb2;
         }
         else { // Fallback to primary drainage curve
             Evaluation Sn = Sncrd_;
-            if (Swf < 1.0-SncrtWAG_) {
+            if (Swf < 1.0 - wagState_->SncrtWAG_) {
                 // Notation: Sn.. = Sg.. + Swco
-                Evaluation dd = (1.0-krnSwImbStart_ - Sncrd_) / (1.0-krnSwDrainStart_ - SncrtWAG_);
-                Sn += (1.0-Swf-SncrtWAG_)*dd;
+                Evaluation dd = (1.0 - wagState_->krnSwImbStart_ - Sncrd_) /
+                                (1.0 - wagState_->krnSwDrainStart_ - wagState_->SncrtWAG_);
+                Sn += (1.0 - Swf - wagState_->SncrtWAG_) * dd;
             }
             Evaluation KrgDrn1 = EffLawT::twoPhaseSatKrn(drainageParams_, 1.0 - Sn);
             return KrgDrn1;
@@ -616,45 +629,47 @@ public:
         if (!gasOilHysteresisWAG()) {
             this->isDrain_ = (krnSw <= this->krnSwMdc_);
         } else {
-            wasDrain_ = isDrain_;
+            wagState_->wasDrain_ = isDrain_;
 
-            if (swatImbStartNxt_ < 0.0) { // Initial check ...
-                swatImbStartNxt_ = std::max(Swco_, Swco_ + krnSw - krwSw);
+            if (wagState_->swatImbStartNxt_ < 0.0) { // Initial check ...
+                wagState_->swatImbStartNxt_ = std::max(Swco_, Swco_ + krnSw - krwSw);
                 // check if we are in threephase state sw > swco + tolWag and so > tolWag
                 // (sw = swco + krnSw - krwSw and so = krwSw for oil/gas params)
-                if ( (swatImbStartNxt_ > Swco_ + tolWAG_) && krwSw > tolWAG_) {
-                    swatImbStart_ = swatImbStartNxt_;
-                    krnSwWAG_ = krnSw;
-                    krnSwDrainStartNxt_ = krnSwWAG_;
-                    krnSwDrainStart_ = krnSwDrainStartNxt_;
-                    wasDrain_ = false; // Signal start from threephase state ...
+                if ( (wagState_->swatImbStartNxt_ > Swco_ + wagState_->tolWAG_) &&
+                      krwSw > wagState_->tolWAG_)
+                {
+                    wagState_->swatImbStart_ = wagState_->swatImbStartNxt_;
+                    wagState_->krnSwWAG_ = krnSw;
+                    wagState_->krnSwDrainStartNxt_ = wagState_->krnSwWAG_;
+                    wagState_->krnSwDrainStart_ = wagState_->krnSwDrainStartNxt_;
+                    wagState_->wasDrain_ = false; // Signal start from threephase state ...
                 }
             }
 
             if (isDrain_) {
-                if (krnSw <= krnSwWAG_+tolWAG_) { // continue along drainage curve
-                    krnSwWAG_ = std::min(krnSw, krnSwWAG_);
-                    krnSwDrainRevert_ = krnSwWAG_;
+                if (krnSw <= wagState_->krnSwWAG_ + wagState_->tolWAG_) { // continue along drainage curve
+                    wagState_->krnSwWAG_ = std::min(krnSw, wagState_->krnSwWAG_);
+                    wagState_->krnSwDrainRevert_ = wagState_->krnSwWAG_;
                     updateParams = true;
                 }
                 else { // start new imbibition curve
                     isDrain_ = false;
-                    krnSwWAG_ = krnSw;
+                    wagState_->krnSwWAG_ = krnSw;
                     updateParams = true;
                 }
             }
             else {
-                if (krnSw >= krnSwWAG_-tolWAG_) { // continue along imbibition curve
-                    krnSwWAG_ = std::max(krnSw, krnSwWAG_);
-                    krnSwDrainStartNxt_ = krnSwWAG_;
-                    swatImbStartNxt_ = std::max(swatImbStartNxt_, Swco_ + krnSw - krwSw);
+                if (krnSw >= wagState_->krnSwWAG_ - wagState_->tolWAG_) { // continue along imbibition curve
+                    wagState_->krnSwWAG_ = std::max(krnSw, wagState_->krnSwWAG_);
+                    wagState_->krnSwDrainStartNxt_ = wagState_->krnSwWAG_;
+                    wagState_->swatImbStartNxt_ = std::max(wagState_->swatImbStartNxt_, Swco_ + krnSw - krwSw);
                     updateParams = true;
                 }
                 else { // start new drainage curve
                     isDrain_ = true;
-                    krnSwDrainStart_ = krnSwDrainStartNxt_;
-                    swatImbStart_ = swatImbStartNxt_;
-                    krnSwWAG_ = krnSw;
+                    wagState_->krnSwDrainStart_ = wagState_->krnSwDrainStartNxt_;
+                    wagState_->swatImbStart_ = wagState_->swatImbStartNxt_;
+                    wagState_->krnSwWAG_ = krnSw;
                     updateParams = true;
                 }
             }
@@ -745,38 +760,39 @@ private:
 
 
         if (gasOilHysteresisWAG()) {
-            if (isDrain_ && krnSwMdc_ == krnSwWAG_) {
+            if (isDrain_ && krnSwMdc_ == wagState_->krnSwWAG_) {
                 Scalar snhy = 1.0 - krnSwMdc_;
-                SncrtWAG_ = Sncrd_;
+                wagState_->SncrtWAG_ = Sncrd_;
                 if (snhy > Sncrd_) {
-                    SncrtWAG_ += (snhy - Sncrd_) /
+                    wagState_->SncrtWAG_ += (snhy - Sncrd_) /
                         (1.0 + config().modParamTrapped() * (Snmaxd_ - snhy) +
                          wagConfig().wagLandsParam() * (snhy - Sncrd_));
                 }
             }
 
-            if (isDrain_ && (1.0 - krnSwDrainRevert_) > SncrtWAG_) { // Reversal from drain to imb
-                cTransf_ = 1.0 / (SncrtWAG_ - Sncrd_ + 1.0e-12) - 1.0 / (1.0 - krnSwDrainRevert_ - Sncrd_);
+            if (isDrain_ && (1.0 - wagState_->krnSwDrainRevert_) > wagState_->SncrtWAG_) { // Reversal from drain to imb
+                wagState_->cTransf_ = 1.0 / (wagState_->SncrtWAG_ - Sncrd_ + 1.0e-12) - 1.0 /
+                                      (1.0 - wagState_->krnSwDrainRevert_ - Sncrd_);
             }
 
-            if (!wasDrain_ && isDrain_) { // Start of new drainage cycle
-                if (threePhaseState() || nState_ > 1) { // Never return to primary (two-phase) state after leaving
-                    nState_ += 1;
-                    krnDrainStart_ = EffLawT::twoPhaseSatKrn(drainageParams(), krnSwDrainStart_);
-                    krnImbStart_ = krnImbStartNxt_;
+            if (!wagState_->wasDrain_ && isDrain_) { // Start of new drainage cycle
+                if (threePhaseState() || wagState_->nState_ > 1) { // Never return to primary (two-phase) state after leaving
+                    wagState_->nState_ += 1;
+                    wagState_->krnDrainStart_ = EffLawT::twoPhaseSatKrn(drainageParams(), wagState_->krnSwDrainStart_);
+                    wagState_->krnImbStart_ = wagState_->krnImbStartNxt_;
                     // Scanning shift for primary drainage
-                    krnSwImbStart_ = EffLawT::twoPhaseSatKrnInv(drainageParams(), krnImbStart_);
+                    wagState_->krnSwImbStart_ = EffLawT::twoPhaseSatKrnInv(drainageParams(), wagState_->krnImbStart_);
                 }
             }
 
-            if (!wasDrain_ && !isDrain_) { //Moving along current imb curve
-                krnDrainStartNxt_ = EffLawT::twoPhaseSatKrn(drainageParams(), krnSwWAG_);
+            if (!wagState_->wasDrain_ && !isDrain_) { //Moving along current imb curve
+                wagState_->krnDrainStartNxt_ = EffLawT::twoPhaseSatKrn(drainageParams(), wagState_->krnSwWAG_);
                 if (threePhaseState()) {
-                    krnImbStartNxt_ = computeKrImbWAG(krnSwWAG_);
+                    wagState_->krnImbStartNxt_ = computeKrImbWAG(wagState_->krnSwWAG_);
                 }
                 else {
-                    Scalar swf = computeSwf(krnSwWAG_);
-                    krnImbStartNxt_ = EffLawT::twoPhaseSatKrn(drainageParams(), swf);
+                    Scalar swf = computeSwf(wagState_->krnSwWAG_);
+                    wagState_->krnImbStartNxt_ = EffLawT::twoPhaseSatKrn(drainageParams(), swf);
                 }
             }
 
@@ -856,28 +872,34 @@ private:
 
     Scalar Sncrt_{}; // trapped non-wetting phase saturation
 
-    // Used for WAG hysteresis
     Scalar Swco_{};                // Connate water.
-    Scalar swatImbStart_{};        // Water saturation at start of current drainage curve (end of previous imb curve).
-    Scalar swatImbStartNxt_{};     // Water saturation at start of next drainage curve (end of current imb curve).
-    Scalar krnSwWAG_{2.0};         // Saturation value after latest completed timestep.
-    Scalar krnSwDrainRevert_{2.0}; // Saturation value at end of current drainage curve.
-    Scalar cTransf_{};             // Modified Lands constant used for free gas calculations to obtain consistent scanning curve
-                                   //  when reversion to imb occurs above historical maximum gas saturation (i.e. Sw > krwSwMdc_).
-    Scalar krnSwDrainStart_{-2.0}; // Saturation value at start of current drainage curve (end of previous imb curve).
-    Scalar krnSwDrainStartNxt_{};  // Saturation value at start of current drainage curve (end of previous imb curve).
-    Scalar krnImbStart_{};         // Relperm at start of current drainage curve (end of previous imb curve).
-    Scalar krnImbStartNxt_{};      // Relperm at start of next drainage curve (end of current imb curve).
-    Scalar krnDrainStart_{};       // Primary (input) relperm evaluated at start of current drainage curve.
-    Scalar krnDrainStartNxt_{};    // Primary (input) relperm evaluated at start of next drainage curve.
+
+    // Used for WAG hysteresis
+    struct WagState {
+        Scalar swatImbStart_{};        // Water saturation at start of current drainage curve (end of previous imb curve).
+        Scalar swatImbStartNxt_{};     // Water saturation at start of next drainage curve (end of current imb curve).
+        Scalar krnSwWAG_{2.0};         // Saturation value after latest completed timestep.
+        Scalar krnSwDrainRevert_{2.0}; // Saturation value at end of current drainage curve.
+        Scalar cTransf_{};             // Modified Lands constant used for free gas calculations to obtain consistent scanning curve
+                                       //  when reversion to imb occurs above historical maximum gas saturation (i.e. Sw > krwSwMdc_).
+        Scalar krnSwDrainStart_{-2.0}; // Saturation value at start of current drainage curve (end of previous imb curve).
+        Scalar krnSwDrainStartNxt_{};  // Saturation value at start of current drainage curve (end of previous imb curve).
+        Scalar krnImbStart_{};         // Relperm at start of current drainage curve (end of previous imb curve).
+        Scalar krnImbStartNxt_{};      // Relperm at start of next drainage curve (end of current imb curve).
+        Scalar krnDrainStart_{};       // Primary (input) relperm evaluated at start of current drainage curve.
+        Scalar krnDrainStartNxt_{};    // Primary (input) relperm evaluated at start of next drainage curve.
+        bool wasDrain_{};              // Previous status.
+        Scalar krnSwImbStart_{};       // Saturation value where primary drainage relperm equals krnImbStart_
+
+        int nState_{};                 // Number of cycles. Primary cycle is nState_=1.
+
+        Scalar SncrtWAG_{};
+        Scalar tolWAG_{0.001};
+    };
+
     bool isDrain_{true};           // Status is either drainage or imbibition
-    bool wasDrain_{};              // Previous status.
-    Scalar krnSwImbStart_{};       // Saturation value where primary drainage relperm equals krnImbStart_
 
-    int nState_{};                 // Number of cycles. Primary cycle is nState_=1.
-
-    Scalar SncrtWAG_{};
-    Scalar tolWAG_{0.001};
+    std::unique_ptr<WagState> wagState_{};
 };
 
 } // namespace Opm
