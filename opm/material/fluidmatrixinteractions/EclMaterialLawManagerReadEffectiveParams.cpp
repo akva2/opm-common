@@ -38,8 +38,8 @@ namespace Opm {
 
 /* constructors*/
 template <class Traits>
-EclMaterialLawManager<Traits>::InitParams::ReadEffectiveParams::
-ReadEffectiveParams(EclMaterialLawManager<Traits>::InitParams& init_params) :
+ReadEffectiveParams<Traits>::
+ReadEffectiveParams(InitParams<Traits>& init_params) :
     init_params_{init_params}, parent_{init_params_.parent_},
     eclState_{init_params_.eclState_}
 {
@@ -48,7 +48,7 @@ ReadEffectiveParams(EclMaterialLawManager<Traits>::InitParams& init_params) :
 /* public methods */
 template <class Traits>
 void
-EclMaterialLawManager<Traits>::InitParams::ReadEffectiveParams::
+ReadEffectiveParams<Traits>::
 read() {
     auto& gasOilVector = this->parent_.gasOilEffectiveParamVector_;
     auto& oilWaterVector = this->parent_.oilWaterEffectiveParamVector_;
@@ -70,7 +70,7 @@ read() {
 // Relative permeability values not strictly greater than 'tolcrit' treated as zero.
 template <class Traits>
 std::vector<double>
-EclMaterialLawManager<Traits>::InitParams::ReadEffectiveParams::
+ReadEffectiveParams<Traits>::
 normalizeKrValues_(const double tolcrit, const TableColumn& krValues) const
 {
     auto kr = krValues.vectorCopy();
@@ -85,7 +85,7 @@ normalizeKrValues_(const double tolcrit, const TableColumn& krValues) const
 
 template <class Traits>
 void
-EclMaterialLawManager<Traits>::InitParams::ReadEffectiveParams::
+ReadEffectiveParams<Traits>::
 readGasOilParameters_(GasOilEffectiveParamVector& dest, unsigned satRegionIdx)
 {
     if (!this->parent_.hasGas || !this->parent_.hasOil)
@@ -183,7 +183,7 @@ readGasOilParameters_(GasOilEffectiveParamVector& dest, unsigned satRegionIdx)
 template <class Traits>
 template <class TableType>
 void
-EclMaterialLawManager<Traits>::InitParams::ReadEffectiveParams::
+ReadEffectiveParams<Traits>::
 readGasOilFamily2_(GasOilEffectiveTwoPhaseParams& effParams,
                         const Scalar Swco,
                         const double tolcrit,
@@ -209,7 +209,7 @@ readGasOilFamily2_(GasOilEffectiveTwoPhaseParams& effParams,
 
 template <class Traits>
 void
-EclMaterialLawManager<Traits>::InitParams::ReadEffectiveParams::
+ReadEffectiveParams<Traits>::
 readGasOilSgof_(GasOilEffectiveTwoPhaseParams& effParams,
                         const Scalar Swco,
                         const double tolcrit,
@@ -232,7 +232,7 @@ readGasOilSgof_(GasOilEffectiveTwoPhaseParams& effParams,
 
 template <class Traits>
 void
-EclMaterialLawManager<Traits>::InitParams::ReadEffectiveParams::
+ReadEffectiveParams<Traits>::
 readGasOilSlgof_(GasOilEffectiveTwoPhaseParams& effParams,
                         const Scalar Swco,
                         const double tolcrit,
@@ -255,7 +255,7 @@ readGasOilSlgof_(GasOilEffectiveTwoPhaseParams& effParams,
 
 template <class Traits>
 void
-EclMaterialLawManager<Traits>::InitParams::ReadEffectiveParams::
+ReadEffectiveParams<Traits>::
 readGasWaterParameters_(GasWaterEffectiveParamVector& dest, unsigned satRegionIdx)
 {
     if (!this->parent_.hasGas || !this->parent_.hasWater || this->parent_.hasOil)
@@ -338,7 +338,7 @@ readGasWaterParameters_(GasWaterEffectiveParamVector& dest, unsigned satRegionId
 
 template <class Traits>
 void
-EclMaterialLawManager<Traits>::InitParams::ReadEffectiveParams::
+ReadEffectiveParams<Traits>::
 readOilWaterParameters_(OilWaterEffectiveParamVector& dest, unsigned satRegionIdx)
 {
     if (!this->parent_.hasOil || !this->parent_.hasWater)
@@ -453,10 +453,10 @@ readOilWaterParameters_(OilWaterEffectiveParamVector& dest, unsigned satRegionId
 }
 
 // Make some actual code, by realizing the previously defined templated class
-template class EclMaterialLawManager<ThreePhaseMaterialTraits<double,0,1,2>>::InitParams::ReadEffectiveParams;
-template class EclMaterialLawManager<ThreePhaseMaterialTraits<float,0,1,2>>::InitParams::ReadEffectiveParams;
-template class EclMaterialLawManager<ThreePhaseMaterialTraits<double,2,0,1>>::InitParams::ReadEffectiveParams;
-template class EclMaterialLawManager<ThreePhaseMaterialTraits<float,2,0,1>>::InitParams::ReadEffectiveParams;
+template class ReadEffectiveParams<ThreePhaseMaterialTraits<double,0,1,2>>;
+template class ReadEffectiveParams<ThreePhaseMaterialTraits<float,0,1,2>>;
+template class ReadEffectiveParams<ThreePhaseMaterialTraits<double,2,0,1>>;
+template class ReadEffectiveParams<ThreePhaseMaterialTraits<float,2,0,1>>;
 
 
 } // namespace Opm

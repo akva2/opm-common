@@ -333,19 +333,19 @@ public:
      * \brief Set the pressure-volume-saturation (PVT) relations for the gas phase.
      */
     STATIC_OR_DEVICE void setGasPvt(std::shared_ptr<GasPvt> pvtObj)
-    { gasPvt_ = *pvtObj; }
+    { if (pvtObj) gasPvt_ = *pvtObj; }
 
     /*!
      * \brief Set the pressure-volume-saturation (PVT) relations for the oil phase.
      */
     STATIC_OR_DEVICE void setOilPvt(std::shared_ptr<OilPvt> pvtObj)
-    { oilPvt_ = *pvtObj; }
+    { if (pvtObj) oilPvt_ = *pvtObj; }
 
     /*!
      * \brief Set the pressure-volume-saturation (PVT) relations for the water phase.
      */
     STATIC_OR_DEVICE void setWaterPvt(std::shared_ptr<WaterPvt> pvtObj)
-    { waterPvt_ = *pvtObj; }
+    { if (pvtObj) waterPvt_ = *pvtObj; }
 
     STATIC_OR_DEVICE void setVapPars(const Scalar par1, const Scalar par2)
     {

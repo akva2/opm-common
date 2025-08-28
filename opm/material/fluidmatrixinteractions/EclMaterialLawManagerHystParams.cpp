@@ -27,8 +27,8 @@ namespace Opm {
 
 /* constructors*/
 template <class Traits>
-EclMaterialLawManager<Traits>::InitParams::HystParams::
-HystParams(EclMaterialLawManager<Traits>::InitParams& init_params) :
+HystParams<Traits>::
+HystParams(InitParams<Traits>& init_params) :
     init_params_{init_params}, parent_{init_params_.parent_},
     eclState_{init_params_.eclState_}
 {
@@ -41,7 +41,7 @@ HystParams(EclMaterialLawManager<Traits>::InitParams& init_params) :
 
 template <class Traits>
 void
-EclMaterialLawManager<Traits>::InitParams::HystParams::
+HystParams<Traits>::
 finalize()
 {
     if (hasGasOil_())
@@ -53,24 +53,24 @@ finalize()
 }
 
 template <class Traits>
-std::shared_ptr<typename EclMaterialLawManager<Traits>::GasOilTwoPhaseHystParams>
-EclMaterialLawManager<Traits>::InitParams::HystParams::
+std::shared_ptr<typename HystParams<Traits>::GasOilTwoPhaseHystParams>
+HystParams<Traits>::
 getGasOilParams()
 {
     return gasOilParams_;
 }
 
 template <class Traits>
-std::shared_ptr<typename EclMaterialLawManager<Traits>::OilWaterTwoPhaseHystParams>
-EclMaterialLawManager<Traits>::InitParams::HystParams::
+std::shared_ptr<typename HystParams<Traits>::OilWaterTwoPhaseHystParams>
+HystParams<Traits>::
 getOilWaterParams()
 {
     return oilWaterParams_;
 }
 
 template <class Traits>
-std::shared_ptr<typename EclMaterialLawManager<Traits>::GasWaterTwoPhaseHystParams>
-EclMaterialLawManager<Traits>::InitParams::HystParams::
+std::shared_ptr<typename HystParams<Traits>::GasWaterTwoPhaseHystParams>
+HystParams<Traits>::
 getGasWaterParams()
 {
     return gasWaterParams_;
@@ -78,7 +78,7 @@ getGasWaterParams()
 
 template <class Traits>
 void
-EclMaterialLawManager<Traits>::InitParams::HystParams::
+HystParams<Traits>::
 setConfig(unsigned satRegionIdx)
 {
     this->gasOilParams_->setConfig(this->parent_.hysteresisConfig_);
@@ -95,7 +95,7 @@ setConfig(unsigned satRegionIdx)
 
 template <class Traits>
 void
-EclMaterialLawManager<Traits>::InitParams::HystParams::
+HystParams<Traits>::
 setDrainageParamsGasWater(unsigned elemIdx, unsigned satRegionIdx,
                           const std::function<unsigned(unsigned)>& lookupIdxOnLevelZeroAssigner)
 {
@@ -114,7 +114,7 @@ setDrainageParamsGasWater(unsigned elemIdx, unsigned satRegionIdx,
 
 template <class Traits>
 void
-EclMaterialLawManager<Traits>::InitParams::HystParams::
+HystParams<Traits>::
 setDrainageParamsOilGas(unsigned elemIdx, unsigned satRegionIdx,
                         const std::function<unsigned(unsigned)>& lookupIdxOnLevelZeroAssigner)
 {
@@ -133,7 +133,7 @@ setDrainageParamsOilGas(unsigned elemIdx, unsigned satRegionIdx,
 
 template <class Traits>
 void
-EclMaterialLawManager<Traits>::InitParams::HystParams::
+HystParams<Traits>::
 setDrainageParamsOilWater(unsigned elemIdx, unsigned satRegionIdx,
                           const std::function<unsigned(unsigned)>& lookupIdxOnLevelZeroAssigner)
 {
@@ -161,7 +161,7 @@ setDrainageParamsOilWater(unsigned elemIdx, unsigned satRegionIdx,
 
 template <class Traits>
 void
-EclMaterialLawManager<Traits>::InitParams::HystParams::
+HystParams<Traits>::
 setImbibitionParamsGasWater(unsigned elemIdx, unsigned imbRegionIdx,
                             const std::function<unsigned(unsigned)>& lookupIdxOnLevelZeroAssigner)
 {
@@ -183,7 +183,7 @@ setImbibitionParamsGasWater(unsigned elemIdx, unsigned imbRegionIdx,
 
 template <class Traits>
 void
-EclMaterialLawManager<Traits>::InitParams::HystParams::
+HystParams<Traits>::
 setImbibitionParamsOilGas(unsigned elemIdx, unsigned imbRegionIdx,
                           const std::function<unsigned(unsigned)>& lookupIdxOnLevelZeroAssigner)
 {
@@ -205,7 +205,7 @@ setImbibitionParamsOilGas(unsigned elemIdx, unsigned imbRegionIdx,
 
 template <class Traits>
 void
-EclMaterialLawManager<Traits>::InitParams::HystParams::
+HystParams<Traits>::
 setImbibitionParamsOilWater(unsigned elemIdx, unsigned imbRegionIdx,
                             const std::function<unsigned(unsigned)>& lookupIdxOnLevelZeroAssigner)
 {
@@ -229,7 +229,7 @@ setImbibitionParamsOilWater(unsigned elemIdx, unsigned imbRegionIdx,
 
 template <class Traits>
 bool
-EclMaterialLawManager<Traits>::InitParams::HystParams::
+HystParams<Traits>::
 hasGasOil_()
 {
     return this->parent_.hasGas && this->parent_.hasOil;
@@ -237,7 +237,7 @@ hasGasOil_()
 
 template <class Traits>
 bool
-EclMaterialLawManager<Traits>::InitParams::HystParams::
+HystParams<Traits>::
 hasGasWater_()
 {
     return this->parent_.hasGas && this->parent_.hasWater && !this->parent_.hasOil;
@@ -245,7 +245,7 @@ hasGasWater_()
 
 template <class Traits>
 bool
-EclMaterialLawManager<Traits>::InitParams::HystParams::
+HystParams<Traits>::
 hasOilWater_()
 {
     return this->parent_.hasOil && this->parent_.hasWater;
@@ -253,10 +253,10 @@ hasOilWater_()
 
 template <class Traits>
 std::tuple<
-  EclEpsScalingPointsInfo<typename EclMaterialLawManager<Traits>::Scalar>,
-  EclEpsScalingPoints<typename EclMaterialLawManager<Traits>::Scalar>
+  EclEpsScalingPointsInfo<typename HystParams<Traits>::Scalar>,
+  EclEpsScalingPoints<typename HystParams<Traits>::Scalar>
 >
-EclMaterialLawManager<Traits>::InitParams::HystParams::
+HystParams<Traits>::
 readScaledEpsPoints_(const EclEpsGridProperties& epsGridProperties, unsigned elemIdx, EclTwoPhaseSystemType type,
                      const std::function<unsigned(unsigned)>& fieldPropIdxOnLevelZero)
 {
@@ -279,10 +279,10 @@ readScaledEpsPoints_(const EclEpsGridProperties& epsGridProperties, unsigned ele
 
 template <class Traits>
 std::tuple<
-  EclEpsScalingPointsInfo<typename EclMaterialLawManager<Traits>::Scalar>,
-  EclEpsScalingPoints<typename EclMaterialLawManager<Traits>::Scalar>
+  EclEpsScalingPointsInfo<typename HystParams<Traits>::Scalar>,
+  EclEpsScalingPoints<typename HystParams<Traits>::Scalar>
 >
-EclMaterialLawManager<Traits>::InitParams::HystParams::
+HystParams<Traits>::
 readScaledEpsPointsDrainage_(unsigned elemIdx, EclTwoPhaseSystemType type,
                              const std::function<unsigned(unsigned)>& fieldPropIdxOnLevelZero)
 {
@@ -292,10 +292,10 @@ readScaledEpsPointsDrainage_(unsigned elemIdx, EclTwoPhaseSystemType type,
 
 template <class Traits>
 std::tuple<
-  EclEpsScalingPointsInfo<typename EclMaterialLawManager<Traits>::Scalar>,
-  EclEpsScalingPoints<typename EclMaterialLawManager<Traits>::Scalar>
+  EclEpsScalingPointsInfo<typename HystParams<Traits>::Scalar>,
+  EclEpsScalingPoints<typename HystParams<Traits>::Scalar>
 >
-EclMaterialLawManager<Traits>::InitParams::HystParams::
+HystParams<Traits>::
 readScaledEpsPointsImbibition_(unsigned elemIdx, EclTwoPhaseSystemType type,
                                const std::function<unsigned(unsigned)>& fieldPropIdxOnLevelZero)
 {
@@ -304,10 +304,10 @@ readScaledEpsPointsImbibition_(unsigned elemIdx, EclTwoPhaseSystemType type,
 }
 
 // Make some actual code, by realizing the previously defined templated class
-template class EclMaterialLawManager<ThreePhaseMaterialTraits<double,0,1,2>>::InitParams::HystParams;
-template class EclMaterialLawManager<ThreePhaseMaterialTraits<float,0,1,2>>::InitParams::HystParams;
-template class EclMaterialLawManager<ThreePhaseMaterialTraits<double,2,0,1>>::InitParams::HystParams;
-template class EclMaterialLawManager<ThreePhaseMaterialTraits<float,2,0,1>>::InitParams::HystParams;
+template class HystParams<ThreePhaseMaterialTraits<double,0,1,2>>;
+template class HystParams<ThreePhaseMaterialTraits<float,0,1,2>>;
+template class HystParams<ThreePhaseMaterialTraits<double,2,0,1>>;
+template class HystParams<ThreePhaseMaterialTraits<float,2,0,1>>;
 
 
 } // namespace Opm
