@@ -192,7 +192,12 @@ public:
     Evaluation saturatedInverseFormationVolumeFactor(unsigned regionIdx,
                                                      const Evaluation& /*temperature*/,
                                                      const Evaluation& pressure) const
-    { return inverseGasB_[regionIdx].eval(pressure, /*extrapolate=*/true); }
+    {
+        if (pressure < inverseGasB_[regionIdx].xMin()) {
+            return inverseGasB_[regionIdx].yValues()[0];
+        }
+        return inverseGasB_[regionIdx].eval(pressure, /*extrapolate=*/true);
+    }
 
     /*!
      * \brief Returns the saturation pressure of the gas phase [Pa]
