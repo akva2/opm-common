@@ -1,0 +1,7 @@
+include(CheckFunctionExists)
+set(CMAKE_REQUIRED_LIBRARIES ${BLAS_LIBRARIES})
+check_function_exists(cblas_dgemm CBLAS_OK)
+if(CBLAS_OK)
+  set(CMAKE_REQUIRED_LIBRARIES ${LAPACK_LIBRARIES})
+  check_function_exists(cblas_dgesv CBLAS_OK)
+endif()

@@ -20,7 +20,7 @@
 #ifndef OPM_BLAS_LAPACK_HEADER_INCLUDED
 #define OPM_BLAS_LAPACK_HEADER_INCLUDED
 
-#if ! __has_include(<FCMacros.h>)
+#if !USE_CBLAS && ! __has_include(<FCMacros.h>)
 #error "Need FCMacros.h to be generated through FortranCInterface"
 #endif
 
@@ -28,6 +28,13 @@
 extern "C" {
 #endif
 
+#ifndef MAT_SIZE_T
+#define MAT_SIZE_T int
+#endif
+
+#if USE_CBLAS
+#include <clapack.h>
+#else
 #include <FCMacros.h>
 
 #if defined(MATLAB_MEX_FILE) && MATLAB_MEX_FILE
@@ -36,11 +43,6 @@ extern "C" {
 #define MAT_SIZE_T mwSignedIndex
 #endif
 
-#ifndef MAT_SIZE_T
-#define MAT_SIZE_T int
-#endif
-
-
 /* C <- a1*op(A)*op(B) + a2*C  where  op(X) in {X, X.'} */
 void FC_GLOBAL(dgemm,DGEMM)(const char *transA  , const char *transB   ,
                             const MAT_SIZE_T*  m, const MAT_SIZE_T* n  , const MAT_SIZE_T* k  ,
@@ -48,6 +50,11 @@ void FC_GLOBAL(dgemm,DGEMM)(const char *transA  , const char *transB   ,
                             const double*      B, const MAT_SIZE_T* ldB,
                             const double*     a2,       double*     C  , const MAT_SIZE_T* ldC);
 
+void FC_GLOBAL(dgemv,DGEMV)(const char       *trans,
+                            const MAT_SIZE_T *m    , const MAT_SIZE_T *n,
+                            const double     *a1   , const double     *A, const MAT_SIZE_T *ldA ,
+                            const double     *x, const MAT_SIZE_T *incX,
+                            const double     *a2   ,       double     *y, const MAT_SIZE_T *incY);
 
 /* C <- a1*A*A' + a2*C   *or*   C <- a1*A'*A + a2*C */
 void FC_GLOBAL(dsyrk,DSYRK)(const char       *uplo, const char       *trans,
@@ -108,7 +115,7 @@ void FC_GLOBAL(dgesv,DGESV)(const MAT_SIZE_T *n,
                             MAT_SIZE_T *piv ,
                             double     *B    ,
                             const MAT_SIZE_T *ldb  ,
-                            MAT_SIZE_T *info);
+                             MAT_SIZE_T *info);
 
 /* A <- chol(A) */
 void FC_GLOBAL(dpotrf,DPOTRF)(const char *uplo, const MAT_SIZE_T *n,
@@ -128,14 +135,6 @@ void FC_GLOBAL(dpptrf,DPOTRF)(const char *uplo, const MAT_SIZE_T *n,
 void FC_GLOBAL(dpptri,DPPTRI)(const char *uplo, const MAT_SIZE_T *n,
                               double     *Ap  ,       MAT_SIZE_T *info);
 
-/* y <- a1*op(A)*x + a2*y */
-void FC_GLOBAL(dgemv,DGEMV)(const char       *trans,
-                            const MAT_SIZE_T *m    , const MAT_SIZE_T *n,
-                            const double     *a1   , const double     *A, const MAT_SIZE_T *ldA ,
-                            const double     *x, const MAT_SIZE_T *incX,
-                            const double     *a2   ,       double     *y, const MAT_SIZE_T *incY);
-
-
 /* y <- a*x + y */
 void FC_GLOBAL(daxpy,DAXPY)(const MAT_SIZE_T *n, const double *a,
                             const double *x, const MAT_SIZE_T *incx,
@@ -145,6 +144,56 @@ void FC_GLOBAL(daxpy,DAXPY)(const MAT_SIZE_T *n, const double *a,
 double FC_GLOBAL(ddot,DDOT)(const MAT_SIZE_T *n, const double *x, const MAT_SIZE_T *incx,
                             const double *y, const MAT_SIZE_T *incy);
 
+#endif // !USE_CBLAS
+
+inline void dgemm(const char *transA  , const char *transB   ,
+                  const MAT_SIZE_T*  m, const MAT_SIZE_T* n  , const MAT_SIZE_T* k  ,
+                  const double*     a1, const double*     A  , const MAT_SIZE_T* ldA,
+                  const double*      B, const MAT_SIZE_T* ldB,
+                  const double*     a2,       double*     C  , const MAT_SIZE_T* ldC)
+{
+#if USE_CBLAS
+  cblas_dgemm(CblasColMajor,
+              *transA == 'T' ? CblasTrans : CblasNoTrans,
+               *transB == 'T' ? CblasTrans : CblasNoTrans,
+                *m, *n, *k, *a1, A, *ldA, B, *ldB, *a2, C, *ldC);
+#else
+    FC_GLOBAL(dgemm,DGEMM)(transA, transB, m, n, k, a1, A, ldA, B, ldB, a2, C, ldC);
+#endif
+}
+
+inline void dgemv(const char       *trans,
+                  const MAT_SIZE_T *m    , const MAT_SIZE_T *n,
+                  const double     *a1   , const double     *A, const MAT_SIZE_T *ldA ,
+                  const double     *x, const MAT_SIZE_T *incX,
+                  const double     *a2   ,       double     *y, const MAT_SIZE_T *incY)
+
+{
+#if USE_CBLAS
+    cblas_dgemv(CblasColMajor,
+                *trans ? CblasTrans : CblasNoTrans,
+                *m, *n, *a1, A, *ldA, x, *incX, *a2, y, *incY);
+#else
+    FC_GLOBAL(dgemv,GEMV)(trans, m, n, a1, A, ldA, x, incX, a2, y, incY);
+#endif
+}
+
+inline void dgesv(const MAT_SIZE_T *n,
+                  const MAT_SIZE_T *nrhs ,
+                   double     *A   ,
+                   const MAT_SIZE_T *lda ,
+                   MAT_SIZE_T *piv ,
+                   double     *B    ,
+                   const MAT_SIZE_T *ldb  ,
+                   MAT_SIZE_T *info)
+{
+#if USE_CBLAS
+    *info = clapack_dgesv(CblasColMajor,
+                          *n, *nrhs, A, *lda, piv, B, *ldb);
+#else
+    FC_GLOBAL(dgesv,DGESV)(n, nrhs, A, lda, piv, B, ldb, info);
+#endif
+}
 
 #ifdef __cplusplus
 }
