@@ -165,6 +165,13 @@ if(BUILD_EXAMPLES)
     TYPE
       examples
   )
+  opm_compile_satellites(
+    PREFIX
+      ${project}
+    TYPE
+      programs
+    INSTALL
+  )
 endif()
 
 opm_compile_satellites(
