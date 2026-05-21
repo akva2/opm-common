@@ -212,7 +212,7 @@ include(CMakeParseArguments)
 
 macro(opm_add_test TestName)
   cmake_parse_arguments(CURTEST
-                        "NO_COMPILE;ALWAYS_ENABLE" # flags
+                        "ALWAYS_ENABLE" # flags
                         "EXE_NAME;PROCESSORS;WORKING_DIRECTORY;CONFIGURATION" # one value args
                         "CONDITION;DEFAULT_ENABLE_IF;TEST_DEPENDS;DRIVER;DRIVER_ARGS;DEPENDS;TEST_ARGS;SOURCES;LIBRARIES" # multi-value args
                         ${ARGN})
@@ -285,7 +285,7 @@ macro(opm_add_test TestName)
   endif()
 
   if (NOT SKIP_CUR_TEST)
-    if (NOT CURTEST_NO_COMPILE AND CURTEST_SOURCES)
+    if (CURTEST_SOURCES)
       # in addition to being run, the test must be compiled. (the
       # run-only case occurs if the binary is already compiled by an
       # earlier test.)
