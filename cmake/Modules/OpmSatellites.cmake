@@ -208,9 +208,7 @@ endmacro (opm_data satellite target dirname files)
 #              CONDITION FUNKY_GRID_FOUND
 #              SOURCES tests/MyFunkyTest.cpp
 #              LIBRARIES -lgmp -lm)
-include(CMakeParseArguments)
-
-macro(opm_add_test TestName)
+function(opm_add_test TestName)
   cmake_parse_arguments(CURTEST
                         "ALWAYS_ENABLE" # flags
                         "EXE_NAME;PROCESSORS;WORKING_DIRECTORY;CONFIGURATION" # one value args
@@ -338,7 +336,7 @@ macro(opm_add_test TestName)
     endif()
     add_dependencies(test-suite "${CURTEST_EXE_NAME}")
   endif()
-endmacro()
+endfunction()
 
 # macro to set the default test driver script and the its default
 # arguments
