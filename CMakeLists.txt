@@ -208,7 +208,7 @@ macro(opm-common_tests_hook)
   # Add the tests
   opm_add_test(test_EclFilesComparator
     CONDITION
-      TARGET Boost::unit_test_framework
+      "TARGET Boost::unit_test_framework"
     SOURCES
       tests/test_EclFilesComparator.cpp
       test_util/EclFilesComparator.cpp
@@ -221,7 +221,7 @@ macro(opm-common_tests_hook)
 
   opm_add_test(test_EclRegressionTest
     CONDITION
-      TARGET Boost::unit_test_framework
+      "TARGET Boost::unit_test_framework"
     SOURCES
       tests/test_EclRegressionTest.cpp
       test_util/EclFilesComparator.cpp

@@ -188,7 +188,7 @@ endmacro (opm_data satellite target dirname files)
 #       TestName           Name of test
 #       DEFAULT_ENABLE_IF  Only enable by default if a given condition is true (optional)
 #       ALWAYS_ENABLE      Force enabling test even if -DBUILD_TESTING=OFF was set (optional)
-#       EXE_NAME           Name of test executable (optional, default: ./bin/${TestName})
+#       TARGET             Target for test executable (optional, default: ${TestName})
 #       CONDITION          Condition to enable test (optional, cmake code)
 #       DEPENDS            Targets which the test depends on (optional)
 #       DRIVER             The script which supervises the test (optional, default: ${OPM_TEST_DRIVER})
@@ -211,15 +211,15 @@ endmacro (opm_data satellite target dirname files)
 function(opm_add_test TestName)
   cmake_parse_arguments(CURTEST
                         "ALWAYS_ENABLE" # flags
-                        "EXE_NAME;PROCESSORS;WORKING_DIRECTORY;CONFIGURATION" # one value args
+                        "TARGET;PROCESSORS;WORKING_DIRECTORY;CONFIGURATION" # one value args
                         "CONDITION;DEFAULT_ENABLE_IF;TEST_DEPENDS;DRIVER;DRIVER_ARGS;DEPENDS;TEST_ARGS;SOURCES;LIBRARIES" # multi-value args
                         ${ARGN})
 
   set(BUILD_TESTING "${BUILD_TESTING}")
 
   # set the default values for optional parameters
-  if (NOT CURTEST_EXE_NAME)
-    set(CURTEST_EXE_NAME ${TestName})
+  if(NOT CURTEST_TARGET)
+    set(CURTEST_TARGET ${TestName})
   endif()
 
   # Strip test_ prefix from name
@@ -287,20 +287,20 @@ function(opm_add_test TestName)
       # in addition to being run, the test must be compiled. (the
       # run-only case occurs if the binary is already compiled by an
       # earlier test.)
-      add_executable("${CURTEST_EXE_NAME}" ${CURTEST_EXCLUDE_FROM_ALL} ${CURTEST_SOURCES})
-      opm_add_target_options(TARGET ${CURTEST_EXE_NAME})
+      add_executable(${CURTEST_TARGET} ${CURTEST_EXCLUDE_FROM_ALL} ${CURTEST_SOURCES})
+      opm_add_target_options(TARGET ${CURTEST_TARGET})
       if(HAVE_DYNAMIC_BOOST_TEST)
-        set_target_properties (${CURTEST_EXE_NAME} PROPERTIES
+        set_target_properties(${CURTEST_TARGET} PROPERTIES
                                COMPILE_DEFINITIONS BOOST_TEST_DYN_LINK)
       endif()
-      target_link_libraries (${CURTEST_EXE_NAME} PRIVATE ${CURTEST_LIBRARIES})
+      target_link_libraries (${CURTEST_TARGET} PRIVATE ${CURTEST_LIBRARIES})
       get_property(dirs DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY INCLUDE_DIRECTORIES)
 
       if(CURTEST_DEPENDS)
-        add_dependencies("${CURTEST_EXE_NAME}" ${CURTEST_DEPENDS})
+        add_dependencies(${CURTEST_TARGET} ${CURTEST_DEPENDS})
       endif()
       if(TARGET ${project}_prepare)
-        add_dependencies("${CURTEST_EXE_NAME}" ${project}_prepare)
+        add_dependencies(${CURTEST_TARGET} ${project}_prepare)
       endif()
     endif()
 
@@ -308,9 +308,9 @@ function(opm_add_test TestName)
     # has been specified to supervise the test binary, use it else
     # run the test binary "naked".
     if (CURTEST_DRIVER)
-      set(CURTEST_COMMAND ${CURTEST_DRIVER} ${CURTEST_DRIVER_ARGS} -e $<TARGET_FILE:${CURTEST_EXE_NAME}> -- ${CURTEST_TEST_ARGS})
+      set(CURTEST_COMMAND ${CURTEST_DRIVER} ${CURTEST_DRIVER_ARGS} -e $<TARGET_FILE:${CURTEST_TARGET}> -- ${CURTEST_TEST_ARGS})
     else()
-      set(CURTEST_COMMAND $<TARGET_FILE:${CURTEST_EXE_NAME})
+      set(CURTEST_COMMAND $<TARGET_FILE:${CURTEST_TARGET})
       if (CURTEST_TEST_ARGS)
         list(APPEND CURTEST_COMMAND ${CURTEST_TEST_ARGS})
       endif()
@@ -334,7 +334,7 @@ function(opm_add_test TestName)
     if(NOT TARGET test-suite)
       add_custom_target(test-suite)
     endif()
-    add_dependencies(test-suite "${CURTEST_EXE_NAME}")
+    add_dependencies(test-suite ${CURTEST_TARGET})
   endif()
 endfunction()
 
