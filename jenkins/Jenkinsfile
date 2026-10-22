@@ -1,0 +1,4 @@
+@Library('opm') _
+
+opmModule(branchTriggers: [master: 'jenkins build this serial no downstreams please'],
+          nvccParser: 'nvcc')
